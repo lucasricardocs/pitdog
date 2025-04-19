@@ -3,7 +3,7 @@ import pandas as pd
 import random
 import time # Para simular processamento e usar spinner
 
-# ----- Funções Auxiliares (mantidas como antes) -----
+# ----- Funções Auxiliares -----
 
 def parse_menu_string(menu_data_string):
     """Parses a multi-line string containing menu items and prices."""
@@ -19,7 +19,7 @@ def parse_menu_string(menu_data_string):
             except ValueError:
                 st.warning(f"Preço inválido para '{name}'. Ignorando item.")
         elif line.strip(): # Avoid warnings for empty lines
-             st.warning(f"Formato inválido na linha do cardápio: '{line}'. Esperado 'Nome R$ Preço'. Ignorando linha.")
+            st.warning(f"Formato inválido na linha do cardápio: '{line}'. Esperado 'Nome R$ Preço'. Ignorando linha.")
     return menu
 
 def calculate_combination_value(combination, item_prices):
@@ -40,44 +40,53 @@ def generate_initial_combination(item_prices, combination_size):
         combination[name] = random.uniform(1, 75) # Range arbitrário original
     return combination
 
-def local_search_optimization(item_prices, target_value, combination_size, max_iterations):
+def optimized_local_search(item_prices_bebidas, item_prices_sanduiches, target_value, max_iterations, tamanho_combinacao_bebidas, tamanho_combinacao_sanduiches):
     """
-    Uses a randomized local search heuristic to find a combination of items
-    approximating the target_value. (Docstring omitted for brevity, same as before)
+    Utiliza uma busca local randômica para encontrar uma combinação de bebidas e sanduíches
+    cuja soma total se aproxima do target_value.
     """
-    if not item_prices or target_value <= 0:
-        return {}
+    if not item_prices_bebidas or not item_prices_sanduiches or target_value <= 0:
+        return {}, 0
 
-    best_combination = generate_initial_combination(item_prices, combination_size)
-    if not best_combination: return {}
+    best_combination_bebidas = generate_initial_combination(item_prices_bebidas, tamanho_combinacao_bebidas)
+    best_combination_sanduiches = generate_initial_combination(item_prices_sanduiches, tamanho_combinacao_sanduiches)
 
-    # Correção: Usar get para evitar KeyError se item não estiver no cardápio (improvável aqui, mas seguro)
-    current_value = calculate_combination_value(best_combination, item_prices)
-    best_diff = abs(target_value - current_value)
+    if not best_combination_bebidas and not best_combination_sanduiches:
+        return {}, 0
 
-    current_items = list(best_combination.keys())
+    best_value = calculate_combination_value(best_combination_bebidas, item_prices_bebidas) + calculate_combination_value(best_combination_sanduiches, item_prices_sanduiches)
+    best_difference = abs(target_value - best_value)
+    best_overall_combination = (best_combination_bebidas, best_combination_sanduiches)
 
     for _ in range(max_iterations):
-        if not current_items: break
+        # Modificar aleatoriamente a combinação de bebidas
+        neighbor_bebidas = best_combination_bebidas.copy()
+        if neighbor_bebidas:
+            item_bebida_to_modify = random.choice(list(neighbor_bebidas.keys()))
+            change_bebida = random.uniform(-5, 5)
+            neighbor_bebidas[item_bebida_to_modify] += change_bebida
+            neighbor_bebidas[item_bebida_to_modify] = max(0, min(neighbor_bebidas[item_bebida_to_modify], 75)) # Garante quantidade não negativa
 
-        neighbor = best_combination.copy()
-        item_to_modify = random.choice(current_items)
+        # Modificar aleatoriamente a combinação de sanduíches
+        neighbor_sanduiches = best_combination_sanduiches.copy()
+        if neighbor_sanduiches:
+            item_sanduiche_to_modify = random.choice(list(neighbor_sanduiches.keys()))
+            change_sanduiche = random.uniform(-5, 5)
+            neighbor_sanduiches[item_sanduiche_to_modify] += change_sanduiche
+            neighbor_sanduiches[item_sanduiche_to_modify] = max(0, min(neighbor_sanduiches[item_sanduiche_to_modify], 75)) # Garante quantidade não negativa
 
-        change = random.uniform(-5, 5) # Range arbitrário original
-        neighbor[item_to_modify] += change
-        neighbor[item_to_modify] = max(1.0, min(neighbor[item_to_modify], 75.0)) # Range arbitrário original
+        current_value = calculate_combination_value(neighbor_bebidas, item_prices_bebidas) + calculate_combination_value(neighbor_sanduiches, item_prices_sanduiches)
+        current_difference = abs(target_value - current_value)
 
-        # Avalia o vizinho
-        neighbor_value = calculate_combination_value(neighbor, item_prices)
-        neighbor_diff = abs(target_value - neighbor_value)
+        if current_difference < best_difference:
+            best_difference = current_difference
+            best_value = current_value
+            best_overall_combination = (neighbor_bebidas, neighbor_sanduiches)
 
-        if neighbor_diff < best_diff:
-            best_diff = neighbor_diff
-            best_combination = neighbor
+        if best_difference < 0.01: # Critério de parada mais rigoroso
+            break
 
-        if best_diff < 0.01: break # Tolerância para parada antecipada
-
-    return best_combination
+    return best_overall_combination, best_value
 
 
 def format_currency(value):
@@ -115,24 +124,20 @@ st.divider()
 # --- Configuration Sidebar ---
 with st.sidebar:
     st.header("⚙️ Configurações")
-    drink_percentage = st.slider(
-        "Percentual para Bebidas (%) 🍹",
-        min_value=0, max_value=100, value=20, step=5,
-        help="Define qual porcentagem do valor total será usada como meta para bebidas."
-    )
-    sandwich_percentage = 100 - drink_percentage
-    st.caption(f"({sandwich_percentage}% será alocado para Sanduíches 🍔)")
-
+    st.subheader("🎯 Foco da Combinação")
+    st.caption("Defina o foco inicial da combinação (será otimizado para o total).")
     tamanho_combinacao_bebidas = st.slider(
         "Número de tipos de Bebidas",
-        min_value=1, max_value=10, value=5, step=1,
-        help="Quantos tipos *diferentes* de bebidas tentar incluir."
+        min_value=1, max_value=10, value=3, step=1,
+        help="Quantos tipos *diferentes* de bebidas tentar incluir inicialmente."
     )
     tamanho_combinacao_sanduiches = st.slider(
         "Número de tipos de Sanduíches",
-        min_value=1, max_value=15, value=5, step=1,
-        help="Quantos tipos *diferentes* de sanduíches tentar incluir."
+        min_value=1, max_value=15, value=3, step=1,
+        help="Quantos tipos *diferentes* de sanduíches tentar incluir inicialmente."
     )
+    st.divider()
+    st.subheader("⚙️ Otimização")
     max_iterations = st.select_slider(
         "Qualidade da Otimização ✨",
         options=[1000, 5000, 10000, 20000, 50000],
@@ -217,8 +222,8 @@ if arquivo:
             bebidas_precos = parse_menu_string(dados_bebidas.replace(';', '\n'))
 
             if not sanduiches_precos or not bebidas_precos:
-                 st.error("Erro ao carregar cardápios. Verifique os dados no código.")
-                 st.stop()
+                st.error("Erro ao carregar cardápios. Verifique os dados no código.")
+                st.stop()
 
             processing_time = time.time() - start_time
             st.caption(f"Processamento inicial concluído em {processing_time:.2f} segundos.")
@@ -258,8 +263,8 @@ if arquivo:
             st.warning("Nenhum dado de venda para exibir.")
 
     with tab2:
-        st.header("🧩 Detalhes das Combinações Geradas")
-        st.caption(f"Tentando alocar {drink_percentage}% para bebidas e {sandwich_percentage}% para sanduíches.")
+        st.header("🧩 Detalhes das Combinações Geradas (Otimizadas)")
+        st.caption("Tentando encontrar a combinação de bebidas e sanduíches com o valor total mais próximo do valor da venda.")
 
         ordem_formas = [
             'Débito Visa', 'Débito MasterCard', 'Débito Elo',
@@ -273,67 +278,64 @@ if arquivo:
             st.info("Nenhuma venda encontrada nas categorias mapeadas para gerar combinações.")
 
         for forma, total_pagamento in vendas_ordenadas.items():
-             if total_pagamento <= 0: continue
+            if total_pagamento <= 0: continue
 
-             # Mostrar spinner para a otimização de cada forma
-             with st.spinner(f"Gerando combinação para {forma}..."):
-                 target_bebidas = total_pagamento * (drink_percentage / 100.0)
-                 target_sanduiches = total_pagamento - target_bebidas
+            with st.spinner(f"Otimizando combinação para {forma}..."):
+                best_comb, valor_total_calc = optimized_local_search(
+                    bebidas_precos,
+                    sanduiches_precos,
+                    total_pagamento,
+                    max_iterations,
+                    tamanho_combinacao_bebidas,
+                    tamanho_combinacao_sanduiches
+                )
+                comb_bebidas_float, comb_sanduiches_float = best_comb
 
-                 comb_bebidas_float = local_search_optimization(bebidas_precos, target_bebidas, tamanho_combinacao_bebidas, max_iterations)
-                 comb_sanduiches_float = local_search_optimization(sanduiches_precos, target_sanduiches, tamanho_combinacao_sanduiches, max_iterations)
+                comb_bebidas_rounded = {name: round(qty) for name, qty in comb_bebidas_float.items() if round(qty) > 0}
+                comb_sanduiches_rounded = {name: round(qty) for name, qty in comb_sanduiches_float.items() if round(qty) > 0}
 
-                 comb_bebidas_rounded = {name: round(qty) for name, qty in comb_bebidas_float.items() if round(qty) > 0}
-                 comb_sanduiches_rounded = {name: round(qty) for name, qty in comb_sanduiches_float.items() if round(qty) > 0}
+                total_calc_bebidas = calculate_combination_value(comb_bebidas_rounded, bebidas_precos)
+                total_calc_sanduiches = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
+                total_calc_geral = valor_total_calc # Usar o valor retornado pela função otimizada
+                diff_geral = total_calc_geral - total_pagamento
 
-                 total_calc_bebidas = calculate_combination_value(comb_bebidas_rounded, bebidas_precos)
-                 total_calc_sanduiches = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
-                 total_calc_geral = total_calc_bebidas + total_calc_sanduiches
+            # Expander para cada forma de pagamento
+            expander_title = f"**{forma}** (Total: {format_currency(total_pagamento)})"
+            with st.expander(expander_title, expanded=False):
+                st.markdown(f"<span style='font-size: large; color: grey;'>Valor Calculado da Combinação: {format_currency(total_calc_geral)}</span>", unsafe_allow_html=True)
+                st.caption("Combinação *hipotética* otimizada para o valor total.")
 
-             # Expander para cada forma de pagamento
-             expander_title = f"**{forma}** (Total: {format_currency(total_pagamento)})"
-             with st.expander(expander_title, expanded=False):
-                 st.markdown(f"<span style='font-size: large; color: grey;'>Bebidas ({drink_percentage}%): {format_currency(target_bebidas)} | Sanduiches ({sandwich_percentage}%): {format_currency(target_sanduiches)}</span>", unsafe_allow_html=True)
-                 st.caption("Combinação *hipotética* encontrada pelo algoritmo. Quantidades arredondadas.")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.subheader("🍹 Bebidas")
+                    if comb_bebidas_rounded:
+                        for nome, qtt in comb_bebidas_rounded.items():
+                            val_item = bebidas_precos.get(nome, 0) * qtt
+                            st.markdown(f"- **{nome}:** {qtt} un ({format_currency(val_item)})")
+                        st.divider()
+                        st.metric("Total Calculado (Bebidas)", format_currency(total_calc_bebidas))
+                    else:
+                        st.info("Nenhuma bebida na combinação.")
 
-                 col1, col2 = st.columns(2) # Mantém as colunas para separar Bebidas de Sanduíches
-                 with col1:
-                     st.subheader("🍹 Bebidas")
-                     if comb_bebidas_rounded:
-                         # ----- MODIFICAÇÃO AQUI: Exibir como lista -----
-                         for nome, qtt in comb_bebidas_rounded.items():
-                             val_item = bebidas_precos.get(nome, 0) * qtt
-                             # Usar st.markdown para criar um item de lista
-                             st.markdown(f"- **{nome}:** {qtt} un ({format_currency(val_item)})")
-                         # -------------------------------------------------
-                         st.divider() # Mantém o divisor
-                         st.metric("Total Calculado (Bebidas)", format_currency(total_calc_bebidas)) # Mantém a métrica total
-                     else:
-                         st.info("Nenhuma bebida na combinação.") # Mantém mensagem caso vazio
+                with col2:
+                    st.subheader("🍔 Sanduíches")
+                    if comb_sanduiches_rounded:
+                        for nome, qtt in comb_sanduiches_rounded.items():
+                            val_item = sanduiches_precos.get(nome, 0) * qtt
+                            st.markdown(f"- **{nome}:** {qtt} un ({format_currency(val_item)})")
+                        st.divider()
+                        st.metric("Total Calculado (Sanduíches)", format_currency(total_calc_sanduiches))
+                    else:
+                        st.info("Nenhum sanduíche na combinação.")
 
-                 with col2:
-                     st.subheader("🍔 Sanduíches")
-                     if comb_sanduiches_rounded:
-                         # ----- MODIFICAÇÃO AQUI: Exibir como lista -----
-                         for nome, qtt in comb_sanduiches_rounded.items():
-                              val_item = sanduiches_precos.get(nome, 0) * qtt
-                              # Usar st.markdown para criar um item de lista
-                              st.markdown(f"- **{nome}:** {qtt} un ({format_currency(val_item)})")
-                         # -------------------------------------------------
-                         st.divider() # Mantém o divisor
-                         st.metric("Total Calculado (Sanduíches)", format_currency(total_calc_sanduiches)) # Mantém a métrica total
-                     else:
-                         st.info("Nenhum sanduíche na combinação.") # Mantém mensagem caso vazio
-
-                 st.divider()
-                 diff_geral = total_calc_geral - total_pagamento
-                 delta_sign = "+" if diff_geral >= 0 else ""
-                 st.metric(
-                      "💰 TOTAL GERAL (Calculado da Combinação)",
-                      format_currency(total_calc_geral),
-                      delta=f"{delta_sign}{format_currency(diff_geral)} vs Meta",
-                      delta_color="normal"
-                  ) # Mantém a métrica final
+                st.divider()
+                delta_sign = "+" if diff_geral >= 0 else ""
+                st.metric(
+                    "💰 Diferença Total vs Venda",
+                    format_currency(diff_geral),
+                    delta=f"{delta_sign}{format_currency(diff_geral)}",
+                    delta_color="inverse" if abs(diff_geral) > 0.01 else "off"
+                )
 
     with tab3:
         st.header("📄 Tabela de Dados Processados")
