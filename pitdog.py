@@ -295,8 +295,8 @@ if arquivo:
                 diferenca = valor_total_calc - total
                 cor_diferenca = "red" if abs(diferenca) > 0.01 else "green"
                 sinal = "+" if diferenca > 0 else ""
-                st.markdown(f"<span style='font-size: large; color: steelblue;'>Valor Calculado: <b style='color: darkblue;'>{format_currency(valor_total_calc)}</b></span> | <span style='font-size: medium; color: grey;'>Diferença: <b style='color: {cor_diferenca};'>{sinal}{format_currency(diferenca)}</b></span>", unsafe_allow_html=True)
-                st.caption("Combinação *hipotética* otimizada para o valor total.")
+                    st.markdown(f"<span style='font-size: large; color: steelblue;'>Valor Calculado: <b style='color: darkblue;'>{format_currency(valor_total_calc)}</b></span> | <span style='font-size: medium; color: grey;'>Diferença: <b style='color: {cor_diferenca};'>{sinal}{format_currency(diferenca)}</b></span>", unsafe_allow_html=True)
+                    st.caption("Combinação *hipotética* otimizada para o valor total.")
 
     # ... (o restante do código para exibir os itens de bebidas e sanduíches) ...
         
