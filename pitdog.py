@@ -293,7 +293,10 @@ if arquivo:
              # Expander para cada forma de pagamento
              expander_title = f"**{forma}** (Total: {format_currency(total_pagamento)})"
              with st.expander(expander_title, expanded=False):
-                 st.markdown(f"<span style='font-size: large; color: grey;'>Bebidas ({drink_percentage}%): {format_currency(target_bebidas)} / Sanduiches ({sandwich_percentage}%): {format_currency(target_sanduiches)}</span>", unsafe_allow_html=True)
+                 diferenca = valor_total_calc - total
+cor_diferenca = "red" if diferenca != 0 else "green"
+sinal = "+" if diferenca > 0 else ""
+st.markdown(f"<span style='font-size: large; color: steelblue;'>Valor Calculado: <b style='color: darkblue;'>{format_currency(valor_total_calc)}</b></span> | <span style='font-size: medium; color: grey;'>Diferença: <b style='color: {cor_diferenca};'>{sinal}{format_currency(diferenca)}</b></span>", unsafe_allow_html=True)
                  st.caption("Combinação *hipotética* encontrada pelo algoritmo. Quantidades arredondadas.")
 
                  col1, col2 = st.columns(2) # Mantém as colunas para separar Bebidas de Sanduíches
