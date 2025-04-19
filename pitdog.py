@@ -293,16 +293,6 @@ if arquivo:
              # Expander para cada forma de pagamento
              expander_title = f"**{forma}** (Total: {format_currency(total_pagamento)})"
              with st.expander(expander_title, expanded=False):
-            # Nova versão - mais limpa e organizada
-            st.write
-                 (f"""
-                    **Distribuição dos Valores Alvo**  
-                    🍹 **Bebidas:** {format_currency(target_bebidas)}  
-                    🍔 **Sanduíches:** {format_currency(target_sanduiches)}
-                """
-                 )
-            st.caption("Combinação hipotética encontrada pelo algoritmo. Quantidades arredondadas para unidades inteiras.")
-             with st.expander(expander_title, expanded=False):
                  st.markdown(f"<span style='font-size: small; color: grey;'>Bebidas: {format_currency(target_bebidas)} | Sanduiches: {format_currency(target_sanduiches)}</span>", unsafe_allow_html=True)
                  st.caption("Combinação *hipotética* encontrada pelo algoritmo. Quantidades arredondadas.")
 
