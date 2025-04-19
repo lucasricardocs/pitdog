@@ -37,7 +37,7 @@ def generate_initial_combination(item_prices, combination_size):
     size = min(combination_size, len(item_names))
     chosen_names = random.sample(item_names, size)
     for name in chosen_names:
-        combination[name] = random.uniform(1, 75) # Range arbitrário original
+        combination[name] = random.uniform(1, 10) # Range reduzido para 1 a 10
     return combination
 
 def optimized_local_search(item_prices_bebidas, item_prices_sanduiches, target_value, max_iterations, tamanho_combinacao_bebidas, tamanho_combinacao_sanduiches):
@@ -63,17 +63,17 @@ def optimized_local_search(item_prices_bebidas, item_prices_sanduiches, target_v
         neighbor_bebidas = best_combination_bebidas.copy()
         if neighbor_bebidas:
             item_bebida_to_modify = random.choice(list(neighbor_bebidas.keys()))
-            change_bebida = random.uniform(-5, 5)
+            change_bebida = random.randint(-2, 2) # Range de ajuste menor (-2 a 2, inteiro)
             neighbor_bebidas[item_bebida_to_modify] += change_bebida
-            neighbor_bebidas[item_bebida_to_modify] = max(0, min(neighbor_bebidas[item_bebida_to_modify], 75)) # Garante quantidade não negativa
+            neighbor_bebidas[item_bebida_to_modify] = max(0, min(neighbor_bebidas[item_bebida_to_modify], 20)) # Limite superior mais realista
 
         # Modificar aleatoriamente a combinação de sanduíches
         neighbor_sanduiches = best_combination_sanduiches.copy()
         if neighbor_sanduiches:
             item_sanduiche_to_modify = random.choice(list(neighbor_sanduiches.keys()))
-            change_sanduiche = random.uniform(-5, 5)
+            change_sanduiche = random.randint(-2, 2) # Range de ajuste menor (-2 a 2, inteiro)
             neighbor_sanduiches[item_sanduiche_to_modify] += change_sanduiche
-            neighbor_sanduiches[item_sanduiche_to_modify] = max(0, min(neighbor_sanduiches[item_sanduiche_to_modify], 75)) # Garante quantidade não negativa
+            neighbor_sanduiches[item_sanduiche_to_modify] = max(0, min(neighbor_sanduiches[item_sanduiche_to_modify], 20)) # Limite superior mais realista
 
         current_value = calculate_combination_value(neighbor_bebidas, item_prices_bebidas) + calculate_combination_value(neighbor_sanduiches, item_prices_sanduiches)
         current_difference = abs(target_value - current_value)
