@@ -257,8 +257,6 @@ if arquivo:
         else:
             st.warning("Nenhum dado de venda para exibir.")
 
-# ... (código anterior inalterado) ...
-
     with tab2:
         st.header("🧩 Detalhes das Combinações Geradas")
         st.caption(f"Tentando alocar {drink_percentage}% para bebidas e {sandwich_percentage}% para sanduíches.")
@@ -295,7 +293,7 @@ if arquivo:
              # Expander para cada forma de pagamento
              expander_title = f"**{forma}** (Total: {format_currency(total_pagamento)})"
              with st.expander(expander_title, expanded=False):
-                 st.markdown(f"<span style='font-size: small; color: grey;'>Meta Bebidas ({drink_percentage}%): {format_currency(target_bebidas)} | Meta Sanduiches ({sandwich_percentage}%): {format_currency(target_sanduiches)}</span>", unsafe_allow_html=True)
+                 st.markdown(f"<span style='font-size: small; color: grey;'>Bebidas ({drink_percentage}%): {format_currency(target_bebidas)} | Sanduiches ({sandwich_percentage}%): {format_currency(target_sanduiches)}</span>", unsafe_allow_html=True)
                  st.caption("Combinação *hipotética* encontrada pelo algoritmo. Quantidades arredondadas.")
 
                  col1, col2 = st.columns(2) # Mantém as colunas para separar Bebidas de Sanduíches
