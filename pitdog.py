@@ -257,6 +257,8 @@ if arquivo:
         else:
             st.warning("Nenhum dado de venda para exibir.")
 
+# ... (código anterior inalterado) ...
+
     with tab2:
         st.header("🧩 Detalhes das Combinações Geradas")
         st.caption(f"Tentando alocar {drink_percentage}% para bebidas e {sandwich_percentage}% para sanduíches.")
@@ -296,34 +298,34 @@ if arquivo:
                  st.markdown(f"<span style='font-size: small; color: grey;'>Meta Bebidas ({drink_percentage}%): {format_currency(target_bebidas)} | Meta Sanduíches ({sandwich_percentage}%): {format_currency(target_sanduiches)}</span>", unsafe_allow_html=True)
                  st.caption("Combinação *hipotética* encontrada pelo algoritmo. Quantidades arredondadas.")
 
-                 col1, col2 = st.columns(2)
+                 col1, col2 = st.columns(2) # Mantém as colunas para separar Bebidas de Sanduíches
                  with col1:
                      st.subheader("🍹 Bebidas")
                      if comb_bebidas_rounded:
-                         sub_cols_bev = st.columns(min(len(comb_bebidas_rounded), 3))
-                         i = 0
+                         # ----- MODIFICAÇÃO AQUI: Exibir como lista -----
                          for nome, qtt in comb_bebidas_rounded.items():
                              val_item = bebidas_precos.get(nome, 0) * qtt
-                             with sub_cols_bev[i % len(sub_cols_bev)]:
-                                 st.metric(label=nome, value=f"{qtt} un", delta=format_currency(val_item), delta_color="off")
-                             i += 1
-                         st.divider()
-                         st.metric("Total Calculado (Bebidas)", format_currency(total_calc_bebidas))
-                     else: st.info("Nenhuma bebida na combinação.")
+                             # Usar st.markdown para criar um item de lista
+                             st.markdown(f"- **{nome}:** {qtt} un ({format_currency(val_item)})")
+                         # -------------------------------------------------
+                         st.divider() # Mantém o divisor
+                         st.metric("Total Calculado (Bebidas)", format_currency(total_calc_bebidas)) # Mantém a métrica total
+                     else:
+                         st.info("Nenhuma bebida na combinação.") # Mantém mensagem caso vazio
 
                  with col2:
                      st.subheader("🍔 Sanduíches")
                      if comb_sanduiches_rounded:
-                         sub_cols_sand = st.columns(min(len(comb_sanduiches_rounded), 3))
-                         i = 0
+                         # ----- MODIFICAÇÃO AQUI: Exibir como lista -----
                          for nome, qtt in comb_sanduiches_rounded.items():
                               val_item = sanduiches_precos.get(nome, 0) * qtt
-                              with sub_cols_sand[i % len(sub_cols_sand)]:
-                                   st.metric(label=nome, value=f"{qtt} un", delta=format_currency(val_item), delta_color="off")
-                              i += 1
-                         st.divider()
-                         st.metric("Total Calculado (Sanduíches)", format_currency(total_calc_sanduiches))
-                     else: st.info("Nenhum sanduíche na combinação.")
+                              # Usar st.markdown para criar um item de lista
+                              st.markdown(f"- **{nome}:** {qtt} un ({format_currency(val_item)})")
+                         # -------------------------------------------------
+                         st.divider() # Mantém o divisor
+                         st.metric("Total Calculado (Sanduíches)", format_currency(total_calc_sanduiches)) # Mantém a métrica total
+                     else:
+                         st.info("Nenhum sanduíche na combinação.") # Mantém mensagem caso vazio
 
                  st.divider()
                  diff_geral = total_calc_geral - total_pagamento
@@ -333,7 +335,7 @@ if arquivo:
                       format_currency(total_calc_geral),
                       delta=f"{delta_sign}{format_currency(diff_geral)} vs Meta",
                       delta_color="normal"
-                  )
+                  ) # Mantém a métrica final
 
     with tab3:
         st.header("📄 Tabela de Dados Processados")
