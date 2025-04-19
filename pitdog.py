@@ -232,84 +232,91 @@ if arquivo:
             st.warning("Nenhum dado de venda para exibir.")
 
     with tab2:
-        st.header("🧩 Detalhes das Combinações Geradas")
-        st.caption(f"Tentando alocar {drink_percentage}% para bebidas e {sandwich_percentage}% para sanduíches.")
+    st.header("🧩 Detalhes das Combinações Geradas")
+    st.caption(f"Tentando alocar {drink_percentage}% para bebidas e {sandwich_percentage}% para sanduíches.")
 
-        ordem_formas = [
-            'Débito Visa', 'Débito MasterCard', 'Débito Elo',
-            'Crédito Visa', 'Crédito MasterCard', 'Crédito Elo', 'PIX'
-        ]
-        vendas_ordenadas = {forma: vendas[forma] for forma in ordem_formas if forma in vendas}
-        for forma, total in vendas.items():
-            if forma not in vendas_ordenadas: vendas_ordenadas[forma] = total
+    ordem_formas = [
+        'Débito Visa', 'Débito MasterCard', 'Débito Elo',
+        'Crédito Visa', 'Crédito MasterCard', 'Crédito Elo', 'PIX'
+    ]
+    vendas_ordenadas = {forma: vendas[forma] for forma in ordem_formas if forma in vendas}
+    for forma, total in vendas.items(): # Adiciona formas não previstas na ordem
+        if forma not in vendas_ordenadas: vendas_ordenadas[forma] = total
 
-        if not vendas_ordenadas:
-            st.info("Nenhuma venda encontrada nas categorias mapeadas para gerar combinações.")
+    if not vendas_ordenadas:
+        st.info("Nenhuma venda encontrada nas categorias mapeadas para gerar combinações.")
 
-        for forma, total_pagamento in vendas_ordenadas.items():
-            if total_pagamento <= 0: continue
+    for forma, total_pagamento in vendas_ordenadas.items():
+        if total_pagamento <= 0: continue
 
-            with st.spinner(f"Gerando combinação para {forma}..."):
-                target_bebidas = total_pagamento * (drink_percentage / 100.0)
-                target_sanduiches = total_pagamento - target_bebidas
+        # Mostrar spinner para a otimização de cada forma
+        with st.spinner(f"Gerando combinação para {forma}..."):
+            target_bebidas = total_pagamento * (drink_percentage / 100.0)
+            target_sanduiches = total_pagamento - target_bebidas
 
-                comb_bebidas_float = local_search_optimization(bebidas_precos, target_bebidas, tamanho_combinacao_bebidas, max_iterations)
-                comb_sanduiches_float = local_search_optimization(sanduiches_precos, target_sanduiches, tamanho_combinacao_sanduiches, max_iterations)
+            comb_bebidas_float = local_search_optimization(bebidas_precos, target_bebidas, tamanho_combinacao_bebidas, max_iterations)
+            comb_sanduiches_float = local_search_optimization(sanduiches_precos, target_sanduiches, tamanho_combinacao_sanduiches, max_iterations)
 
-                comb_bebidas_rounded = {name: round(qty) for name, qty in comb_bebidas_float.items() if round(qty) > 0}
-                comb_sanduiches_rounded = {name: round(qty) for name, qty in comb_sanduiches_float.items() if round(qty) > 0}
+            comb_bebidas_rounded = {name: round(qty) for name, qty in comb_bebidas_float.items() if round(qty) > 0}
+            comb_sanduiches_rounded = {name: round(qty) for name, qty in comb_sanduiches_float.items() if round(qty) > 0}
 
-                total_calc_bebidas = calculate_combination_value(comb_bebidas_rounded, bebidas_precos)
-                total_calc_sanduiches = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
-                total_calc_geral = total_calc_bebidas + total_calc_sanduiches
+            total_calc_bebidas = calculate_combination_value(comb_bebidas_rounded, bebidas_precos)
+            total_calc_sanduiches = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
+            total_calc_geral = total_calc_bebidas + total_calc_sanduiches
 
-            with st.expander(f"**{forma}** (Total: {format_currency(total_pagamento)})", expanded=False):
-                diferenca = total_calc_geral - total_pagamento
-                cor_diferenca = "red" if abs(diferenca) > 0.01 else "green"
-                sinal = "+" if diferenca > 0 else ""
-                
-                st.markdown(
-                    f"<span style='font-size: large; color: steelblue;'>"
-                    f"Valor Calculado: <b style='color: darkblue;'>{format_currency(total_calc_geral)}</b></span> | "
-                    f"<span style='font-size: medium; color: grey;'>"
-                    f"Diferença: <b style='color: {cor_diferenca};'>{sinal}{format_currency(diferenca)}</b></span>", 
-                    unsafe_allow_html=True
-                )
-                st.caption("Combinação *hipotética* otimizada para o valor total.")
+        # Expander para cada forma de pagamento - VERSÃO CORRIGIDA
+        with st.expander(f"**{forma}** (Total: {format_currency(total_pagamento)})", expanded=False):
+            diferenca = total_calc_geral - total_pagamento
+            cor_diferenca = "red" if abs(diferenca) > 0.01 else "green"
+            sinal = "+" if diferenca > 0 else ""
+            
+            # Formatação corrigida
+            st.markdown(
+                f"""
+                <div style='font-size: large; color: steelblue;'>
+                    Valor Calculado: <b style='color: darkblue;'>{format_currency(total_calc_geral)}</b>
+                </div>
+                <div style='font-size: medium; color: grey; margin-top: 5px;'>
+                    Diferença: <b style='color: {cor_diferenca};'>{sinal}{format_currency(abs(diferenca))}</b>
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
+            st.caption("Combinação *hipotética* otimizada para o valor total.")
 
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.subheader("🍹 Bebidas")
-                    if comb_bebidas_rounded:
-                        for nome, qtt in comb_bebidas_rounded.items():
-                            val_item = bebidas_precos.get(nome, 0) * qtt
-                            st.markdown(f"- **{nome}:** {qtt} un ({format_currency(val_item)})")
-                        st.divider()
-                        st.metric("Total Calculado (Bebidas)", format_currency(total_calc_bebidas))
-                    else:
-                        st.info("Nenhuma bebida na combinação.")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("🍹 Bebidas")
+                if comb_bebidas_rounded:
+                    for nome, qtt in comb_bebidas_rounded.items():
+                        val_item = bebidas_precos.get(nome, 0) * qtt
+                        st.markdown(f"- **{nome}:** {qtt} un ({format_currency(val_item)})")
+                    st.divider()
+                    st.metric("Total Calculado (Bebidas)", format_currency(total_calc_bebidas))
+                else:
+                    st.info("Nenhuma bebida na combinação.")
 
-                with col2:
-                    st.subheader("🍔 Sanduíches")
-                    if comb_sanduiches_rounded:
-                        for nome, qtt in comb_sanduiches_rounded.items():
-                            val_item = sanduiches_precos.get(nome, 0) * qtt
-                            st.markdown(f"- **{nome}:** {qtt} un ({format_currency(val_item)})")
-                        st.divider()
-                        st.metric("Total Calculado (Sanduíches)", format_currency(total_calc_sanduiches))
-                    else:
-                        st.info("Nenhum sanduíche na combinação.")
+            with col2:
+                st.subheader("🍔 Sanduíches")
+                if comb_sanduiches_rounded:
+                    for nome, qtt in comb_sanduiches_rounded.items():
+                        val_item = sanduiches_precos.get(nome, 0) * qtt
+                        st.markdown(f"- **{nome}:** {qtt} un ({format_currency(val_item)})")
+                    st.divider()
+                    st.metric("Total Calculado (Sanduíches)", format_currency(total_calc_sanduiches))
+                else:
+                    st.info("Nenhum sanduíche na combinação.")
 
-                st.divider()
-                diff_geral = total_calc_geral - total_pagamento
-                delta_sign = "+" if diff_geral >= 0 else ""
-                st.metric(
-                    "💰 TOTAL GERAL (Calculado da Combinação)",
-                    format_currency(total_calc_geral),
-                    delta=f"{delta_sign}{format_currency(diff_geral)} vs Meta",
-                    delta_color="normal"
-                )
-
+            st.divider()
+            diff_geral = total_calc_geral - total_pagamento
+            delta_sign = "+" if diff_geral >= 0 else ""
+            st.metric(
+                "💰 TOTAL GERAL (Calculado da Combinação)",
+                format_currency(total_calc_geral),
+                delta=f"{delta_sign}{format_currency(diff_geral)} vs Meta",
+                delta_color="normal"
+            )
+    
     with tab3:
         st.header("📄 Tabela de Dados Processados")
         st.caption("Pré-visualização dos dados após limpeza e mapeamento de categorias.")
