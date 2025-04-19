@@ -304,7 +304,7 @@ if arquivo:
                          for nome, qtt in comb_bebidas_rounded.items():
                              val_item = bebidas_precos.get(nome, 0) * qtt
                              # Usar st.markdown para criar um item de lista
-                             st.markdown(f"- **{qtt}:** {nome} un ({format_currency(val_item)})")
+                             st.markdown(f"- **{qtt}** **{nome}:** un ({format_currency(val_item)})")
                          # -------------------------------------------------
                          st.divider() # Mantém o divisor
                          st.metric("Total Calculado (Bebidas)", format_currency(total_calc_bebidas)) # Mantém a métrica total
@@ -318,7 +318,7 @@ if arquivo:
                          for nome, qtt in comb_sanduiches_rounded.items():
                               val_item = sanduiches_precos.get(nome, 0) * qtt
                               # Usar st.markdown para criar um item de lista
-                              st.markdown(f"- **{qtt}:** {nome} un ({format_currency(val_item)})")
+                              st.markdown(f"- **{qtt}** **{nome}:** un ({format_currency(val_item)})")
                          # -------------------------------------------------
                          st.divider() # Mantém o divisor
                          st.metric("Total Calculado (Sanduíches)", format_currency(total_calc_sanduiches)) # Mantém a métrica total
