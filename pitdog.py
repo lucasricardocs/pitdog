@@ -5,6 +5,9 @@ from datetime import datetime
 import random
 import os
 
+# --- CONFIGURAÇÃO DA PÁGINA (DEVE SER A PRIMEIRA CHAMADA STREAMLIT) ---
+st.set_page_config(page_title="Análise de Vendas & Combinações", layout="wide", initial_sidebar_state="expanded")
+
 # Nome do arquivo CSV para armazenar os dados
 CSV_FILE = 'recebimentos.csv'
 
@@ -60,7 +63,6 @@ def display_receipts_table(df):
         st.info("Nenhum dado de recebimento cadastrado.")
 
 # ----- Interface Streamlit -----
-st.set_page_config(page_title="Análise de Vendas & Combinações", layout="wide", initial_sidebar_state="expanded")
 
 # Colunas para Título e Emoji
 col_title1, col_title2 = st.columns([0.9, 0.1])
@@ -314,7 +316,7 @@ with tab2:
                             st.markdown(f"- {prefix}**{qtt}** **{display_name}:** {format_currency(val_item)}")
 
                         st.divider()
-                        st.metric("Total Calculado", format_currency(total_sanduiches_final))
+                        st.metric"Total Calculado", format_currency(total_sanduiches_final))
                     else:
                         st.info("Nenhum sanduíche na combinação")
 
