@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 import random
 import time
-import matplotlib.pyplot as plt
-import seaborn as sns
 from datetime import datetime
 
 # ----- Funções Auxiliares -----
@@ -307,7 +305,7 @@ if arquivo:
                 st.stop()
 
             # Abas de resultados
-            tab1, tab2, tab3 = st.tabs(["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "📄 Dados Processados"])
+            tab1, tab2 = st.tabs(["📈 Resumo das Vendas", "🧩 Detalhes das Combinações"])
 
             with tab1:
                 st.header("📈 Resumo das Vendas")
@@ -322,47 +320,6 @@ if arquivo:
                     st.dataframe(df_vendas[['Forma de Pagamento', 'Valor Formatado']], use_container_width=True)
                 else:
                     st.warning("Nenhum dado de venda para exibir.")
-
-                # Novos gráficos adicionados
-                if 'Data' in df_processed.columns:
-                    st.subheader("Vendas Diárias")
-                    plot_daily_sales(df_processed)
-
-                st.subheader("Distribuição por Forma de Pagamento")
-                plot_payment_methods(df_filtered)
-
-                if 'Hora' in df_processed.columns:
-                    st.subheader("Vendas por Hora do Dia")
-                    plot_hourly_sales(df_processed)
-
-                # Heatmap de vendas por dia da semana e hora (se dados disponíveis)
-                if 'Data' in df_processed.columns and 'Hora' in df_processed.columns:
-                    try:
-                        st.subheader("Heatmap de Vendas (Dia da Semana x Hora)")
-                        df_heatmap = df_processed.copy()
-                        df_heatmap['Dia da Semana'] = df_heatmap['Data'].dt.day_name()
-                        df_heatmap['Hora'] = pd.to_datetime(df_heatmap['Hora'], format='%H:%M').dt.hour
-
-                        heatmap_data = df_heatmap.pivot_table(
-                            index='Dia da Semana',
-                            columns='Hora',
-                            values='Valor_Numeric',
-                            aggfunc='sum',
-                            fill_value=0
-                        )
-
-                        # Ordenar dias da semana
-                        dias_ordenados = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-                        heatmap_data = heatmap_data.reindex(dias_ordenados)
-
-                        fig, ax = plt.subplots(figsize=(12, 6))
-                        sns.heatmap(heatmap_data, cmap='YlGnBu', ax=ax)
-                        ax.set_title('Vendas por Dia da Semana e Hora')
-                        ax.set_xlabel('Hora do Dia')
-                        ax.set_ylabel('Dia da Semana')
-                        st.pyplot(fig)
-                    except Exception as e:
-                        st.warning(f"Não foi possível gerar o heatmap: {str(e)}")
 
             with tab2:
                 st.header("🧩 Detalhes das Combinações Geradas")
@@ -457,18 +414,7 @@ if arquivo:
                                 delta_color="normal" if diff <= 0 else "inverse"
                             )
 
-            with tab3:
-                st.header("📄 Tabela de Dados Processados")
-                cols_to_show = ['Tipo', 'Bandeira', 'Valor', 'Categoria', 'Forma Nomeada', 'Valor_Numeric']
-                if 'Data' in df_processed.columns:
-                    cols_to_show.insert(0, 'Data')
-                if 'Hora' in df_processed.columns:
-                    cols_to_show.insert(1, 'Hora')
-                st.dataframe(df_filtered[cols_to_show], use_container_width=True)
-
         except Exception as e:
             st.error(f"Erro no processamento: {str(e)}")
 else:
     st.info("✨ Aguardando o envio do arquivo de transações para iniciar a análise...")
-
-retire o seaborn e o matplotlib e Distribuição por Forma de Pagamento
