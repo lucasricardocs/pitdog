@@ -6,10 +6,120 @@ import random
 import os
 
 # --- CONFIGURAÇÃO DA PÁGINA (DEVE SER A PRIMEIRA CHAMADA STREAMLIT) ---
-st.set_page_config(page_title="Análise de Vendas & Combinações", layout="centered", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Análise de Vendas & Combinações", layout="wide", initial_sidebar_state="expanded")
 
 # Nome do arquivo CSV para armazenar os dados
 CSV_FILE = 'recebimentos.csv'
+
+# ----- Funções Auxiliares -----
+def parse_menu_string(menu_data_string):
+    """Parses a multi-line string containing menu items and prices."""
+    menu = {}
+    lines = menu_data_string.strip().split("\n")
+    for line in lines:
+        parts = line.split("R$ ")
+        if len(parts) == 2:
+            name = parts[0].strip()
+            try:
+                price = float(parts[1].replace(",", "."))
+                menu[name] = price
+            except ValueError:
+                st.warning(f"Preço inválido para '{name}'. Ignorando item.")
+        elif line.strip():
+            st.warning(f"Formato inválido na linha do cardápio: '{line}'. Ignorando linha.")
+    return menu
+
+def calculate_combination_value(combination, item_prices):
+    """Calculates the total value of a combination based on item prices."""
+    return sum(item_prices.get(name, 0) * quantity for name, quantity in combination.items())
+
+def round_to_50_or_00(value):
+    """Arredonda para o múltiplo de 0.50 mais próximo"""
+    return round(value * 2) / 2
+
+def generate_initial_combination(item_prices, combination_size):
+    """Generates a random initial combination for the local search."""
+    combination = {}
+    item_names = list(item_prices.keys())
+    if not item_names:
+        return combination
+    size = min(combination_size, len(item_names))
+    chosen_names = random.sample(item_names, size)
+    for name in chosen_names:
+        combination[name] = round_to_50_or_00(random.uniform(1, 10))
+    return combination
+
+def adjust_with_onions(combination, item_prices, target_value):
+    """
+    Ajusta a combinação adicionando cebolas se o valor for menor que o target.
+    Retorna a combinação modificada e o valor final.
+    Limita a quantidade máxima de cebolas a 20 unidades.
+    """
+    current_value = calculate_combination_value(combination, item_prices)
+    difference = target_value - current_value
+
+    if difference <= 0 or "Cebola" not in item_prices:
+        return combination, current_value
+
+    onion_price = item_prices["Cebola"]
+    num_onions = min(int(round(difference / onion_price)), 20)  # Limite de 20 cebolas
+
+    if num_onions > 0:
+        current_onions = combination.get("Cebola", 0)
+        total_onions = current_onions + num_onions
+        if total_onions > 20:
+            num_onions = 20 - current_onions
+            if num_onions <= 0:
+                return combination, current_value
+
+        combination["Cebola"] = current_onions + num_onions
+
+    final_value = calculate_combination_value(combination, item_prices)
+    return combination, final_value
+
+def local_search_optimization(item_prices, target_value, combination_size, max_iterations):
+    """
+    Versão modificada para:
+    - Valores terminarem em ,00 ou ,50
+    - Nunca ultrapassar o target_value
+    """
+    if not item_prices or target_value <= 0:
+        return {}
+
+    best_combination = generate_initial_combination(item_prices, combination_size)
+    best_combination = {k: round_to_50_or_00(v) for k, v in best_combination.items()}
+    current_value = calculate_combination_value(best_combination, item_prices)
+
+    best_diff = abs(target_value - current_value) + (1000 if current_value > target_value else 0)
+    current_items = list(best_combination.keys())
+
+    for _ in range(max_iterations):
+        if not current_items: break
+
+        neighbor = best_combination.copy()
+        item_to_modify = random.choice(current_items)
+
+        change = random.choice([-0.50, 0.50, -1.00, 1.00])
+        neighbor[item_to_modify] = round_to_50_or_00(neighbor[item_to_modify] + change)
+        neighbor[item_to_modify] = max(0.50, neighbor[item_to_modify])
+
+        neighbor_value = calculate_combination_value(neighbor, item_prices)
+        neighbor_diff = abs(target_value - neighbor_value) + (1000 if neighbor_value > target_value else 0)
+
+        if neighbor_diff < best_diff:
+            best_diff = neighbor_diff
+            best_combination = neighbor
+
+    return best_combination
+
+def format_currency(value):
+    """Formats a number as Brazilian Real currency."""
+    if pd.isna(value):
+        return "R$ -"
+    try:
+        return f"R$ {float(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except (ValueError, TypeError):
+        return "R$ Inválido"
 
 # Função para carregar os dados do CSV (se existir) ou inicializar um DataFrame vazio
 def load_data():
@@ -328,7 +438,7 @@ with tab2:
                     delta=f"{format_currency(diff)} vs Meta",
                     delta_color="normal" if diff <= 0 else "inverse"
                 )
-                
+
 # --- Tab 3: Cadastro de Recebimentos ---
 with tab3:
     st.header("💰 Cadastro de Recebimentos Diários")
@@ -415,116 +525,6 @@ with tab3:
 
     else:
         st.info("Nenhum recebimento cadastrado ainda.")
-
-# ----- Funções Auxiliares (mantidas do código base) -----
-def parse_menu_string(menu_data_string):
-    """Parses a multi-line string containing menu items and prices."""
-    menu = {}
-    lines = menu_data_string.strip().split("\n")
-    for line in lines:
-        parts = line.split("R$ ")
-        if len(parts) == 2:
-            name = parts[0].strip()
-            try:
-                price = float(parts[1].replace(",", "."))
-                menu[name] = price
-            except ValueError:
-                st.warning(f"Preço inválido para '{name}'. Ignorando item.")
-        elif line.strip():
-            st.warning(f"Formato inválido na linha do cardápio: '{line}'. Ignorando linha.")
-    return menu
-
-def calculate_combination_value(combination, item_prices):
-    """Calculates the total value of a combination based on item prices."""
-    return sum(item_prices.get(name, 0) * quantity for name, quantity in combination.items())
-
-def round_to_50_or_00(value):
-    """Arredonda para o múltiplo de 0.50 mais próximo"""
-    return round(value * 2) / 2
-
-def generate_initial_combination(item_prices, combination_size):
-    """Generates a random initial combination for the local search."""
-    combination = {}
-    item_names = list(item_prices.keys())
-    if not item_names:
-        return combination
-    size = min(combination_size, len(item_names))
-    chosen_names = random.sample(item_names, size)
-    for name in chosen_names:
-        combination[name] = round_to_50_or_00(random.uniform(1, 10))
-    return combination
-
-def adjust_with_onions(combination, item_prices, target_value):
-    """
-    Ajusta a combinação adicionando cebolas se o valor for menor que o target.
-    Retorna a combinação modificada e o valor final.
-    Limita a quantidade máxima de cebolas a 20 unidades.
-    """
-    current_value = calculate_combination_value(combination, item_prices)
-    difference = target_value - current_value
-
-    if difference <= 0 or "Cebola" not in item_prices:
-        return combination, current_value
-
-    onion_price = item_prices["Cebola"]
-    num_onions = min(int(round(difference / onion_price)), 20)  # Limite de 20 cebolas
-
-    if num_onions > 0:
-        current_onions = combination.get("Cebola", 0)
-        total_onions = current_onions + num_onions
-        if total_onions > 20:
-            num_onions = 20 - current_onions
-            if num_onions <= 0:
-                return combination, current_value
-
-        combination["Cebola"] = current_onions + num_onions
-
-    final_value = calculate_combination_value(combination, item_prices)
-    return combination, final_value
-
-def local_search_optimization(item_prices, target_value, combination_size, max_iterations):
-    """
-    Versão modificada para:
-    - Valores terminarem em ,00 ou ,50
-    - Nunca ultrapassar o target_value
-    """
-    if not item_prices or target_value <= 0:
-        return {}
-
-    best_combination = generate_initial_combination(item_prices, combination_size)
-    best_combination = {k: round_to_50_or_00(v) for k, v in best_combination.items()}
-    current_value = calculate_combination_value(best_combination, item_prices)
-
-    best_diff = abs(target_value - current_value) + (1000 if current_value > target_value else 0)
-    current_items = list(best_combination.keys())
-
-    for _ in range(max_iterations):
-        if not current_items: break
-
-        neighbor = best_combination.copy()
-        item_to_modify = random.choice(current_items)
-
-        change = random.choice([-0.50, 0.50, -1.00, 1.00])
-        neighbor[item_to_modify] = round_to_50_or_00(neighbor[item_to_modify] + change)
-        neighbor[item_to_modify] = max(0.50, neighbor[item_to_modify])
-
-        neighbor_value = calculate_combination_value(neighbor, item_prices)
-        neighbor_diff = abs(target_value - neighbor_value) + (1000 if neighbor_value > target_value else 0)
-
-        if neighbor_diff < best_diff:
-            best_diff = neighbor_diff
-            best_combination = neighbor
-
-    return best_combination
-
-def format_currency(value):
-    """Formats a number as Brazilian Real currency."""
-    if pd.isna(value):
-        return "R$ -"
-    try:
-        return f"R$ {float(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except (ValueError, TypeError):
-        return "R$ Inválido"
 
 if __name__ == '__main__':
     pass
