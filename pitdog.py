@@ -461,7 +461,7 @@ with tab3:
                 st.rerun()
 
     with col_visualizacao:
-        st.subheader("Visualização dos Recebimentos")
+        st.header("Visualização dos Recebimentos")
         if not df_receipts.empty:
             # Converter a coluna 'Data' para datetime se não estiver
             if not pd.api.types.is_datetime64_any_dtype(df_receipts['Data']):
@@ -498,15 +498,15 @@ with tab3:
             else:
                 df_dia = df_mes.copy()
 
-            st.subheader("Totais Diários")
+            st.header("Totais Diários")
             df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
             plot_daily_receipts(df_dia, 'Data_Formatada', 'Total', f"Total Recebido em {dia_selecionado if dia_selecionado != 'Todos' else 'Todos os Dias'} de {nomes_meses.get(mes_selecionado, '') if meses_nomes_disponiveis else 'Todos os Meses'} de {ano_selecionado}")
 
-            st.subheader("Detalhes dos Recebimentos")
+            st.header("Detalhes dos Recebimentos")
             df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
             display_receipts_table(df_dia[['Data_Formatada', 'Dinheiro', 'Cartao', 'Pix', 'Total']].rename(columns={'Data_Formatada': 'Data'}))
 
-            st.subheader("Gráfico de Formas de Pagamento")
+            st.header("Gráfico de Formas de Pagamento")
             df_melted = df_dia.melt(id_vars=['Data'], value_vars=['Dinheiro', 'Cartao', 'Pix'], var_name='Forma', value_name='Valor')
             df_melted['Data_Formatada'] = df_melted['Data'].dt.strftime('%d/%m/%Y')
             chart_pagamentos = alt.Chart(df_melted).mark_bar().encode(
