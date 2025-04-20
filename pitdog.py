@@ -329,6 +329,7 @@ with tab2:
                     delta_color="normal" if diff <= 0 else "inverse"
                 )
 
+                
 # --- Tab 3: Cadastro de Recebimentos ---
 with tab3:
     st.header("💰 Cadastro de Recebimentos Diários")
