@@ -185,9 +185,7 @@ if upload:
                         st.write(f"- {qty:.0f}x {item}: {format_currency(sanduiches[item] * qty)}")
                     st.metric("Total", format_currency(calculate_combination_value(comb_sanduiches, sanduiches))))
                 
-                st.metric("TOTAL GERAL", 
-                         format_currency(calculate_combination_value(comb_bebidas, bebidas) + 
-                                       calculate_combination_value(comb_sanduiches, sanduiches))))
+                st.metric("TOTAL GERAL", format_currency(calculate_combination_value(comb_bebidas, bebidas) + calculate_combination_value(comb_sanduiches, sanduiches))))
     
     except Exception as e:
         st.error(f"Erro: {str(e)}")
