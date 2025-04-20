@@ -42,28 +42,34 @@ def generate_initial_combination(item_prices, combination_size):
         combination[name] = round_to_50_or_00(random.uniform(1, 10))  # Valores iniciais menores e arredondados
     return combination
 
-def adjust_with_onions(combination, item_prices, target_value):
+def adjust_with_onions(combination, item_prices, target_value, is_sandwich=True):
     """
-    Ajusta a combinação adicionando cebolas se o valor for menor que o target.
-    Retorna a combinação modificada e o valor final.
+    Ajusta a combinação adicionando cebolas SE for sanduíche.
+    Retorna combinação modificada e valor final.
     """
     current_value = calculate_combination_value(combination, item_prices)
     difference = target_value - current_value
     
-    if difference <= 0:
+    if difference <= 0 or not is_sandwich:  # Não ajusta bebidas
         return combination, current_value
     
     onion_price = item_prices.get("Cebola", 0.50)
     num_onions = int(round(difference / onion_price))
     
     if num_onions > 0:
-        if "Cebola" in combination:
-            combination["Cebola"] += num_onions
-        else:
-            combination["Cebola"] = num_onions
+        combination["Cebola (Ajuste)"] = num_onions  # Nome especial para identificar
     
     final_value = calculate_combination_value(combination, item_prices)
     return combination, final_value
+
+# 3. Aplicação no processamento principal (dentro do loop de formas de pagamento)
+    comb_bebidas_final, total_bebidas = adjust_with_onions(
+    comb_bebidas_rounded, bebidas_precos, target_bebidas, is_sandwich=False  # <-- Bloqueia cebolas em bebidas
+)
+
+    comb_sanduiches_final, total_sanduiches = adjust_with_onions(
+    comb_sanduiches_rounded, sanduiches_precos, target_sanduiches  # <-- Permite cebolas aqui
+)
 
 def local_search_optimization(item_prices, target_value, combination_size, max_iterations):
     """
