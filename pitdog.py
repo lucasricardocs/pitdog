@@ -1,77 +1,3 @@
-New chat
-Today
-Remoção de Seaborn e Matplotlib no Streamlit
-Lógica de Combinação em Análise de Vendas
-Yesterday
-Correção de código para análise de vendas
-Streamlit App for Sales Combination Analysis
-7 Days
-Implantação de Laudo App no Cloud Run
-Python script for DOCX laudo generation
-Gerador de Laudo Pericial Completo
-quero que construa um memorial p
-30 Days
-Melhorias em Automação de Laudos Periciais
-Calculando idade no Excel com fórmula
-2025-03
-tabule para excel Questões por
-Peso e matérias por bloco - Agente PF
-Bom dia Dra. Thaissa, aproveitan
-Criar checkboxes centralizados em VBA
-Organização de tópicos em tabela para Excel
-CONHECIMENTOSGERAIS • LINGUAPOR
-Datas importantes do concurso PMTO 2025
-Upload e estrutura de documento Word
-Organização de material para concurso de agente
-Cálculo de remuneração fixa e variável
-Lei brasileira regula validade de herbicidas
-Manipular PDF com Python e LibreOffice
-Análise do Princípio da Insignificância no Direito Penal
-Resultados da prova objetiva PCD
-Como baixar arquivo MP4 protegido
-Edital PRF 2021: Regras e Inscrições
-Concurso Público Agente de Polícia 2022
-Extrair dados de PDF para Excel
-Remove PDF password using Python script
-Script Python para remover senha de PDF
-Ciclo de Krebs: detalhes e importância
-Dados tabulados para uso no Excel
-agora gere uma tabela de acompan
-2025-02
-Aplicar metodologia de volatilidade na planilha
-Piada infame sobre trabalho e corno
-capture os dados de usdbrl=x pel
-Previsão de níveis oferta e demanda com volatilidade
-Cálculo de Volatilidade e Bandas de Suporte
-Cálculo e plotagem de bandas de volatilidade
-Cálculo de Volatilidade e Bandas de Suporte
-Python Script for Support and Resistance Levels
-Análise de Volatilidade Semanal BRL=X
-Previsão de Oferta e Demanda com Volatilidade
-Criando indicador de suportes e resistências
-Criando indicador Python com volatilidade
-Previsão de níveis oferta e demanda com volatilidade
-Aplique a sentenca nesses valore
-// This source code is subject t
-// This work is licensed under a
-//@version=5 indicator("Sinal de
-Voce é um advogado e eu sou a Ia
-Voce é um advogado e eu sou a Ia
-Voce é um advogado e eu sou a Ia
-crie um prompt para ia geradora
-Capítulos Introdução à jornada V
-Personagem feminina mais sexy do
-2025-01
-File "<ipython-input-9-529db6ad5
-input Periodo(3);
-const mult = 2.0; sigma = 0.
-Resolva
-assinei um contrato de uma açao
-Me fale o que acontece com espír
-como plotar grafico de barras no
-Aprendendo tape reading para operar WDOFUT
-Get App
-Remoção de Seaborn e Matplotlib no Streamlit
 import streamlit as st
 import pandas as pd
 import random
@@ -231,7 +157,7 @@ def plot_hourly_sales(df):
     st.pyplot(fig)
 
 # ----- Interface Streamlit -----
-st.set_page_config(page_title="Análise de Vendas & Combinações", layout="centered", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Análise de Vendas & Combinações", layout="wide", initial_sidebar_state="expanded")
 
 # Colunas para Título e Emoji
 col_title1, col_title2 = st.columns([0.9, 0.1])
