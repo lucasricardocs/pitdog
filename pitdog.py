@@ -56,7 +56,7 @@ def adjust_with_onions(combination, item_prices, target_value):
     num_onions = int(round(difference / onion_price))
     
     if num_onions > 0:
-        combination["Cebola (Ajuste)"] = num_onions
+        combination["Cebola"] = combination.get("Cebola", 0) + num_onions
     
     final_value = calculate_combination_value(combination, item_prices)
     return combination, final_value
@@ -316,10 +316,21 @@ if arquivo:
                         with col2:
                             st.subheader(f"🍔 Sanduíches: {format_currency(target_sanduiches)}")
                             if comb_sanduiches_final:
+                                # Calcula se as cebolas foram adicionadas para ajuste
+                                original_sandwich_value = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
+                                has_onion_adjustment = "Cebola" in comb_sanduiches_final and comb_sanduiches_final["Cebola"] > comb_sanduiches_rounded.get("Cebola", 0)
+                                
                                 for nome, qtt in comb_sanduiches_final.items():
-                                    prefix = "🔹 " if "Cebola" in nome else ""
+                                    display_name = nome
+                                    prefix = ""
+                                    
+                                    if nome == "Cebola" and has_onion_adjustment:
+                                        display_name = "Cebola (Ajuste)"
+                                        prefix = "🔹 "
+                                    
                                     val_item = sanduiches_precos[nome] * qtt
-                                    st.markdown(f"- {prefix}**{qtt}** **{nome}:** {format_currency(val_item)}")
+                                    st.markdown(f"- {prefix}**{qtt}** **{display_name}:** {format_currency(val_item)}")
+                                
                                 st.divider()
                                 st.metric("Total Calculado", format_currency(total_sanduiches))
                             else:
