@@ -90,7 +90,7 @@ def adjust_combinations(
     if total > target:
         excess = total - target
         sandwiches = reduce_combination(sandwiches, sandwich_prices, excess)
-        total = calculate_combination_value(drinks, drink_prices) + calculate_combination_value(sandwiches, sandwich_prices)
+        total = drink_value + calculate_combination_value(sandwiches, sandwich_prices)
         
         # Caso raro: se ainda estiver acima, reduz bebidas
         if total > target:
@@ -157,14 +157,9 @@ if upload:
                 target_bebidas = round_to_50_or_00(total * drink_perc / 100)
                 target_sanduiches = round_to_50_or_00(total - target_bebidas)
                 
-                # Gera combinações
+                # Gera combinações iniciais
                 comb_bebidas = generate_initial_combination(bebidas, max_drink_types)
                 comb_sanduiches = generate_initial_combination(sanduiches, max_sandwich_types)
-                
-                # Otimização local
-                for _ in range(iterations):
-                    # ... (implementação da busca local como anteriormente)
-                    pass
                 
                 # Ajuste final
                 comb_bebidas, comb_sanduiches = adjust_combinations(
@@ -183,9 +178,11 @@ if upload:
                     st.subheader("🍔 Sanduíches")
                     for item, qty in comb_sanduiches.items():
                         st.write(f"- {qty:.0f}x {item}: {format_currency(sanduiches[item] * qty)}")
-                    st.metric("Total", format_currency(calculate_combination_value(comb_sanduiches, sanduiches))))
+                    st.metric("Total", format_currency(calculate_combination_value(comb_sanduiches, sanduiches)))
                 
-                st.metric("TOTAL GERAL", format_currency(calculate_combination_value(comb_bebidas, bebidas) + calculate_combination_value(comb_sanduiches, sanduiches)))
+                st.metric("TOTAL GERAL", 
+                         format_currency(calculate_combination_value(comb_bebidas, bebidas) + 
+                         calculate_combination_value(comb_sanduiches, sanduiches)))
     
     except Exception as e:
         st.error(f"Erro: {str(e)}")
