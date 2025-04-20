@@ -333,17 +333,31 @@ with tab3:
 
     with st.form("daily_receipt_form"):
         data_hoje = st.date_input("Data do Recebimento", datetime.now().date())
-        dinheiro = st.number_input("Dinheiro (R$)", min_value=0.0, step=0.50, format="%.2f")
-        cartao = st.number_input("Cartão (R$)", min_value=0.0, step=0.50, format="%.2f")
-        pix = st.number_input("Pix (R$)", min_value=0.0, step=0.50, format="%.2f")
-        submitted = st.form_submit_button("Adicionar Recebimento")
+        dinheiro = st.number_input("Dinheiro (R$)", min_value=0.0, step=0.50, format="%.2f", key="dinheiro_input")
+        cartao = st.number_input("Cartão (R$)", min_value=0.0, step=0.50, format="%.2f", key="cartao_input")
+        pix = st.number_input("Pix (R$)", min_value=0.0, step=0.50, format="%.2f", key="pix_input")
+        col_submit, col_clear = st.columns(2)
+        with col_submit:
+            submitted = st.form_submit_button("Adicionar Recebimento")
+        with col_clear:
+            clear_form = st.form_submit_button("Limpar Campos")
+
+        if clear_form:
+            st.session_state["dinheiro_input"] = 0.00
+            st.session_state["cartao_input"] = 0.00
+            st.session_state["pix_input"] = 0.00
+            st.rerun()
+
         if submitted:
             new_receipt = pd.DataFrame([{'Data': pd.to_datetime(data_hoje), 'Dinheiro': dinheiro, 'Cartao': cartao, 'Pix': pix}])
             df_receipts = pd.concat([df_receipts, new_receipt], ignore_index=True)
             save_data(df_receipts)
             st.success(f"Recebimento de {data_hoje.strftime('%d/%m/%Y')} adicionado e salvo!")
-            # Recarregar os dados para atualizar a visualização
-            df_receipts = load_data()
+            # Limpar os campos após a submissão
+            st.session_state["dinheiro_input"] = 0.00
+            st.session_state["cartao_input"] = 0.00
+            st.session_state["pix_input"] = 0.00
+            st.rerun()
 
     st.subheader("Visualização dos Recebimentos")
 
