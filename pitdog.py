@@ -448,9 +448,9 @@ with tab3:
     with col_cadastro:
         with st.form("daily_receipt_form"):
             data_hoje = st.date_input("Data do Recebimento", datetime.now().date())
-            dinheiro = st.number_input("Dinheiro (R$)", min_value=0.0, step=0.50, format="%.2f")
-            cartao = st.number_input("Cartão (R$)", min_value=0.0, step=0.50, format="%.2f")
-            pix = st.number_input("Pix (R$)", min_value=0.0, step=0.50, format="%.2f")
+            dinheiro = st.number_input("Dinheiro (R$)", min_value=0.0, step=0.50, format="%.2f", label_visibility="visible")
+            cartao = st.number_input("Cartão (R$)", min_value=0.0, step=0.50, format="%.2f", label_visibility="visible")
+            pix = st.number_input("Pix (R$)", min_value=0.0, step=0.50, format="%.2f", label_visibility="visible")
             submitted = st.form_submit_button("Adicionar Recebimento")
 
             if submitted:
@@ -461,7 +461,7 @@ with tab3:
                 st.rerun()
 
     with col_visualizacao:
-        st.header("Visualização dos Recebimentos")
+        st.subheader("Visualização dos Recebimentos")
         if not df_receipts.empty:
             # Converter a coluna 'Data' para datetime se não estiver
             if not pd.api.types.is_datetime64_any_dtype(df_receipts['Data']):
@@ -498,15 +498,22 @@ with tab3:
             else:
                 df_dia = df_mes.copy()
 
-            st.header("Totais Diários")
+            st.subheader("Totais Diários")
             df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
-            plot_daily_receipts(df_dia, 'Data_Formatada', 'Total', f"Total Recebido em {dia_selecionado if dia_selecionado != 'Todos' else 'Todos os Dias'} de {nomes_meses.get(mes_selecionado, '') if meses_nomes_disponiveis else 'Todos os Meses'} de {ano_selecionado}")
+            plot_diario = alt.Chart(df_dia).mark_bar().encode(
+                x=alt.X('Data_Formatada:N', axis=alt.Axis(title='Data')),
+                y=alt.Y('Total:Q', axis=alt.Axis(title='Valor (R$)')),
+                tooltip=['Data_Formatada', 'Total']
+            ).properties(
+                title=f"Total Recebido em {dia_selecionado if dia_selecionado != 'Todos' else 'Todos os Dias'} de {nomes_meses.get(mes_selecionado, '') if meses_nomes_disponiveis else 'Todos os Meses'} de {ano_selecionado}"
+            ).interactive()
+            st.altair_chart(plot_diario, use_container_width=True)
 
-            st.header("Detalhes dos Recebimentos")
+            st.subheader("Detalhes dos Recebimentos")
             df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
             display_receipts_table(df_dia[['Data_Formatada', 'Dinheiro', 'Cartao', 'Pix', 'Total']].rename(columns={'Data_Formatada': 'Data'}))
 
-            st.header("Gráfico de Formas de Pagamento")
+            st.subheader("Gráfico de Formas de Pagamento")
             df_melted = df_dia.melt(id_vars=['Data'], value_vars=['Dinheiro', 'Cartao', 'Pix'], var_name='Forma', value_name='Valor')
             df_melted['Data_Formatada'] = df_melted['Data'].dt.strftime('%d/%m/%Y')
             chart_pagamentos = alt.Chart(df_melted).mark_bar().encode(
