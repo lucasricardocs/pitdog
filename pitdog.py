@@ -461,7 +461,7 @@ with tab3:
                 st.rerun()
 
     with col_visualizacao:
-        st.subheader("Visualização dos Recebimentos")
+    st.header("Visualização dos Recebimentos")
         if not df_receipts.empty:
             # Converter a coluna 'Data' para datetime se não estiver
             if not pd.api.types.is_datetime64_any_dtype(df_receipts['Data']):
