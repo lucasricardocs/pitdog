@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 import random
 import time
-import matplotlib.pyplot as plt
-import seaborn as sns
 from datetime import datetime
 
 # ----- Funções Auxiliares -----
@@ -117,44 +115,47 @@ def format_currency(value):
         return "R$ Inválido"
 
 def plot_daily_sales(df):
-    """Gráfico de vendas por dia"""
+    """Gráfico de vendas por dia usando Streamlit"""
     df['Data'] = pd.to_datetime(df['Data'])
-    daily_sales = df.groupby(df['Data'].dt.date)['Valor_Numeric'].sum()
-
-    fig, ax = plt.subplots(figsize=(10, 5))
-    daily_sales.plot(kind='line', marker='o', ax=ax)
-    ax.set_title('Vendas Diárias')
-    ax.set_xlabel('Data')
-    ax.set_ylabel('Valor (R$)')
-    ax.grid(True)
-    st.pyplot(fig)
+    daily_sales = df.groupby(df['Data'].dt.date)['Valor_Numeric'].sum().reset_index()
+    daily_sales.columns = ['Data', 'Valor Total']
+    
+    st.line_chart(
+        data=daily_sales.set_index('Data'),
+        use_container_width=True
+    )
 
 def plot_payment_methods(df):
-    """Gráfico de formas de pagamento"""
-    payment_methods = df.groupby('Forma Nomeada')['Valor_Numeric'].sum().sort_values(ascending=False)
-
-    fig, ax = plt.subplots(figsize=(10, 5))
-    payment_methods.plot(kind='bar', ax=ax)
-    ax.set_title('Vendas por Forma de Pagamento')
-    ax.set_xlabel('Forma de Pagamento')
-    ax.set_ylabel('Valor (R$)')
-    plt.xticks(rotation=45)
-    st.pyplot(fig)
+    """Gráfico de formas de pagamento usando Streamlit"""
+    payment_methods = df.groupby('Forma Nomeada')['Valor_Numeric'].sum().sort_values(ascending=False).reset_index()
+    payment_methods.columns = ['Forma de Pagamento', 'Valor Total']
+    
+    st.bar_chart(
+        data=payment_methods.set_index('Forma de Pagamento'),
+        use_container_width=True
+    )
+    
+    # Mostrar tabela com os valores também
+    payment_methods['Valor Formatado'] = payment_methods['Valor Total'].apply(format_currency)
+    st.dataframe(
+        payment_methods[['Forma de Pagamento', 'Valor Formatado']],
+        use_container_width=True,
+        hide_index=True
+    )
 
 def plot_hourly_sales(df):
-    """Gráfico de vendas por hora do dia"""
+    """Gráfico de vendas por hora do dia usando Streamlit"""
     if 'Hora' not in df.columns:
         return
 
     df['Hora'] = pd.to_datetime(df['Hora'], format='%H:%M').dt.hour
-    hourly_sales = df.groupby('Hora')['Valor_Numeric'].sum()
-
-    fig, ax = plt.subplots(figsize=(10, 5))
-    hourly_sales.plot(kind='bar', ax=ax)
-    ax.set_title('Vendas por Hora do Dia')
-    ax.set_xlabel('Hora')
-    ax.set_ylabel('Valor (R$)')
-    st.pyplot(fig)
+    hourly_sales = df.groupby('Hora')['Valor_Numeric'].sum().reset_index()
+    hourly_sales.columns = ['Hora', 'Valor Total']
+    
+    st.bar_chart(
+        data=hourly_sales.set_index('Hora'),
+        use_container_width=True
+    )
 
 # ----- Interface Streamlit -----
 st.set_page_config(page_title="Análise de Vendas & Combinações", layout="centered", initial_sidebar_state="expanded")
@@ -191,7 +192,7 @@ with st.sidebar:
         "Número de tipos de Bebidas",
         min_value=1, max_value=10, value=5, step=1
     )
-    tamanho_combinacao_sanduiches = st.slider(
+    tamanho_combinacion_sanduiches = st.slider(
         "Número de tipos de Sanduíches",
         min_value=1, max_value=10, value=5, step=1
     )
@@ -334,35 +335,6 @@ if arquivo:
                 if 'Hora' in df_processed.columns:
                     st.subheader("Vendas por Hora do Dia")
                     plot_hourly_sales(df_processed)
-
-                # Heatmap de vendas por dia da semana e hora (se dados disponíveis)
-                if 'Data' in df_processed.columns and 'Hora' in df_processed.columns:
-                    try:
-                        st.subheader("Heatmap de Vendas (Dia da Semana x Hora)")
-                        df_heatmap = df_processed.copy()
-                        df_heatmap['Dia da Semana'] = df_heatmap['Data'].dt.day_name()
-                        df_heatmap['Hora'] = pd.to_datetime(df_heatmap['Hora'], format='%H:%M').dt.hour
-
-                        heatmap_data = df_heatmap.pivot_table(
-                            index='Dia da Semana',
-                            columns='Hora',
-                            values='Valor_Numeric',
-                            aggfunc='sum',
-                            fill_value=0
-                        )
-
-                        # Ordenar dias da semana
-                        dias_ordenados = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-                        heatmap_data = heatmap_data.reindex(dias_ordenados)
-
-                        fig, ax = plt.subplots(figsize=(12, 6))
-                        sns.heatmap(heatmap_data, cmap='YlGnBu', ax=ax)
-                        ax.set_title('Vendas por Dia da Semana e Hora')
-                        ax.set_xlabel('Hora do Dia')
-                        ax.set_ylabel('Dia da Semana')
-                        st.pyplot(fig)
-                    except Exception as e:
-                        st.warning(f"Não foi possível gerar o heatmap: {str(e)}")
 
             with tab2:
                 st.header("🧩 Detalhes das Combinações Geradas")
