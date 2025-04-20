@@ -687,3 +687,4 @@ if arquivo:
             st.error(f"Erro no processamento: {str(e)}")
 else:
     st.info("✨ Aguardando o envio do arquivo de transações para iniciar a análise...")
+    st.image("https://cdn-icons-png.flaticon.com/128/3652/3652191.png", width=100) # Ícone inicial
