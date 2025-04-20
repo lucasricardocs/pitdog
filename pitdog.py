@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 from datetime import datetime
+import random
+import time
 
 # Função para inicializar o DataFrame de dados de entrada
 def load_data():
@@ -82,10 +84,13 @@ with st.sidebar:
 # --- Abas ---
 tab1, tab2, tab3 = st.tabs(["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💰 Cadastro de Recebimentos"])
 
-# --- Tab 1: Resumo das Vendas (Código original mantido) ---
+# --- Tab 1: Resumo das Vendas ---
 with tab1:
     st.header("📈 Resumo das Vendas")
     arquivo = st.file_uploader("📤 Envie o arquivo de transações (.csv ou .xlsx)", type=["csv", "xlsx"])
+
+    # Inicialize 'vendas' com um dicionário vazio
+    vendas = {}
 
     if arquivo:
         with st.spinner(f'Processando "{arquivo.name}"...'):
@@ -144,7 +149,7 @@ with tab1:
                     st.warning("Nenhuma transação encontrada para as formas de pagamento mapeadas.")
                     st.stop()
 
-                vendas = df_filtered.groupby('Forma Nomeada')['Valor_Numeric'].sum()
+                vendas = df_filtered.groupby('Forma Nomeada')['Valor_Numeric'].sum().to_dict()
 
                 # Definição dos Cardápios
                 dados_sanduiches = """
@@ -191,8 +196,7 @@ with tab1:
                 # Gráfico de vendas por forma de pagamento
                 st.subheader("Vendas por Forma de Pagamento")
                 if not vendas.empty:
-                    df_vendas = vendas.reset_index()
-                    df_vendas.columns = ['Forma de Pagamento', 'Valor Total']
+                    df_vendas = pd.DataFrame(list(vendas.items()), columns=['Forma de Pagamento', 'Valor Total'])
                     df_vendas['Valor Formatado'] = df_vendas['Valor Total'].apply(format_currency)
                     st.bar_chart(df_vendas.set_index('Forma de Pagamento')['Valor Total'])
                     st.dataframe(df_vendas[['Forma de Pagamento', 'Valor Formatado']], use_container_width=True)
@@ -204,7 +208,7 @@ with tab1:
     else:
         st.info("✨ Aguardando o envio do arquivo de transações para iniciar a análise...")
 
-# --- Tab 2: Detalhes das Combinações (Código original mantido) ---
+# --- Tab 2: Detalhes das Combinações ---
 with tab2:
     st.header("🧩 Detalhes das Combinações Geradas")
     st.caption(f"Alocação: {drink_percentage}% bebidas | {sandwich_percentage}% sanduíches")
@@ -213,7 +217,7 @@ with tab2:
         'Débito Visa', 'Débito MasterCard', 'Débito Elo',
         'Crédito Visa', 'Crédito MasterCard', 'Crédito Elo', 'PIX'
     ]
-    vendas_ordenadas = {forma: vendas[forma] for forma in ordem_formas if forma in vendas}
+    vendas_ordenadas = {forma: vendas.get(forma, 0) for forma in ordem_formas}
     for forma, total in vendas.items():
         if forma not in vendas_ordenadas:
             vendas_ordenadas[forma] = total
