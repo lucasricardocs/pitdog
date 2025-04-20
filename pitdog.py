@@ -1,7 +1,83 @@
+New chat
+Today
+Remoção de Seaborn e Matplotlib no Streamlit
+Lógica de Combinação em Análise de Vendas
+Yesterday
+Correção de código para análise de vendas
+Streamlit App for Sales Combination Analysis
+7 Days
+Implantação de Laudo App no Cloud Run
+Python script for DOCX laudo generation
+Gerador de Laudo Pericial Completo
+quero que construa um memorial p
+30 Days
+Melhorias em Automação de Laudos Periciais
+Calculando idade no Excel com fórmula
+2025-03
+tabule para excel Questões por
+Peso e matérias por bloco - Agente PF
+Bom dia Dra. Thaissa, aproveitan
+Criar checkboxes centralizados em VBA
+Organização de tópicos em tabela para Excel
+CONHECIMENTOSGERAIS • LINGUAPOR
+Datas importantes do concurso PMTO 2025
+Upload e estrutura de documento Word
+Organização de material para concurso de agente
+Cálculo de remuneração fixa e variável
+Lei brasileira regula validade de herbicidas
+Manipular PDF com Python e LibreOffice
+Análise do Princípio da Insignificância no Direito Penal
+Resultados da prova objetiva PCD
+Como baixar arquivo MP4 protegido
+Edital PRF 2021: Regras e Inscrições
+Concurso Público Agente de Polícia 2022
+Extrair dados de PDF para Excel
+Remove PDF password using Python script
+Script Python para remover senha de PDF
+Ciclo de Krebs: detalhes e importância
+Dados tabulados para uso no Excel
+agora gere uma tabela de acompan
+2025-02
+Aplicar metodologia de volatilidade na planilha
+Piada infame sobre trabalho e corno
+capture os dados de usdbrl=x pel
+Previsão de níveis oferta e demanda com volatilidade
+Cálculo de Volatilidade e Bandas de Suporte
+Cálculo e plotagem de bandas de volatilidade
+Cálculo de Volatilidade e Bandas de Suporte
+Python Script for Support and Resistance Levels
+Análise de Volatilidade Semanal BRL=X
+Previsão de Oferta e Demanda com Volatilidade
+Criando indicador de suportes e resistências
+Criando indicador Python com volatilidade
+Previsão de níveis oferta e demanda com volatilidade
+Aplique a sentenca nesses valore
+// This source code is subject t
+// This work is licensed under a
+//@version=5 indicator("Sinal de
+Voce é um advogado e eu sou a Ia
+Voce é um advogado e eu sou a Ia
+Voce é um advogado e eu sou a Ia
+crie um prompt para ia geradora
+Capítulos Introdução à jornada V
+Personagem feminina mais sexy do
+2025-01
+File "<ipython-input-9-529db6ad5
+input Periodo(3);
+const mult = 2.0; sigma = 0.
+Resolva
+assinei um contrato de uma açao
+Me fale o que acontece com espír
+como plotar grafico de barras no
+Aprendendo tape reading para operar WDOFUT
+Get App
+Remoção de Seaborn e Matplotlib no Streamlit
 import streamlit as st
 import pandas as pd
 import random
 import time
+import matplotlib.pyplot as plt
+import seaborn as sns
 from datetime import datetime
 
 # ----- Funções Auxiliares -----
@@ -115,47 +191,44 @@ def format_currency(value):
         return "R$ Inválido"
 
 def plot_daily_sales(df):
-    """Gráfico de vendas por dia usando Streamlit"""
+    """Gráfico de vendas por dia"""
     df['Data'] = pd.to_datetime(df['Data'])
-    daily_sales = df.groupby(df['Data'].dt.date)['Valor_Numeric'].sum().reset_index()
-    daily_sales.columns = ['Data', 'Valor Total']
-    
-    st.line_chart(
-        data=daily_sales.set_index('Data'),
-        use_container_width=True
-    )
+    daily_sales = df.groupby(df['Data'].dt.date)['Valor_Numeric'].sum()
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    daily_sales.plot(kind='line', marker='o', ax=ax)
+    ax.set_title('Vendas Diárias')
+    ax.set_xlabel('Data')
+    ax.set_ylabel('Valor (R$)')
+    ax.grid(True)
+    st.pyplot(fig)
 
 def plot_payment_methods(df):
-    """Gráfico de formas de pagamento usando Streamlit"""
-    payment_methods = df.groupby('Forma Nomeada')['Valor_Numeric'].sum().sort_values(ascending=False).reset_index()
-    payment_methods.columns = ['Forma de Pagamento', 'Valor Total']
-    
-    st.bar_chart(
-        data=payment_methods.set_index('Forma de Pagamento'),
-        use_container_width=True
-    )
-    
-    # Mostrar tabela com os valores também
-    payment_methods['Valor Formatado'] = payment_methods['Valor Total'].apply(format_currency)
-    st.dataframe(
-        payment_methods[['Forma de Pagamento', 'Valor Formatado']],
-        use_container_width=True,
-        hide_index=True
-    )
+    """Gráfico de formas de pagamento"""
+    payment_methods = df.groupby('Forma Nomeada')['Valor_Numeric'].sum().sort_values(ascending=False)
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    payment_methods.plot(kind='bar', ax=ax)
+    ax.set_title('Vendas por Forma de Pagamento')
+    ax.set_xlabel('Forma de Pagamento')
+    ax.set_ylabel('Valor (R$)')
+    plt.xticks(rotation=45)
+    st.pyplot(fig)
 
 def plot_hourly_sales(df):
-    """Gráfico de vendas por hora do dia usando Streamlit"""
+    """Gráfico de vendas por hora do dia"""
     if 'Hora' not in df.columns:
         return
 
     df['Hora'] = pd.to_datetime(df['Hora'], format='%H:%M').dt.hour
-    hourly_sales = df.groupby('Hora')['Valor_Numeric'].sum().reset_index()
-    hourly_sales.columns = ['Hora', 'Valor Total']
-    
-    st.bar_chart(
-        data=hourly_sales.set_index('Hora'),
-        use_container_width=True
-    )
+    hourly_sales = df.groupby('Hora')['Valor_Numeric'].sum()
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    hourly_sales.plot(kind='bar', ax=ax)
+    ax.set_title('Vendas por Hora do Dia')
+    ax.set_xlabel('Hora')
+    ax.set_ylabel('Valor (R$)')
+    st.pyplot(fig)
 
 # ----- Interface Streamlit -----
 st.set_page_config(page_title="Análise de Vendas & Combinações", layout="centered", initial_sidebar_state="expanded")
@@ -192,7 +265,7 @@ with st.sidebar:
         "Número de tipos de Bebidas",
         min_value=1, max_value=10, value=5, step=1
     )
-    tamanho_combinacion_sanduiches = st.slider(
+    tamanho_combinacao_sanduiches = st.slider(
         "Número de tipos de Sanduíches",
         min_value=1, max_value=10, value=5, step=1
     )
@@ -336,6 +409,35 @@ if arquivo:
                     st.subheader("Vendas por Hora do Dia")
                     plot_hourly_sales(df_processed)
 
+                # Heatmap de vendas por dia da semana e hora (se dados disponíveis)
+                if 'Data' in df_processed.columns and 'Hora' in df_processed.columns:
+                    try:
+                        st.subheader("Heatmap de Vendas (Dia da Semana x Hora)")
+                        df_heatmap = df_processed.copy()
+                        df_heatmap['Dia da Semana'] = df_heatmap['Data'].dt.day_name()
+                        df_heatmap['Hora'] = pd.to_datetime(df_heatmap['Hora'], format='%H:%M').dt.hour
+
+                        heatmap_data = df_heatmap.pivot_table(
+                            index='Dia da Semana',
+                            columns='Hora',
+                            values='Valor_Numeric',
+                            aggfunc='sum',
+                            fill_value=0
+                        )
+
+                        # Ordenar dias da semana
+                        dias_ordenados = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                        heatmap_data = heatmap_data.reindex(dias_ordenados)
+
+                        fig, ax = plt.subplots(figsize=(12, 6))
+                        sns.heatmap(heatmap_data, cmap='YlGnBu', ax=ax)
+                        ax.set_title('Vendas por Dia da Semana e Hora')
+                        ax.set_xlabel('Hora do Dia')
+                        ax.set_ylabel('Dia da Semana')
+                        st.pyplot(fig)
+                    except Exception as e:
+                        st.warning(f"Não foi possível gerar o heatmap: {str(e)}")
+
             with tab2:
                 st.header("🧩 Detalhes das Combinações Geradas")
                 st.caption(f"Alocação: {drink_percentage}% bebidas | {sandwich_percentage}% sanduíches")
@@ -442,3 +544,5 @@ if arquivo:
             st.error(f"Erro no processamento: {str(e)}")
 else:
     st.info("✨ Aguardando o envio do arquivo de transações para iniciar a análise...")
+
+retire o seaborn e o matplotlib e Distribuição por Forma de Pagamento
