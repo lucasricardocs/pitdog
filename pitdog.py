@@ -316,7 +316,7 @@ with tab2:
                             st.markdown(f"- {prefix}**{qtt}** **{display_name}:** {format_currency(val_item)}")
 
                         st.divider()
-                        st.metric"Total Calculado", format_currency(total_sanduiches_final))
+                        st.metric("Total Calculado", format_currency(total_sanduiches_final))
                     else:
                         st.info("Nenhum sanduíche na combinação")
 
@@ -328,7 +328,6 @@ with tab2:
                     delta=f"{format_currency(diff)} vs Meta",
                     delta_color="normal" if diff <= 0 else "inverse"
                 )
-
                 
 # --- Tab 3: Cadastro de Recebimentos ---
 with tab3:
