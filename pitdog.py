@@ -293,9 +293,6 @@ if arquivo:
              # Expander para cada forma de pagamento
              expander_title = f"**{forma}** (Total: {format_currency(total_pagamento)})"
              with st.expander(expander_title, expanded=False):
-                 st.markdown(f"<span style='font-size: small; color: grey;'>🍹 Bebidas: {format_currency(target_bebidas)}</span>", unsafe_allow_html=True)
-                 st.markdown(f"<span style='font-size: small; color: grey;'>🍔 Sanduíches: {format_currency(target_sanduiches)}</span>", unsafe_allow_html=True)
-
                  col1, col2 = st.columns(2) # Mantém as colunas para separar Bebidas de Sanduíches
                  with col1:
                      st.subheader(f"🍹 Bebidas: {format_currency(target_bebidas)}")
