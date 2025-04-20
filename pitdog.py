@@ -2,355 +2,271 @@ import streamlit as st
 import pandas as pd
 import random
 import time
+from typing import Dict, Tuple
 
-# ----- Funções Auxiliares -----
-def parse_menu_string(menu_data_string):
-    """Parses a multi-line string containing menu items and prices."""
+# ----- Helper Functions -----
+def parse_menu_string(menu_data_string: str) -> Dict[str, float]:
+    """Parses menu items and prices from multi-line string"""
     menu = {}
-    lines = menu_data_string.strip().split("\n")
-    for line in lines:
-        parts = line.split("R$ ")
-        if len(parts) == 2:
-            name = parts[0].strip()
-            try:
-                price = float(parts[1].replace(",", "."))
-                menu[name] = price
-            except ValueError:
-                st.warning(f"Preço inválido para '{name}'. Ignorando item.")
-        elif line.strip():
-            st.warning(f"Formato inválido na linha do cardápio: '{line}'. Ignorando linha.")
+    for line in menu_data_string.strip().split("\n"):
+        if "R$" not in line:
+            continue
+        try:
+            name_part, price_part = line.split("R$")
+            name = name_part.strip()
+            price = float(price_part.strip().replace(",", "."))
+            menu[name] = price
+        except (ValueError, IndexError):
+            continue
     return menu
 
-def calculate_combination_value(combination, item_prices):
-    """Calculates the total value of a combination based on item prices."""
-    return sum(item_prices.get(name, 0) * quantity for name, quantity in combination.items())
+def calculate_combination_value(combination: Dict[str, float], prices: Dict[str, float]) -> float:
+    """Calculates total value of a combination"""
+    return sum(prices.get(name, 0) * qty for name, qty in combination.items())
 
-def round_to_50_or_00(value):
-    """Arredonda para o múltiplo de 0.50 mais próximo"""
+def round_to_50_or_00(value: float) -> float:
+    """Rounds to nearest .00 or .50"""
     return round(value * 2) / 2
 
-def generate_initial_combination(item_prices, combination_size):
-    """Generates a random initial combination for the local search."""
-    combination = {}
-    item_names = list(item_prices.keys())
-    if not item_names:
-        return combination
-    size = min(combination_size, len(item_names))
-    chosen_names = random.sample(item_names, size)
-    for name in chosen_names:
-        combination[name] = round_to_50_or_00(random.uniform(1, 10))
-    return combination
+def generate_initial_combination(prices: Dict[str, float], max_items: int) -> Dict[str, float]:
+    """Generates random initial combination"""
+    items = list(prices.keys())
+    if not items:
+        return {}
+    selected = random.sample(items, min(max_items, len(items)))
+    return {item: round_to_50_or_00(random.uniform(1, 10)) for item in selected}
 
-def adjust_with_onions(combination, item_prices, target_value):
-    """
-    Ajusta a combinação adicionando cebolas se o valor for menor que o target.
-    Retorna a combinação modificada e o valor final.
-    """
-    current_value = calculate_combination_value(combination, item_prices)
-    difference = target_value - current_value
+def local_search_optimization(
+    prices: Dict[str, float],
+    target: float,
+    max_items: int,
+    max_iterations: int
+) -> Dict[str, float]:
+    """Optimizes combination to approximate target value"""
+    current = generate_initial_combination(prices, max_items)
+    if not current:
+        return {}
     
-    if difference <= 0 or "Cebola" not in item_prices:
-        return combination, current_value
+    current_value = calculate_combination_value(current, prices)
+    best = current.copy()
+    best_diff = abs(target - current_value) + (1000 if current_value > target else 0)
     
-    onion_price = item_prices["Cebola"]
-    num_onions = int(round(difference / onion_price))
+    for _ in range(max_iterations):
+        neighbor = current.copy()
+        item = random.choice(list(neighbor.keys()))
+        
+        change = random.choice([-0.5, 0.5, -1.0, 1.0])
+        neighbor[item] = max(0.5, round_to_50_or_00(neighbor[item] + change))
+        
+        neighbor_value = calculate_combination_value(neighbor, prices)
+        neighbor_diff = abs(target - neighbor_value) + (1000 if neighbor_value > target else 0)
+
+        if neighbor_diff < best_diff:
+            best = neighbor
+            best_diff = neighbor_diff
+            
+        if best_diff < 0.01:
+            break
+            
+    return best
+
+def adjust_with_onions(
+    combination: Dict[str, float],
+    prices: Dict[str, float],
+    target: float
+) -> Tuple[Dict[str, float], float]:
+    """Adds onions if needed to reach target"""
+    current = calculate_combination_value(combination, prices)
+    if current >= target or "Cebola" not in prices:
+        return combination, current
+    
+    diff = target - current
+    num_onions = int(round(diff / prices["Cebola"]))
     
     if num_onions > 0:
         combination["Cebola"] = combination.get("Cebola", 0) + num_onions
     
-    final_value = calculate_combination_value(combination, item_prices)
-    return combination, final_value
+    final = calculate_combination_value(combination, prices)
+    return combination, final
 
-def local_search_optimization(item_prices, target_value, combination_size, max_iterations):
-    """
-    Versão modificada para:
-    - Valores terminarem em ,00 ou ,50
-    - Nunca ultrapassar o target_value
-    """
-    if not item_prices or target_value <= 0:
-        return {}
-
-    best_combination = generate_initial_combination(item_prices, combination_size)
-    best_combination = {k: round_to_50_or_00(v) for k, v in best_combination.items()}
-    current_value = calculate_combination_value(best_combination, item_prices)
+def adjust_combinations(
+    drinks: Dict[str, float],
+    sandwiches: Dict[str, float],
+    target_total: float,
+    drink_prices: Dict[str, float],
+    sandwich_prices: Dict[str, float]
+) -> Tuple[Dict[str, float], Dict[str, float]]:
+    """Ensures total doesn't exceed target"""
+    total = calculate_combination_value(drinks, drink_prices) + calculate_combination_value(sandwiches, sandwich_prices)
+    if total <= target_total:
+        return drinks, sandwiches
     
-    best_diff = abs(target_value - current_value) + (1000 if current_value > target_value else 0)
-    current_items = list(best_combination.keys())
-
-    for _ in range(max_iterations):
-        if not current_items: break
-
-        neighbor = best_combination.copy()
-        item_to_modify = random.choice(current_items)
-
-        change = random.choice([-0.50, 0.50, -1.00, 1.00])
-        neighbor[item_to_modify] = round_to_50_or_00(neighbor[item_to_modify] + change)
-        neighbor[item_to_modify] = max(0.50, neighbor[item_to_modify])
-
-        neighbor_value = calculate_combination_value(neighbor, item_prices)
-        neighbor_diff = abs(target_value - neighbor_value) + (1000 if neighbor_value > target_value else 0)
-
-        if neighbor_diff < best_diff:
-            best_diff = neighbor_diff
-            best_combination = neighbor
-
-    return best_combination
-
-def format_currency(value):
-    """Formats a number as Brazilian Real currency."""
-    if pd.isna(value):
-        return "R$ -"
-    try:
-        return f"R$ {float(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except (ValueError, TypeError):
-        return "R$ Inválido"
-
-# ----- Interface Streamlit -----
-st.set_page_config(page_title="Análise de Vendas & Combinações", layout="wide", initial_sidebar_state="expanded")
-
-# Colunas para Título e Emoji
-col_title1, col_title2 = st.columns([0.9, 0.1])
-with col_title1:
-    st.title("📊 Análise de Vendas e Geração de Combinações")
-with col_title2:
-    st.image("https://cdn-icons-png.flaticon.com/128/1041/1041880.png", width=70)
-
-st.markdown("""
-Bem-vindo(a)! Esta ferramenta ajuda a visualizar suas vendas por forma de pagamento
-e tenta encontrar combinações *hipotéticas* de produtos que poderiam corresponder a esses totais.
-
-**Como usar:**
-1. Ajuste as configurações na barra lateral
-2. Faça o upload do seu arquivo de transações (.csv ou .xlsx)
-3. Explore os resultados nas abas abaixo
-""")
-st.divider()
-
-# --- Configuration Sidebar ---
-with st.sidebar:
-    st.header("⚙️ Configurações")
-    drink_percentage = st.slider(
-        "Percentual para Bebidas (%) 🍹",
-        min_value=0, max_value=100, value=20, step=5
-    )
-    sandwich_percentage = 100 - drink_percentage
-    st.caption(f"({sandwich_percentage}% será alocado para Sanduíches 🍔)")
-
-    tamanho_combinacao_bebidas = st.slider(
-        "Número de tipos de Bebidas",
-        min_value=1, max_value=10, value=5, step=1
-    )
-    tamanho_combinacao_sanduiches = st.slider(
-        "Número de tipos de Sanduíches",
-        min_value=1, max_value=10, value=5, step=1
-    )
-    max_iterations = st.select_slider(
-        "Qualidade da Otimização ✨",
-        options=[1000, 5000, 10000, 20000, 50000],
-        value=10000
-    )
-    st.info("Lembre-se: As combinações são aproximações heurísticas.")
-
-# --- File Upload ---
-arquivo = st.file_uploader("📤 Envie o arquivo de transações (.csv ou .xlsx)", type=["csv", "xlsx"])
-
-if arquivo:
-    with st.spinner(f'Processando "{arquivo.name}"...'):
-        try:
-            if arquivo.name.endswith(".csv"):
-                try:
-                    df = pd.read_csv(arquivo, sep=';', encoding='utf-8', dtype=str)
-                except Exception:
-                    arquivo.seek(0)
-                    try:
-                        df = pd.read_csv(arquivo, sep=',', encoding='utf-8', dtype=str)
-                    except Exception as e:
-                        st.error(f"Não foi possível ler o CSV. Erro: {e}")
-                        st.stop()
+    excess = total - target_total
+    
+    def reduce_comb(comb: Dict[str, float], prices: Dict[str, float], amount: float) -> Dict[str, float]:
+        reduced = comb.copy()
+        remaining = amount
+        items_sorted = sorted(reduced.items(), key=lambda x: prices[x[0]], reverse=True)
+        
+        for item, qty in items_sorted:
+            if remaining <= 0:
+                break
+            item_value = prices[item] * qty
+            if item_value >= remaining:
+                qty_to_remove = min(qty, int(remaining // prices[item]))
+                if qty_to_remove > 0:
+                    reduced[item] -= qty_to_remove
+                    remaining -= prices[item] * qty_to_remove
             else:
-                df = pd.read_excel(arquivo, dtype=str)
+                remaining -= item_value
+                del reduced[item]
+        return reduced
+    
+    sandwiches = reduce_comb(sandwiches, sandwich_prices, excess)
+    total = calculate_combination_value(drinks, drink_prices) + calculate_combination_value(sandwiches, sandwich_prices)
+    
+    if total > target_total:
+        drinks = reduce_comb(drinks, drink_prices, total - target_total)
+    
+    return drinks, sandwiches
 
-            st.success(f"Arquivo '{arquivo.name}' carregado com sucesso!")
+def format_currency(value: float) -> str:
+    """Formats as Brazilian currency"""
+    try:
+        return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except:
+        return "R$ --"
 
-            # Processamento dos dados
-            required_columns = ['Tipo', 'Bandeira', 'Valor']
-            if not all(col in df.columns for col in required_columns):
-                st.error(f"Erro: O arquivo precisa conter as colunas: {', '.join(required_columns)}")
-                st.stop()
+# ----- UI Configuration -----
+st.set_page_config(page_title="Sales Analyzer", layout="wide")
 
-            df_processed = df.copy()
-            df_processed['Tipo'] = df_processed['Tipo'].str.lower().str.strip().fillna('desconhecido')
-            df_processed['Bandeira'] = df_processed['Bandeira'].str.lower().str.strip().fillna('desconhecida')
-            df_processed['Valor_Numeric'] = pd.to_numeric(
-                df_processed['Valor'].str.replace('.', '', regex=False).str.replace(',', '.', regex=False),
-                errors='coerce'
-            )
-            df_processed.dropna(subset=['Valor_Numeric'], inplace=True)
+# Menu Data
+SANDWICHES = """
+X Salada Simples R$ 18,00
+X Salada Especial R$ 20,00
+X Especial Duplo R$ 24,00
+X Bacon Simples R$ 22,00
+X Bacon Especial R$ 24,00
+X Bacon Duplo R$ 28,00
+X Hamburgão R$ 35,00
+X Mata-Fome R$ 39,00
+X Frango Simples R$ 22,00
+X Frango Especial R$ 24,00
+X Frango Bacon R$ 27,00
+X Frango Tudo R$ 30,00
+X Lombo Simples R$ 23,00
+X Lombo Especial R$ 25,00
+X Lombo Bacon R$ 28,00
+X Lombo Tudo R$ 31,00
+X Filé Simples R$ 28,00
+X Filé Especial R$ 30,00
+X Filé Bacon R$ 33,00
+X Filé Tudo R$ 36,00
+Cebola R$ 0.50
+"""
 
-            df_processed['Categoria'] = df_processed['Tipo'] + ' ' + df_processed['Bandeira']
-            categorias_desejadas = {
-                'crédito à vista elo': 'Crédito Elo',
-                'crédito à vista mastercard': 'Crédito MasterCard',
-                'crédito à vista visa': 'Crédito Visa',
-                'débito elo': 'Débito Elo',
-                'débito mastercard': 'Débito MasterCard',
-                'débito visa': 'Débito Visa',
-                'pix': 'PIX'
-            }
-            df_processed['Forma Nomeada'] = df_processed['Categoria'].map(categorias_desejadas)
-            df_filtered = df_processed.dropna(subset=['Forma Nomeada']).copy()
+DRINKS = """
+Suco R$ 10,00
+Creme R$ 15,00
+Refri caçula R$ 3.50
+Refri Lata R$ 7,00
+Refri 600 R$ 8,00
+Refri 1L R$ 10,00
+Refri 2L R$ 15,00
+Água R$ 3,00
+Água com Gas R$ 4,00
+"""
 
-            if df_filtered.empty:
-                st.warning("Nenhuma transação encontrada para as formas de pagamento mapeadas.")
-                st.stop()
+# Process menus
+sandwich_prices = parse_menu_string(SANDWICHES)
+drink_prices = parse_menu_string(DRINKS)
 
-            vendas = df_filtered.groupby('Forma Nomeada')['Valor_Numeric'].sum()
+# Sidebar
+with st.sidebar:
+    st.header("⚙️ Settings")
+    drink_perc = st.slider("Drink Percentage", 0, 100, 30)
+    max_drinks = st.slider("Max Drink Types", 1, 10, 4)
+    max_sandwiches = st.slider("Max Sandwich Types", 1, 10, 5)
+    iterations = st.select_slider("Optimization Quality", [1000, 5000, 10000, 20000], 5000)
 
-            # Definição dos Cardápios
-            dados_sanduiches = """
-            X Salada Simples R$ 18,00
-            X Salada Especial R$ 20,00
-            X Especial Duplo R$ 24,00
-            X Bacon Simples R$ 22,00
-            X Bacon Especial R$ 24,00
-            X Bacon Duplo R$ 28,00
-            X Hamburgão R$ 35,00
-            X Mata-Fome R$ 39,00
-            X Frango Simples R$ 22,00
-            X Frango Especial R$ 24,00
-            X Frango Bacon R$ 27,00
-            X Frango Tudo R$ 30,00
-            X Lombo Simples R$ 23,00
-            X Lombo Especial R$ 25,00
-            X Lombo Bacon R$ 28,00
-            X Lombo Tudo R$ 31,00
-            X Filé Simples R$ 28,00
-            X Filé Especial R$ 30,00
-            X Filé Bacon R$ 33,00
-            X Filé Tudo R$ 36,00
-            Cebola R$ 0.50
-            """
-            dados_bebidas = """
-            Suco R$ 10,00
-            Creme R$ 15,00
-            Refri caçula R$ 3.50
-            Refri Lata R$ 7,00
-            Refri 600 R$ 8,00
-            Refri 1L R$ 10,00
-            Refri 2L R$ 15,00
-            Água R$ 3,00
-            Água com Gas R$ 4,00
-            """
-            sanduiches_precos = parse_menu_string(dados_sanduiches)
-            bebidas_precos = parse_menu_string(dados_bebidas)
+# File Upload
+upload = st.file_uploader("📤 Upload Sales File", type=["csv", "xlsx"])
 
-            if not sanduiches_precos or not bebidas_precos:
-                st.error("Erro ao carregar cardápios. Verifique os dados no código.")
-                st.stop()
-
-            # Abas de resultados
-            tab1, tab2, tab3 = st.tabs(["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "📄 Dados Processados"])
-
-            with tab1:
-                st.header("📈 Resumo das Vendas por Forma de Pagamento")
-                if not vendas.empty:
-                    df_vendas = vendas.reset_index()
-                    df_vendas.columns = ['Forma de Pagamento', 'Valor Total']
-                    df_vendas['Valor Formatado'] = df_vendas['Valor Total'].apply(format_currency)
-                    st.bar_chart(df_vendas.set_index('Forma de Pagamento')['Valor Total'])
-                    st.dataframe(df_vendas[['Forma de Pagamento', 'Valor Formatado']], use_container_width=True)
-                else:
-                    st.warning("Nenhum dado de venda para exibir.")
-
-            with tab2:
-                st.header("🧩 Detalhes das Combinações Geradas")
-                st.caption(f"Alocação: {drink_percentage}% bebidas | {sandwich_percentage}% sanduíches")
-
-                ordem_formas = [
-                    'Débito Visa', 'Débito MasterCard', 'Débito Elo',
-                    'Crédito Visa', 'Crédito MasterCard', 'Crédito Elo', 'PIX'
-                ]
-                vendas_ordenadas = {forma: vendas[forma] for forma in ordem_formas if forma in vendas}
-                for forma, total in vendas.items():
-                    if forma not in vendas_ordenadas:
-                        vendas_ordenadas[forma] = total
-
-                for forma, total_pagamento in vendas_ordenadas.items():
-                    if total_pagamento <= 0:
-                        continue
-
-                    with st.spinner(f"Gerando combinação para {forma}..."):
-                        target_bebidas = round_to_50_or_00(total_pagamento * (drink_percentage / 100.0))
-                        target_sanduiches = round_to_50_or_00(total_pagamento - target_bebidas)
-
-                        comb_bebidas = local_search_optimization(
-                            bebidas_precos, target_bebidas, tamanho_combinacao_bebidas, max_iterations
-                        )
-                        comb_sanduiches = local_search_optimization(
-                            sanduiches_precos, target_sanduiches, tamanho_combinacao_sanduiches, max_iterations
-                        )
-
-                        comb_bebidas_rounded = {name: round(qty) for name, qty in comb_bebidas.items() if round(qty) > 0}
-                        comb_sanduiches_rounded = {name: round(qty) for name, qty in comb_sanduiches.items() if round(qty) > 0}
-
-                        comb_sanduiches_final, total_sanduiches = adjust_with_onions(
-                            comb_sanduiches_rounded, sanduiches_precos, target_sanduiches
-                        )
-                        total_bebidas = calculate_combination_value(comb_bebidas_rounded, bebidas_precos)
-                        total_geral = total_bebidas + total_sanduiches
-
-                    with st.expander(f"**{forma}** (Total: {format_currency(total_pagamento)})", expanded=False):
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            st.subheader(f"🍹 Bebidas: {format_currency(target_bebidas)}")
-                            if comb_bebidas_rounded:
-                                for nome, qtt in comb_bebidas_rounded.items():
-                                    val_item = bebidas_precos[nome] * qtt
-                                    st.markdown(f"- **{qtt}** **{nome}:** {format_currency(val_item)}")
-                                st.divider()
-                                st.metric("Total Calculado", format_currency(total_bebidas))
-                            else:
-                                st.info("Nenhuma bebida na combinação")
-
-                        with col2:
-                            st.subheader(f"🍔 Sanduíches: {format_currency(target_sanduiches)}")
-                            if comb_sanduiches_final:
-                                # Calcula se as cebolas foram adicionadas para ajuste
-                                original_sandwich_value = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
-                                has_onion_adjustment = "Cebola" in comb_sanduiches_final and comb_sanduiches_final["Cebola"] > comb_sanduiches_rounded.get("Cebola", 0)
-                                
-                                for nome, qtt in comb_sanduiches_final.items():
-                                    display_name = nome
-                                    prefix = ""
-                                    
-                                    if nome == "Cebola" and has_onion_adjustment:
-                                        display_name = "Cebola (Ajuste)"
-                                        prefix = "🔹 "
-                                    
-                                    val_item = sanduiches_precos[nome] * qtt
-                                    st.markdown(f"- {prefix}**{qtt}** **{display_name}:** {format_currency(val_item)}")
-                                
-                                st.divider()
-                                st.metric("Total Calculado", format_currency(total_sanduiches))
-                            else:
-                                st.info("Nenhum sanduíche na combinação")
-
-                        st.divider()
-                        diff = total_geral - total_pagamento
-                        st.metric(
-                            "💰 TOTAL GERAL (Calculado)",
-                            format_currency(total_geral),
-                            delta=f"{format_currency(diff)} vs Meta",
-                            delta_color="normal" if diff <= 0 else "inverse"
-                        )
-
-            with tab3:
-                st.header("📄 Tabela de Dados Processados")
-                cols_to_show = ['Tipo', 'Bandeira', 'Valor', 'Categoria', 'Forma Nomeada', 'Valor_Numeric']
-                st.dataframe(df_filtered[cols_to_show], use_container_width=True)
-
-        except Exception as e:
-            st.error(f"Erro no processamento: {str(e)}")
+if upload:
+    try:
+        if upload.name.endswith(".csv"):
+            df = pd.read_csv(upload, sep=";", decimal=",")
+        else:
+            df = pd.read_excel(upload)
+        
+        # Preprocessing
+        df["Valor"] = pd.to_numeric(
+            df["Valor"].astype(str)
+            .str.replace(".", "")
+            .str.replace(",", ".")
+        )
+        
+        if "FormaPagamento" not in df.columns or "Valor" not in df.columns:
+            st.error("File must contain 'FormaPagamento' and 'Valor' columns")
+            st.stop()
+        
+        sales = df.groupby("FormaPagamento")["Valor"].sum()
+        
+        for method, total in sales.items():
+            with st.expander(f"{method} (Total: {format_currency(total)})"):
+                drink_target = round_to_50_or_00(total * drink_perc / 100)
+                sandwich_target = round_to_50_or_00(total - drink_target)
+                
+                with st.spinner(f"Optimizing {method}..."):
+                    drinks = local_search_optimization(drink_prices, drink_target, max_drinks, iterations)
+                    sandwiches = local_search_optimization(sandwich_prices, sandwich_target, max_sandwiches, iterations)
+                    
+                    # Round quantities
+                    drinks = {k: round(v) for k, v in drinks.items() if round(v) > 0}
+                    sandwiches = {k: round(v) for k, v in sandwiches.items() if round(v) > 0}
+                    
+                    # Ensure total doesn't exceed
+                    drinks, sandwiches = adjust_combinations(drinks, sandwiches, total, drink_prices, sandwich_prices)
+                    
+                    # Add onions if needed
+                    sandwiches, sandwich_total = adjust_with_onions(
+                        sandwiches, sandwich_prices, total - calculate_combination_value(drinks, drink_prices)
+                    )
+                    drink_total = calculate_combination_value(drinks, drink_prices)
+                    combined_total = drink_total + sandwich_total
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.subheader(f"🍹 Drinks (Target: {format_currency(drink_target)})")
+                    if drinks:
+                        for item, qty in drinks.items():
+                            st.write(f"- {qty}x {item}: {format_currency(drink_prices[item] * qty)}")
+                        st.metric("Drink Total", format_currency(drink_total))
+                    else:
+                        st.info("No drinks")
+                
+                with col2:
+                    st.subheader(f"🍔 Sandwiches (Target: {format_currency(sandwich_target)})")
+                    if sandwiches:
+                        has_adjustment = "Cebola" in sandwiches and sandwiches["Cebola"] > 0
+                        for item, qty in sandwiches.items():
+                            display_name = "Cebola (Adjustment)" if item == "Cebola" and has_adjustment else item
+                            prefix = "🔹 " if item == "Cebola" and has_adjustment else ""
+                            st.write(f"- {prefix}{qty}x {display_name}: {format_currency(sandwich_prices[item] * qty)}")
+                        st.metric("Sandwich Total", format_currency(sandwich_total))
+                    else:
+                        st.info("No sandwiches")
+                
+                diff = combined_total - total
+                st.metric(
+                    "💰 TOTAL",
+                    format_currency(combined_total),
+                    delta=f"{format_currency(diff)} vs Target",
+                    delta_color="normal" if diff <= 0 else "inverse"
+                )
+    
+    except Exception as e:
+        st.error(f"Processing error: {str(e)}")
 else:
-    st.info("✨ Aguardando o envio do arquivo de transações para iniciar a análise...")
+    st.info("Please upload a sales file to begin")
