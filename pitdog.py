@@ -3,13 +3,38 @@ import pandas as pd
 import altair as alt
 from datetime import datetime
 import random
-import time
+import os
 
-# Função para inicializar o DataFrame de dados de entrada
+# Nome do arquivo CSV para armazenar os dados
+CSV_FILE = 'recebimentos.csv'
+
+# Função para carregar os dados do CSV (se existir) ou inicializar um DataFrame vazio
 def load_data():
-    if 'daily_receipts' not in st.session_state:
-        st.session_state['daily_receipts'] = pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
-    return st.session_state['daily_receipts']
+    if os.path.exists(CSV_FILE):
+        try:
+            df = pd.read_csv(CSV_FILE)
+            # Converter a coluna 'Data' para datetime se não estiver no formato correto
+            if 'Data' in df.columns:
+                try:
+                    df['Data'] = pd.to_datetime(df['Data'])
+                except Exception as e:
+                    st.warning(f"Aviso: Erro ao converter a coluna 'Data' do CSV: {e}. Certifique-se de que as datas estejam em um formato reconhecível.")
+            return df
+        except Exception as e:
+            st.error(f"Erro ao carregar o arquivo CSV: {e}")
+            return pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
+    else:
+        return pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
+
+# Função para salvar os dados no CSV
+def save_data(df):
+    try:
+        # Converter a coluna 'Data' para string no formato adequado para salvar no CSV
+        df['Data'] = df['Data'].dt.strftime('%Y-%m-%d')
+        df.to_csv(CSV_FILE, index=False)
+        st.success(f"Dados salvos com sucesso em '{CSV_FILE}'!")
+    except Exception as e:
+        st.error(f"Erro ao salvar os dados no arquivo CSV: {e}")
 
 # Carregar os dados
 df_receipts = load_data()
@@ -317,16 +342,25 @@ with tab3:
             submitted = st.form_submit_button("Adicionar Recebimento")
             if submitted:
                 new_receipt = pd.DataFrame([{'Data': pd.to_datetime(data_hoje), 'Dinheiro': dinheiro, 'Cartao': cartao, 'Pix': pix}])
-                st.session_state['daily_receipts'] = pd.concat([st.session_state['daily_receipts'], new_receipt], ignore_index=True)
-                st.success(f"Recebimento de {data_hoje.strftime('%d/%m/%Y')} adicionado!")
+                df_receipts = pd.concat([df_receipts, new_receipt], ignore_index=True)
+                save_data(df_receipts)
+                st.success(f"Recebimento de {data_hoje.strftime('%d/%m/%Y')} adicionado e salvo!")
+                # Recarregar os dados para atualizar a visualização
+                df_receipts = load_data()
 
     with col_chart_table:
         st.subheader("Visualização dos Recebimentos")
 
         if not df_receipts.empty:
-            df_receipts['Total'] = df_receipts['Dinheiro'] + df_receipts['Cartao'] + df_receipts['Pix']
+            # Converter a coluna 'Data' para datetime se não estiver
+            if not pd.api.types.is_datetime64_any_dtype(df_receipts['Data']):
+                try:
+                    df_receipts['Data'] = pd.to_datetime(df_receipts['Data'])
+                except Exception as e:
+                    st.error(f"Erro ao converter a coluna 'Data': {e}")
+                    st.stop()
 
-            # Filtrar por ano, mês e dia
+            df_receipts['Total'] = df_receipts['Dinheiro'] + df_receipts['Cartao'] + df_receipts['Pix']
             df_receipts['Ano'] = df_receipts['Data'].dt.year
             df_receipts['Mes'] = df_receipts['Data'].dt.month
             df_receipts['Dia'] = df_receipts['Data'].dt.day
