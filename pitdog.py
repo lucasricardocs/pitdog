@@ -52,13 +52,13 @@ def adjust_with_onions(combination, item_prices, target_value):
     """
     current_value = calculate_combination_value(combination, item_prices)
     difference = target_value - current_value
-    
+
     if difference <= 0 or "Cebola" not in item_prices:
         return combination, current_value
-    
+
     onion_price = item_prices["Cebola"]
     num_onions = min(int(round(difference / onion_price)), 20)  # Limite de 20 cebolas
-    
+
     if num_onions > 0:
         current_onions = combination.get("Cebola", 0)
         total_onions = current_onions + num_onions
@@ -66,9 +66,9 @@ def adjust_with_onions(combination, item_prices, target_value):
             num_onions = 20 - current_onions
             if num_onions <= 0:
                 return combination, current_value
-        
+
         combination["Cebola"] = current_onions + num_onions
-    
+
     final_value = calculate_combination_value(combination, item_prices)
     return combination, final_value
 
@@ -84,7 +84,7 @@ def local_search_optimization(item_prices, target_value, combination_size, max_i
     best_combination = generate_initial_combination(item_prices, combination_size)
     best_combination = {k: round_to_50_or_00(v) for k, v in best_combination.items()}
     current_value = calculate_combination_value(best_combination, item_prices)
-    
+
     best_diff = abs(target_value - current_value) + (1000 if current_value > target_value else 0)
     current_items = list(best_combination.keys())
 
@@ -120,7 +120,7 @@ def plot_daily_sales(df):
     """Gráfico de vendas por dia"""
     df['Data'] = pd.to_datetime(df['Data'])
     daily_sales = df.groupby(df['Data'].dt.date)['Valor_Numeric'].sum()
-    
+
     fig, ax = plt.subplots(figsize=(10, 5))
     daily_sales.plot(kind='line', marker='o', ax=ax)
     ax.set_title('Vendas Diárias')
@@ -132,7 +132,7 @@ def plot_daily_sales(df):
 def plot_payment_methods(df):
     """Gráfico de formas de pagamento"""
     payment_methods = df.groupby('Forma Nomeada')['Valor_Numeric'].sum().sort_values(ascending=False)
-    
+
     fig, ax = plt.subplots(figsize=(10, 5))
     payment_methods.plot(kind='bar', ax=ax)
     ax.set_title('Vendas por Forma de Pagamento')
@@ -145,10 +145,10 @@ def plot_hourly_sales(df):
     """Gráfico de vendas por hora do dia"""
     if 'Hora' not in df.columns:
         return
-    
+
     df['Hora'] = pd.to_datetime(df['Hora'], format='%H:%M').dt.hour
     hourly_sales = df.groupby('Hora')['Valor_Numeric'].sum()
-    
+
     fig, ax = plt.subplots(figsize=(10, 5))
     hourly_sales.plot(kind='bar', ax=ax)
     ax.set_title('Vendas por Hora do Dia')
@@ -266,39 +266,39 @@ if arquivo:
 
             # Definição dos Cardápios
             dados_sanduiches = """
-            X Salada Simples R$ 18,00
-            X Salada Especial R$ 20,00
-            X Especial Duplo R$ 24,00
-            X Bacon Simples R$ 22,00
-            X Bacon Especial R$ 24,00
-            X Bacon Duplo R$ 28,00
-            X Hamburgão R$ 35,00
-            X Mata-Fome R$ 39,00
-            X Frango Simples R$ 22,00
-            X Frango Especial R$ 24,00
-            X Frango Bacon R$ 27,00
-            X Frango Tudo R$ 30,00
-            X Lombo Simples R$ 23,00
-            X Lombo Especial R$ 25,00
-            X Lombo Bacon R$ 28,00
-            X Lombo Tudo R$ 31,00
-            X Filé Simples R$ 28,00
-            X Filé Especial R$ 30,00
-            X Filé Bacon R$ 33,00
-            X Filé Tudo R$ 36,00
-            Cebola R$ 0.50
-            """
+                X Salada Simples R$ 18,00
+                X Salada Especial R$ 20,00
+                X Especial Duplo R$ 24,00
+                X Bacon Simples R$ 22,00
+                X Bacon Especial R$ 24,00
+                X Bacon Duplo R$ 28,00
+                X Hamburgão R$ 35,00
+                X Mata-Fome R$ 39,00
+                X Frango Simples R$ 22,00
+                X Frango Especial R$ 24,00
+                X Frango Bacon R$ 27,00
+                X Frango Tudo R$ 30,00
+                X Lombo Simples R$ 23,00
+                X Lombo Especial R$ 25,00
+                X Lombo Bacon R$ 28,00
+                X Lombo Tudo R$ 31,00
+                X Filé Simples R$ 28,00
+                X Filé Especial R$ 30,00
+                X Filé Bacon R$ 33,00
+                X Filé Tudo R$ 36,00
+                Cebola R$ 0.50
+                """
             dados_bebidas = """
-            Suco R$ 10,00
-            Creme R$ 15,00
-            Refri caçula R$ 3.50
-            Refri Lata R$ 7,00
-            Refri 600 R$ 8,00
-            Refri 1L R$ 10,00
-            Refri 2L R$ 15,00
-            Água R$ 3,00
-            Água com Gas R$ 4,00
-            """
+                Suco R$ 10,00
+                Creme R$ 15,00
+                Refri caçula R$ 3.50
+                Refri Lata R$ 7,00
+                Refri 600 R$ 8,00
+                Refri 1L R$ 10,00
+                Refri 2L R$ 15,00
+                Água R$ 3,00
+                Água com Gas R$ 4,00
+                """
             sanduiches_precos = parse_menu_string(dados_sanduiches)
             bebidas_precos = parse_menu_string(dados_bebidas)
 
@@ -311,7 +311,7 @@ if arquivo:
 
             with tab1:
                 st.header("📈 Resumo das Vendas")
-                
+
                 # Gráfico de vendas por forma de pagamento
                 st.subheader("Vendas por Forma de Pagamento")
                 if not vendas.empty:
@@ -322,19 +322,19 @@ if arquivo:
                     st.dataframe(df_vendas[['Forma de Pagamento', 'Valor Formatado']], use_container_width=True)
                 else:
                     st.warning("Nenhum dado de venda para exibir.")
-                
+
                 # Novos gráficos adicionados
                 if 'Data' in df_processed.columns:
                     st.subheader("Vendas Diárias")
                     plot_daily_sales(df_processed)
-                
+
                 st.subheader("Distribuição por Forma de Pagamento")
                 plot_payment_methods(df_filtered)
-                
+
                 if 'Hora' in df_processed.columns:
                     st.subheader("Vendas por Hora do Dia")
                     plot_hourly_sales(df_processed)
-                
+
                 # Heatmap de vendas por dia da semana e hora (se dados disponíveis)
                 if 'Data' in df_processed.columns and 'Hora' in df_processed.columns:
                     try:
@@ -342,7 +342,7 @@ if arquivo:
                         df_heatmap = df_processed.copy()
                         df_heatmap['Dia da Semana'] = df_heatmap['Data'].dt.day_name()
                         df_heatmap['Hora'] = pd.to_datetime(df_heatmap['Hora'], format='%H:%M').dt.hour
-                        
+
                         heatmap_data = df_heatmap.pivot_table(
                             index='Dia da Semana',
                             columns='Hora',
@@ -350,11 +350,11 @@ if arquivo:
                             aggfunc='sum',
                             fill_value=0
                         )
-                        
+
                         # Ordenar dias da semana
                         dias_ordenados = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
                         heatmap_data = heatmap_data.reindex(dias_ordenados)
-                        
+
                         fig, ax = plt.subplots(figsize=(12, 6))
                         sns.heatmap(heatmap_data, cmap='YlGnBu', ax=ax)
                         ax.set_title('Vendas por Dia da Semana e Hora')
@@ -395,57 +395,67 @@ if arquivo:
                         comb_bebidas_rounded = {name: round(qty) for name, qty in comb_bebidas.items() if round(qty) > 0}
                         comb_sanduiches_rounded = {name: round(qty) for name, qty in comb_sanduiches.items() if round(qty) > 0}
 
-                        comb_sanduiches_final, total_sanduiches = adjust_with_onions(
-                            comb_sanduiches_rounded, sanduiches_precos, target_sanduiches
-                        )
-                        total_bebidas = calculate_combination_value(comb_bebidas_rounded, bebidas_precos)
-                        total_geral = total_bebidas + total_sanduiches
+                        total_bebidas_inicial = calculate_combination_value(comb_bebidas_rounded, bebidas_precos)
+                        total_sanduiches_inicial = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
+                        total_geral_inicial = total_bebidas_inicial + total_sanduiches_inicial
 
-                    with st.expander(f"**{forma}** (Total: {format_currency(total_pagamento)})", expanded=False):
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            st.subheader(f"🍹 Bebidas: {format_currency(target_bebidas)}")
-                            if comb_bebidas_rounded:
-                                for nome, qtt in comb_bebidas_rounded.items():
-                                    val_item = bebidas_precos[nome] * qtt
-                                    st.markdown(f"- **{qtt}** **{nome}:** {format_currency(val_item)}")
-                                st.divider()
-                                st.metric("Total Calculado", format_currency(total_bebidas))
-                            else:
-                                st.info("Nenhuma bebida na combinação")
+                        comb_sanduiches_final, total_sanduiches_final = comb_sanduiches_rounded.copy(), total_sanduiches_inicial
 
-                        with col2:
-                            st.subheader(f"🍔 Sanduíches: {format_currency(target_sanduiches)}")
-                            if comb_sanduiches_final:
-                                # Calcula se as cebolas foram adicionadas para ajuste
-                                original_sandwich_value = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
-                                has_onion_adjustment = "Cebola" in comb_sanduiches_final and comb_sanduiches_final["Cebola"] > comb_sanduiches_rounded.get("Cebola", 0)
-                                
-                                for nome, qtt in comb_sanduiches_final.items():
-                                    display_name = nome
-                                    prefix = ""
-                                    
-                                    if nome == "Cebola" and has_onion_adjustment:
-                                        display_name = "Cebola (Ajuste)"
-                                        prefix = "🔹 "
-                                    
-                                    val_item = sanduiches_precos[nome] * qtt
-                                    st.markdown(f"- {prefix}**{qtt}** **{display_name}:** {format_currency(val_item)}")
-                                
-                                st.divider()
-                                st.metric("Total Calculado", format_currency(total_sanduiches))
-                            else:
-                                st.info("Nenhum sanduíche na combinação")
+                        if total_geral_inicial < total_pagamento and "Cebola" in sanduiches_precos:
+                            diferenca = total_pagamento - total_geral_inicial
+                            preco_cebola = sanduiches_precos["Cebola"]
+                            cebolas_adicionar = min(int(round(diferenca / preco_cebola)), 20)
+                            if cebolas_adicionar > 0:
+                                comb_sanduiches_final["Cebola"] = comb_sanduiches_final.get("Cebola", 0) + cebolas_adicionar
+                                total_sanduiches_final = calculate_combination_value(comb_sanduiches_final, sanduiches_precos)
 
-                        st.divider()
-                        diff = total_geral - total_pagamento
-                        st.metric(
-                            "💰 TOTAL GERAL (Calculado)",
-                            format_currency(total_geral),
-                            delta=f"{format_currency(diff)} vs Meta",
-                            delta_color="normal" if diff <= 0 else "inverse"
-                        )
+                        total_bebidas_final = calculate_combination_value(comb_bebidas_rounded, bebidas_precos)
+                        total_geral_final = total_bebidas_final + total_sanduiches_final
+
+                        with st.expander(f"**{forma}** (Total: {format_currency(total_pagamento)})", expanded=False):
+                            col1, col2 = st.columns(2)
+
+                            with col1:
+                                st.subheader(f"🍹 Bebidas: {format_currency(target_bebidas)}")
+                                if comb_bebidas_rounded:
+                                    for nome, qtt in comb_bebidas_rounded.items():
+                                        val_item = bebidas_precos[nome] * qtt
+                                        st.markdown(f"- **{qtt}** **{nome}:** {format_currency(val_item)}")
+                                    st.divider()
+                                    st.metric("Total Calculado", format_currency(total_bebidas_final))
+                                else:
+                                    st.info("Nenhuma bebida na combinação")
+
+                            with col2:
+                                st.subheader(f"🍔 Sanduíches: {format_currency(target_sanduiches)}")
+                                if comb_sanduiches_final:
+                                    original_sandwich_value = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
+                                    has_onion_adjustment = "Cebola" in comb_sanduiches_final and comb_sanduiches_final.get("Cebola", 0) > comb_sanduiches_rounded.get("Cebola", 0)
+
+                                    for nome, qtt in comb_sanduiches_final.items():
+                                        display_name = nome
+                                        prefix = ""
+
+                                        if nome == "Cebola" and has_onion_adjustment:
+                                            display_name = "Cebola (Ajuste)"
+                                            prefix = "🔹 "
+
+                                        val_item = sanduiches_precos[nome] * qtt
+                                        st.markdown(f"- {prefix}**{qtt}** **{display_name}:** {format_currency(val_item)}")
+
+                                    st.divider()
+                                    st.metric("Total Calculado", format_currency(total_sanduiches_final))
+                                else:
+                                    st.info("Nenhum sanduíche na combinação")
+
+                            st.divider()
+                            diff = total_geral_final - total_pagamento
+                            st.metric(
+                                "💰 TOTAL GERAL (Calculado)",
+                                format_currency(total_geral_final),
+                                delta=f"{format_currency(diff)} vs Meta",
+                                delta_color="normal" if diff <= 0 else "inverse"
+                            )
 
             with tab3:
                 st.header("📄 Tabela de Dados Processados")
