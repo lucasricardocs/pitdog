@@ -157,7 +157,7 @@ def plot_hourly_sales(df):
     st.pyplot(fig)
 
 # ----- Interface Streamlit -----
-st.set_page_config(page_title="Análise de Vendas & Combinações", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Análise de Vendas & Combinações", layout="centered", initial_sidebar_state="expanded")
 
 # Colunas para Título e Emoji
 col_title1, col_title2 = st.columns([0.9, 0.1])
