@@ -332,7 +332,7 @@ with tab1:
 
                 # Gráfico de vendas por forma de pagamento
                 st.subheader("Vendas por Forma de Pagamento")
-                if not vendas.empty:
+                if vendas:  # Verificação correta para dicionário vazio
                     df_vendas = pd.DataFrame(list(vendas.items()), columns=['Forma de Pagamento', 'Valor Total'])
                     df_vendas['Valor Formatado'] = df_vendas['Valor Total'].apply(format_currency)
                     st.bar_chart(df_vendas.set_index('Forma de Pagamento')['Valor Total'])
