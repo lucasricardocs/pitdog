@@ -298,7 +298,7 @@ if arquivo:
 
                  col1, col2 = st.columns(2) # Mantém as colunas para separar Bebidas de Sanduíches
                  with col1:
-                     st.subheader("🍹 Bebidas")
+                     st.subheader(f"🍹 Bebidas: {format_currency(target_bebidas)}")
                      if comb_bebidas_rounded:
                          # ----- MODIFICAÇÃO AQUI: Exibir como lista -----
                          for nome, qtt in comb_bebidas_rounded.items():
@@ -312,7 +312,7 @@ if arquivo:
                          st.info("Nenhuma bebida na combinação.") # Mantém mensagem caso vazio
 
                  with col2:
-                     st.subheader("🍔 Sanduíches")
+                     st.subheader(f"🍔 Sanduíches: {format_currency(target_sanduiches)}")
                      if comb_sanduiches_rounded:
                          # ----- MODIFICAÇÃO AQUI: Exibir como lista -----
                          for nome, qtt in comb_sanduiches_rounded.items():
