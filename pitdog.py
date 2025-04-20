@@ -331,82 +331,81 @@ with tab2:
 with tab3:
     st.header("💰 Cadastro de Recebimentos Diários")
 
-    col_input, col_chart_table = st.columns(2)
+    with st.form("daily_receipt_form"):
+        data_hoje = st.date_input("Data do Recebimento", datetime.now().date())
+        dinheiro = st.number_input("Dinheiro (R$)", min_value=0.0, step=0.50, format="%.2f")
+        cartao = st.number_input("Cartão (R$)", min_value=0.0, step=0.50, format="%.2f")
+        pix = st.number_input("Pix (R$)", min_value=0.0, step=0.50, format="%.2f")
+        submitted = st.form_submit_button("Adicionar Recebimento")
+        if submitted:
+            new_receipt = pd.DataFrame([{'Data': pd.to_datetime(data_hoje), 'Dinheiro': dinheiro, 'Cartao': cartao, 'Pix': pix}])
+            df_receipts = pd.concat([df_receipts, new_receipt], ignore_index=True)
+            save_data(df_receipts)
+            st.success(f"Recebimento de {data_hoje.strftime('%d/%m/%Y')} adicionado e salvo!")
+            # Recarregar os dados para atualizar a visualização
+            df_receipts = load_data()
 
-    with col_input:
-        with st.form("daily_receipt_form"):
-            data_hoje = st.date_input("Data do Recebimento", datetime.now().date())
-            dinheiro = st.number_input("Dinheiro (R$)", min_value=0.0, step=0.50, format="%.2f")
-            cartao = st.number_input("Cartão (R$)", min_value=0.0, step=0.50, format="%.2f")
-            pix = st.number_input("Pix (R$)", min_value=0.0, step=0.50, format="%.2f")
-            submitted = st.form_submit_button("Adicionar Recebimento")
-            if submitted:
-                new_receipt = pd.DataFrame([{'Data': pd.to_datetime(data_hoje), 'Dinheiro': dinheiro, 'Cartao': cartao, 'Pix': pix}])
-                df_receipts = pd.concat([df_receipts, new_receipt], ignore_index=True)
-                save_data(df_receipts)
-                st.success(f"Recebimento de {data_hoje.strftime('%d/%m/%Y')} adicionado e salvo!")
-                # Recarregar os dados para atualizar a visualização
-                df_receipts = load_data()
+    st.subheader("Visualização dos Recebimentos")
 
-    with col_chart_table:
-        st.subheader("Visualização dos Recebimentos")
+    if not df_receipts.empty:
+        # Converter a coluna 'Data' para datetime se não estiver
+        if not pd.api.types.is_datetime64_any_dtype(df_receipts['Data']):
+            try:
+                df_receipts['Data'] = pd.to_datetime(df_receipts['Data'])
+            except Exception as e:
+                st.error(f"Erro ao converter a coluna 'Data': {e}")
+                st.stop()
 
-        if not df_receipts.empty:
-            # Converter a coluna 'Data' para datetime se não estiver
-            if not pd.api.types.is_datetime64_any_dtype(df_receipts['Data']):
-                try:
-                    df_receipts['Data'] = pd.to_datetime(df_receipts['Data'])
-                except Exception as e:
-                    st.error(f"Erro ao converter a coluna 'Data': {e}")
-                    st.stop()
+        df_receipts['Total'] = df_receipts['Dinheiro'] + df_receipts['Cartao'] + df_receipts['Pix']
+        df_receipts['Ano'] = df_receipts['Data'].dt.year
+        df_receipts['Mes'] = df_receipts['Data'].dt.month
+        df_receipts['Dia'] = df_receipts['Data'].dt.day
 
-            df_receipts['Total'] = df_receipts['Dinheiro'] + df_receipts['Cartao'] + df_receipts['Pix']
-            df_receipts['Ano'] = df_receipts['Data'].dt.year
-            df_receipts['Mes'] = df_receipts['Data'].dt.month
-            df_receipts['Dia'] = df_receipts['Data'].dt.day
+        anos_disponiveis = sorted(df_receipts['Ano'].unique(), reverse=True)
+        ano_selecionado = st.selectbox("Selecionar Ano", anos_disponiveis, index=0)
+        df_ano = df_receipts[df_receipts['Ano'] == ano_selecionado]
 
-            anos_disponiveis = sorted(df_receipts['Ano'].unique(), reverse=True)
-            ano_selecionado = st.selectbox("Selecionar Ano", anos_disponiveis, index=0)
-            df_ano = df_receipts[df_receipts['Ano'] == ano_selecionado]
+        meses_disponiveis = sorted(df_ano['Mes'].unique())
+        nomes_meses = {1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr', 5: 'Mai', 6: 'Jun', 7: 'Jul', 8: 'Ago', 9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez'}
+        meses_nomes_disponiveis = [f"{m} - {nomes_meses[m]}" for m in meses_disponiveis]
+        mes_selecionado_index = 0
+        if meses_nomes_disponiveis:
+            mes_selecionado_str = st.selectbox("Selecionar Mês", meses_nomes_disponiveis, index=0)
+            mes_selecionado = int(mes_selecionado_str.split(' - ')[0])
+            df_mes = df_ano[df_ano['Mes'] == mes_selecionado]
+        else:
+            df_mes = df_ano.copy()
 
-            meses_disponiveis = sorted(df_ano['Mes'].unique())
-            nomes_meses = {1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr', 5: 'Mai', 6: 'Jun', 7: 'Jul', 8: 'Ago', 9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez'}
-            meses_nomes_disponiveis = [f"{m} - {nomes_meses[m]}" for m in meses_disponiveis]
-            mes_selecionado_index = 0
-            if meses_nomes_disponiveis:
-                mes_selecionado_str = st.selectbox("Selecionar Mês", meses_nomes_disponiveis, index=0)
-                mes_selecionado = int(mes_selecionado_str.split(' - ')[0])
-                df_mes = df_ano[df_ano['Mes'] == mes_selecionado]
-            else:
-                df_mes = df_ano.copy()
+        dias_disponiveis = sorted(df_mes['Dia'].unique())
+        dia_selecionado = st.selectbox("Selecionar Dia", ['Todos'] + list(dias_disponiveis), index=0)
+        if dia_selecionado != 'Todos':
+            df_dia = df_mes[df_mes['Dia'] == dia_selecionado]
+        else:
+            df_dia = df_mes.copy()
 
-            dias_disponiveis = sorted(df_mes['Dia'].unique())
-            dia_selecionado = st.selectbox("Selecionar Dia", ['Todos'] + list(dias_disponiveis), index=0)
-            if dia_selecionado != 'Todos':
-                df_dia = df_mes[df_mes['Dia'] == dia_selecionado]
-            else:
-                df_dia = df_mes.copy()
-
+        col_totais, col_detalhes = st.columns(2)
+        with col_totais:
             st.subheader("Totais Diários")
             plot_daily_receipts(df_dia, 'Data', 'Total', f"Total Recebido em {dia_selecionado if dia_selecionado != 'Todos' else 'Todos os Dias'} de {nomes_meses.get(mes_selecionado, '') if meses_nomes_disponiveis else 'Todos os Meses'} de {ano_selecionado}")
 
+        with col_detalhes:
             st.subheader("Detalhes dos Recebimentos")
             display_receipts_table(df_dia[['Data', 'Dinheiro', 'Cartao', 'Pix', 'Total']])
 
-            st.subheader("Gráfico de Formas de Pagamento")
-            df_melted = df_dia.melt(id_vars=['Data'], value_vars=['Dinheiro', 'Cartao', 'Pix'], var_name='Forma', value_name='Valor')
-            chart_pagamentos = alt.Chart(df_melted).mark_bar().encode(
-                x=alt.X('Data:T', axis=alt.Axis(title='Data')),
-                y=alt.Y('Valor:Q', axis=alt.Axis(title='Valor (R$)')),
-                color='Forma:N',
-                tooltip=['Data', 'Forma', 'Valor']
-            ).properties(
-                title=f"Recebimentos por Forma de Pagamento em {dia_selecionado if dia_selecionado != 'Todos' else 'Todos os Dias'} de {nomes_meses.get(mes_selecionado, '') if meses_nomes_disponiveis else 'Todos os Meses'} de {ano_selecionado}"
-            )
-            st.altair_chart(chart_pagamentos, use_container_width=True)
+        st.subheader("Gráfico de Formas de Pagamento")
+        df_melted = df_dia.melt(id_vars=['Data'], value_vars=['Dinheiro', 'Cartao', 'Pix'], var_name='Forma', value_name='Valor')
+        chart_pagamentos = alt.Chart(df_melted).mark_bar().encode(
+            x=alt.X('Data:T', axis=alt.Axis(title='Data')),
+            y=alt.Y('Valor:Q', axis=alt.Axis(title='Valor (R$)')),
+            color='Forma:N',
+            tooltip=['Data', 'Forma', 'Valor']
+        ).properties(
+            title=f"Recebimentos por Forma de Pagamento em {dia_selecionado if dia_selecionado != 'Todos' else 'Todos os Dias'} de {nomes_meses.get(mes_selecionado, '') if meses_nomes_disponiveis else 'Todos os Meses'} de {ano_selecionado}"
+        )
+        st.altair_chart(chart_pagamentos, use_container_width=True)
 
-        else:
-            st.info("Nenhum recebimento cadastrado ainda.")
+    else:
+        st.info("Nenhum recebimento cadastrado ainda.")
 
 # ----- Funções Auxiliares (mantidas do código base) -----
 def parse_menu_string(menu_data_string):
