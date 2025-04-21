@@ -441,11 +441,12 @@ with tab2:
 
 # --- Tab 3: Cadastro de Recebimentos ---
 with tab3:
-    st.header("💰 Cadastro de Recebimentos Diários")
+    st.header("💰 Cadastro Diário")
 
     col_cadastro, col_visualizacao = st.columns(2)
 
     with col_cadastro:
+        st.subheader("💰 Cadastro de Vendas Diários")
         with st.form("daily_receipt_form"):
             data_hoje = st.date_input("Data do Recebimento", datetime.now().date())
             dinheiro = st.number_input("Dinheiro (R$)", min_value=0.0, step=0.50, format="%.2f", label_visibility="visible")
