@@ -441,11 +441,13 @@ with tab2:
 
 # --- Tab 3: Cadastro de Recebimentos ---
 with tab3:
-    st.header("💰 Cadastro de Recebimentos Diários")
+    #st.header("💰 Cadastro de Recebimentos Diários")
 
     col_cadastro, col_visualizacao = st.columns(2)
 
     with col_cadastro:
+        st.subheader("💰 Cadastro de Recebimentos Diários")
+
         with st.form("daily_receipt_form"):
             data_hoje = st.date_input("Data do Recebimento", datetime.now().date())
             dinheiro = st.number_input("Dinheiro (R$)", min_value=0.0, step=0.50, format="%.2f", label_visibility="visible")
@@ -462,6 +464,7 @@ with tab3:
 
     with col_visualizacao:
         st.subheader("Visualização dos Recebimentos")
+        
         if not df_receipts.empty:
             # Converter a coluna 'Data' para datetime se não estiver
             if not pd.api.types.is_datetime64_any_dtype(df_receipts['Data']):
@@ -498,7 +501,7 @@ with tab3:
             else:
                 df_dia = df_mes.copy()
 
-            st.header("Totais Diários")
+    st.header("Totais Diários")
             df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
             plot_diario = alt.Chart(df_dia).mark_bar().encode(
                 x=alt.X('Data_Formatada:N', axis=alt.Axis(title='Data')),
@@ -509,7 +512,7 @@ with tab3:
             ).interactive()
             st.altair_chart(plot_diario, use_container_width=True)
 
-            st.header("Detalhes dos Recebimentos")
+    st.header("Detalhes dos Recebimentos")
             df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
             display_receipts_table(df_dia[['Data_Formatada', 'Dinheiro', 'Cartao', 'Pix', 'Total']].rename(columns={'Data_Formatada': 'Data'}))
 
