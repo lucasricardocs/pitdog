@@ -443,8 +443,7 @@ with tab2:
 with tab3:
     #st.header("💰 Cadastro de Recebimentos Diários")
 
-    col_cadastro, col_visualizacao = st.columns(2)
-    col_visu = st.columns(1)
+    col_cadastro, col_visualizacao = st.columns(1)
 
     with col_cadastro:
         st.subheader("💰 Cadastro de Recebimentos Diários")
@@ -501,8 +500,7 @@ with tab3:
                 df_dia = df_mes[df_mes['Dia'] == dia_selecionado]
             else:
                 df_dia = df_mes.copy()
-
-        with col_visualizacao:
+                
             st.header("Totais Diários")
             df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
             plot_diario = alt.Chart(df_dia).mark_bar().encode(
