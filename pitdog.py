@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 from datetime import datetime
-import random
 import os
 from itertools import product
 
@@ -73,21 +72,30 @@ def save_data(df):
 def exhaustive_combination_search(item_prices, target_value, max_quantity):
     """
     Realiza uma busca exaustiva para encontrar a melhor combinação de itens que mais se aproxima do valor-alvo.
+    Garantia: Nenhuma combinação ultrapassa o valor-alvo.
     """
     best_combination = {}
     best_diff = float('inf')  # Diferença inicial infinita
 
+    # Obtemos os itens e os ranges possíveis para as combinações
     items = list(item_prices.keys())
-    ranges = [range(max_quantity + 1) for _ in items]  # Cria intervalos de 0 até max_quantity para cada item
+    ranges = [range(max_quantity + 1) for _ in items]  # Cria intervalos de 0 até max_quantity por item
 
+    # Iteramos por todas as combinações possíveis
     for quantities in product(*ranges):
         combination = {item: qty for item, qty in zip(items, quantities)}
+        
+        # Calcula o valor total da combinação
         total_value = calculate_combination_value(combination, item_prices)
         
+        # Ignora combinações que ultrapassam o valor-alvo
         if total_value > target_value:
-            continue
-        
+            continue  # Passa para a próxima combinação
+
+        # Calcula a diferença entre o valor-alvo e o valor total da combinação
         diff = target_value - total_value
+        
+        # Atualiza a melhor combinação caso seja mais próxima do alvo
         if diff < best_diff:
             best_diff = diff
             best_combination = combination
@@ -120,11 +128,15 @@ with st.sidebar:
     sandwich_percentage = 100 - drink_percentage
     st.caption(f"({sandwich_percentage}% será alocado para Sanduíches 🍔)")
 
-    max_quantity = st.slider(
-        "Quantidade máxima por item",
+    max_quantity_sanduiches = st.slider(
+        "Quantidade máxima por Sanduíche",
         min_value=1, max_value=20, value=10, step=1
     )
-    st.info("As combinações são calculadas exaustivamente com limite configurado.")
+    max_quantity_bebidas = st.slider(
+        "Quantidade máxima por Bebida",
+        min_value=1, max_value=20, value=10, step=1
+    )
+    st.info("As combinações são calculadas exaustivamente com limites separados para sanduíches e bebidas.")
 
 # --- Abas ---
 tab1, tab2, tab3 = st.tabs(["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💰 Cadastro de Recebimentos"])
@@ -164,40 +176,24 @@ with tab2:
     if vendas:
         for forma, total_pagamento in vendas.items():
             st.subheader(f"Forma de Pagamento: {forma} (Total: {format_currency(total_pagamento)})")
-            # Definição dos Cardápios
             dados_sanduiches = """
-            X Salada Simples R$ 18,00
-            X Salada Especial R$ 20,00
-            X Especial Duplo R$ 24,00
-            X Bacon Simples R$ 22,00
-            X Bacon Especial R$ 24,00
-            X Bacon Duplo R$ 28,00
-            X Hamburgão R$ 35,00
-            X Mata-Fome R$ 39,00
-            X Frango Simples R$ 22,00
-            X Frango Especial R$ 24,00
-            X Frango Bacon R$ 27,00
-            X Frango Tudo R$ 30,00
-            X Lombo Simples R$ 23,00
-            X Lombo Especial R$ 25,00
-            X Lombo Bacon R$ 28,00
-            X Lombo Tudo R$ 31,00
-            X Filé Simples R$ 28,00
-            X Filé Especial R$ 30,00
-            X Filé Bacon R$ 33,00
-            X Filé Tudo R$ 36,00
-            Cebola R$ 0.50
+                X Salada Simples R$ 18,00
+                X Salada Especial R$ 20,00
+                X Bacon Simples R$ 22,00
+                X Bacon Especial R$ 24,00
+                X Bacon Duplo R$ 28,00
+                X Frango Simples R$ 22,00
+                X Frango Especial R$ 24,00
+                Cebola R$ 0.50
             """
             dados_bebidas = """
-            Suco R$ 10,00
-            Creme R$ 15,00
-            Refri caçula R$ 3.50
-            Refri Lata R$ 7,00
-            Refri 600 R$ 8,00
-            Refri 1L R$ 10,00
-            Refri 2L R$ 15,00
-            Água R$ 3,00
-            Água com Gas R$ 4,00
+                Suco R$ 10,00
+                Creme R$ 15,00
+                Refri Lata R$ 7,00
+                Refri 600ml R$ 8,00
+                Refri 2L R$ 15,00
+                Água R$ 3,00
+                Água com Gás R$ 4,00
             """
             sanduiches_precos = parse_menu_string(dados_sanduiches)
             bebidas_precos = parse_menu_string(dados_bebidas)
@@ -205,8 +201,8 @@ with tab2:
             target_bebidas = round(total_pagamento * (drink_percentage / 100.0), 2)
             target_sanduiches = round(total_pagamento - target_bebidas, 2)
 
-            comb_bebidas = exhaustive_combination_search(bebidas_precos, target_bebidas, max_quantity)
-            comb_sanduiches = exhaustive_combination_search(sanduiches_precos, target_sanduiches, max_quantity)
+            comb_bebidas = exhaustive_combination_search(bebidas_precos, target_bebidas, max_quantity_bebidas)
+            comb_sanduiches = exhaustive_combination_search(sanduiches_precos, target_sanduiches, max_quantity_sanduiches)
 
             st.markdown(f"**Combinação de Bebidas:** {comb_bebidas}")
             st.markdown(f"**Combinação de Sanduíches:** {comb_sanduiches}")
