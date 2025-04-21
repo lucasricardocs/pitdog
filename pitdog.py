@@ -175,7 +175,7 @@ def display_receipts_table(df):
 # ----- Interface Streamlit -----
 
 # Colunas para Título e Logo
-col_title1, col_title2 = st.columns([0.20, 0.80])
+col_title1, col_title2 = st.columns([0.30, 0.70])
 with col_title1:
     st.image("logo.png", width=1000)  # Usa a imagem local logo.png
 with col_title2:
