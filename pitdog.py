@@ -440,164 +440,97 @@ with tab2:
                 )
 
 # --- Tab 3: Cadastro de Recebimentos ---
-
-# --- Tab 3: Cadastro de Recebimentos (Versão Integrada) ---
 with tab3:
-    # Configuração de estilo
-    st.markdown("""
-    <style>
-        .receipt-card {
-            background-color: #ffffff;
-            border-radius: 10px;
-            padding: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        .metric-card {
-            background-color: #f8f9fa;
-            border-left: 4px solid #2e86ab;
-            border-radius: 5px;
-            padding: 10px;
-        }
-        .header-icon {
-            font-size: 1.5em;
-            vertical-align: middle;
-            margin-right: 10px;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+    #st.header("💰 Cadastro de Recebimentos Diários")
 
-    # Layout principal
-    col1, col2 = st.columns([1, 1.5], gap="large")
+    col_cadastro, col_visualizacao = st.columns(2)
 
-    with col1:
-        # Card de Cadastro
-        with st.container(border=True):
-            st.markdown('<h2><span class="header-icon">💰</span>Cadastro</h2>', unsafe_allow_html=True)
-            
-            with st.form("receipt_form", clear_on_submit=True):
-                data = st.date_input("**Data**", datetime.now().date(), key="receipt_date")
-                
-                cols = st.columns(3)
-                with cols[0]:
-                    cash = st.number_input("**Dinheiro**", min_value=0.0, value=0.0, step=10.0, format="%.2f", key="cash_input")
-                with cols[1]:
-                    card = st.number_input("**Cartão**", min_value=0.0, value=0.0, step=10.0, format="%.2f", key="card_input")
-                with cols[2]:
-                    pix = st.number_input("**Pix**", min_value=0.0, value=0.0, step=10.0, format="%.2f", key="pix_input")
-                
-                submitted = st.form_submit_button("💾 Salvar Recebimento", use_container_width=True)
-                
-                if submitted:
-                    if data > datetime.now().date():
-                        st.error("Data não pode ser futura!")
-                    elif cash == 0 and card == 0 and pix == 0:
-                        st.warning("Insira pelo menos um valor positivo!")
-                    else:
-                        new_entry = {
-                            'Data': pd.to_datetime(data),
-                            'Dinheiro': cash,
-                            'Cartao': card,
-                            'Pix': pix
-                        }
-                        df_receipts = pd.concat([df_receipts, pd.DataFrame([new_entry])], ignore_index=True)
-                        save_data(df_receipts)
-                        st.success(f"Recebimento de {data.strftime('%d/%m/%Y')} salvo!")
-                        time.sleep(1)
-                        st.rerun()
+    with col_cadastro:
+        st.subheader("💰 Cadastro de Recebimentos Diários")
 
-    with col2:
-        # Seção de Visualização
+        with st.form("daily_receipt_form"):
+            data_hoje = st.date_input("Data do Recebimento", datetime.now().date())
+            dinheiro = st.number_input("Dinheiro (R$)", min_value=0.0, step=0.50, format="%.2f", label_visibility="visible")
+            cartao = st.number_input("Cartão (R$)", min_value=0.0, step=0.50, format="%.2f", label_visibility="visible")
+            pix = st.number_input("Pix (R$)", min_value=0.0, step=0.50, format="%.2f", label_visibility="visible")
+            submitted = st.form_submit_button("Adicionar Recebimento")
+
+            if submitted:
+                new_receipt = pd.DataFrame([{'Data': pd.to_datetime(data_hoje), 'Dinheiro': dinheiro, 'Cartao': cartao, 'Pix': pix}])
+                df_receipts = pd.concat([df_receipts, new_receipt], ignore_index=True)
+                save_data(df_receipts)
+                st.success(f"Recebimento de {data_hoje.strftime('%d/%m/%Y')} adicionado e salvo!")
+                st.rerun()
+
+    with col_visualizacao:
+        st.subheader("Visualização dos Recebimentos")
+        
         if not df_receipts.empty:
-            # Pré-processamento dos dados
-            df = df_receipts.copy()
-            df['Data'] = pd.to_datetime(df['Data'])
-            df['Total'] = df['Dinheiro'] + df['Cartao'] + df['Pix']
-            df['Ano'] = df['Data'].dt.year
-            df['Mes'] = df['Data'].dt.month
-            df['Dia'] = df['Data'].dt.day
-            df['Data_Formatada'] = df['Data'].dt.strftime('%d/%m/%Y')
-            
-            # Filtros
-            with st.expander("🔍 Filtros", expanded=True):
-                cols = st.columns(3)
-                with cols[0]:
-                    year = st.selectbox("Ano", sorted(df['Ano'].unique(), index=0)
-                    df = df[df['Ano'] == year]
-                with cols[1]:
-                    month = st.selectbox("Mês", sorted(df['Mes'].unique()), format_func=lambda x: [
-                        'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 
-                        'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
-                    ][x-1]
-                    df = df[df['Mes'] == month]
-                with cols[2]:
-                    day_options = ['Todos'] + sorted(df['Dia'].unique())
-                    day = st.selectbox("Dia", day_options)
-                    if day != 'Todos':
-                        df = df[df['Dia'] == day]
+            # Converter a coluna 'Data' para datetime se não estiver
+            if not pd.api.types.is_datetime64_any_dtype(df_receipts['Data']):
+                try:
+                    df_receipts['Data'] = pd.to_datetime(df_receipts['Data'])
+                except Exception as e:
+                    st.error(f"Erro ao converter a coluna 'Data': {e}")
+                    st.stop()
 
-            # Métricas
-            with st.container(border=True):
-                cols = st.columns(4)
-                with cols[0]:
-                    st.markdown('<div class="metric-card"><b>Total</b><br>R$ {:.2f}</div>'.format(df['Total'].sum()), unsafe_allow_html=True)
-                with cols[1]:
-                    st.markdown('<div class="metric-card"><b>Dinheiro</b><br>R$ {:.2f}</div>'.format(df['Dinheiro'].sum()), unsafe_allow_html=True)
-                with cols[2]:
-                    st.markdown('<div class="metric-card"><b>Cartão</b><br>R$ {:.2f}</div>'.format(df['Cartao'].sum()), unsafe_allow_html=True)
-                with cols[3]:
-                    st.markdown('<div class="metric-card"><b>Pix</b><br>R$ {:.2f}</div>'.format(df['Pix'].sum()), unsafe_allow_html=True)
+            df_receipts['Total'] = df_receipts['Dinheiro'] + df_receipts['Cartao'] + df_receipts['Pix']
+            df_receipts['Ano'] = df_receipts['Data'].dt.year
+            df_receipts['Mes'] = df_receipts['Data'].dt.month
+            df_receipts['Dia'] = df_receipts['Data'].dt.day
 
-            # Abas de visualização
-            tab_graph, tab_table, tab_export = st.tabs(["📊 Gráficos", "📋 Tabela", "💾 Exportar"])
+            anos_disponiveis = sorted(df_receipts['Ano'].unique(), reverse=True)
+            ano_selecionado = st.selectbox("Selecionar Ano", anos_disponiveis, index=0)
+            df_ano = df_receipts[df_receipts['Ano'] == ano_selecionado]
 
-            with tab_graph:
-                st.markdown("**Totais Diários**")
-                st.bar_chart(df.set_index('Data_Formatada')['Total'], color="#2e86ab")
+            meses_disponiveis = sorted(df_ano['Mes'].unique())
+            nomes_meses = {1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr', 5: 'Mai', 6: 'Jun', 7: 'Jul', 8: 'Ago', 9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez'}
+            meses_nomes_disponiveis = [f"{m} - {nomes_meses[m]}" for m in meses_disponiveis]
+            mes_selecionado_index = 0
+            if meses_nomes_disponiveis:
+                mes_selecionado_str = st.selectbox("Selecionar Mês", meses_nomes_disponiveis, index=0)
+                mes_selecionado = int(mes_selecionado_str.split(' - ')[0])
+                df_mes = df_ano[df_ano['Mes'] == mes_selecionado]
+            else:
+                df_mes = df_ano.copy()
+
+            dias_disponiveis = sorted(df_mes['Dia'].unique())
+            dia_selecionado = st.selectbox("Selecionar Dia", ['Todos'] + list(dias_disponiveis), index=0)
+            if dia_selecionado != 'Todos':
+                df_dia = df_mes[df_mes['Dia'] == dia_selecionado]
+            else:
+                df_dia = df_mes.copy()
                 
-                st.markdown("**Distribuição por Tipo**")
-                df_melted = df.melt(id_vars=['Data_Formatada'], value_vars=['Dinheiro', 'Cartao', 'Pix'])
-                st.altair_chart(
-                    alt.Chart(df_melted).mark_bar().encode(
-                        x='Data_Formatada:N',
-                        y='value:Q',
-                        color='variable:N',
-                        tooltip=['Data_Formatada', 'variable', 'value']
-                    ).properties(height=300),
-                    use_container_width=True
-                )
+            st.header("Totais Diários")
+            df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
+            plot_diario = alt.Chart(df_dia).mark_bar().encode(
+                x=alt.X('Data_Formatada:N', axis=alt.Axis(title='Data')),
+                y=alt.Y('Total:Q', axis=alt.Axis(title='Valor (R$)')),
+                tooltip=['Data_Formatada', 'Total']
+            ).properties(
+                title=f"Total Recebido em {dia_selecionado if dia_selecionado != 'Todos' else 'Todos os Dias'} de {nomes_meses.get(mes_selecionado, '') if meses_nomes_disponiveis else 'Todos os Meses'} de {ano_selecionado}"
+            ).interactive()
+            st.altair_chart(plot_diario, use_container_width=True)
 
-            with tab_table:
-                edit = st.toggle("Habilitar Edição", False)
-                if edit:
-                    edited_df = st.data_editor(
-                        df[['Data_Formatada', 'Dinheiro', 'Cartao', 'Pix', 'Total']],
-                        column_config={
-                            "Data_Formatada": "Data",
-                            "Total": st.column_config.NumberColumn("Total", format="R$ %.2f", disabled=True)
-                        },
-                        num_rows="dynamic"
-                    )
-                    
-                    if st.button("Salvar Alterações"):
-                        # Lógica para atualizar os dados originais
-                        st.success("Dados atualizados!")
-                else:
-                    st.dataframe(
-                        df[['Data_Formatada', 'Dinheiro', 'Cartao', 'Pix', 'Total']].rename(
-                            columns={'Data_Formatada': 'Data'}
-                        ).style.format({
-                            'Dinheiro': 'R$ {:.2f}',
-                            'Cartao': 'R$ {:.2f}',
-                            'Pix': 'R$ {:.2f}',
-                            'Total': 'R$ {:.2f}'
-                        }),
-                        hide_index=True
-                    )
+            st.header("Detalhes dos Recebimentos")
+            df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
+            display_receipts_table(df_dia[['Data_Formatada', 'Dinheiro', 'Cartao', 'Pix', 'Total']].rename(columns={'Data_Formatada': 'Data'}))
+
+            st.header("Gráfico de Formas de Pagamento")
+            df_melted = df_dia.melt(id_vars=['Data'], value_vars=['Dinheiro', 'Cartao', 'Pix'], var_name='Forma', value_name='Valor')
+            df_melted['Data_Formatada'] = df_melted['Data'].dt.strftime('%d/%m/%Y')
+            chart_pagamentos = alt.Chart(df_melted).mark_bar().encode(
+                x=alt.X('Data_Formatada:N', axis=alt.Axis(title='Data')),
+                y=alt.Y('Valor:Q', axis=alt.Axis(title='Valor (R$)')),
+                color='Forma:N',
+                tooltip=['Data_Formatada', 'Forma', 'Valor']
+            ).properties(
+                title=f"Recebimentos por Forma de Pagamento em {dia_selecionado if dia_selecionado != 'Todos' else 'Todos os Dias'} de {nomes_meses.get(mes_selecionado, '') if meses_nomes_disponiveis else 'Todos os Meses'} de {ano_selecionado}"
+            ).interactive() # Tornar o gráfico interativo
+            st.altair_chart(chart_pagamentos, use_container_width=True)
 
         else:
             st.info("Nenhum recebimento cadastrado ainda.")
-            st.image("https://cdn-icons-png.flaticon.com/512/4076/4076478.png", width=150)
 
 if __name__ == '__main__':
     pass
