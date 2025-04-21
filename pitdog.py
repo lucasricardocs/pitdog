@@ -3,6 +3,10 @@ import pandas as pd
 import itertools
 from datetime import datetime
 import os
+import plotly.express as px
+import seaborn as sns
+import matplotlib.pyplot as plt
+import altair as alt
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Sistema de Gestão - Clips Burger", layout="centered", initial_sidebar_state="expanded")
@@ -201,5 +205,48 @@ with tab3:
     if not df_receipts.empty:
         df_receipts['Total'] = df_receipts['Dinheiro'] + df_receipts['Cartao'] + df_receipts['Pix']
         st.dataframe(df_receipts)
+
+        # Gráfico de barras
+        st.subheader("📊 Gráfico de Barras")
+        st.bar_chart(df_receipts[['Dinheiro', 'Cartao', 'Pix']])
+
+        # Gráfico de pizza
+        st.subheader("🎯 Gráfico de Pizza")
+        total_metodos = {
+            'Dinheiro': df_receipts['Dinheiro'].sum(),
+            'Cartão': df_receipts['Cartao'].sum(),
+            'Pix': df_receipts['Pix'].sum(),
+        }
+        fig_pie = px.pie(
+            names=total_metodos.keys(),
+            values=total_metodos.values(),
+            title="Distribuição dos Métodos de Pagamento",
+        )
+        st.plotly_chart(fig_pie)
+
+        # Gráfico de linha
+        st.subheader("📈 Evolução dos Recebimentos")
+        df_diario = df_receipts.groupby('Data')['Total'].sum().reset_index()
+        st.line_chart(df_diario.set_index('Data'))
+
+        # Gráfico cumulativo de área
+        st.subheader("📊 Gráfico de Área Cumulativa")
+        df_receipts['Cumulativo'] = df_receipts['Total'].cumsum()
+        area_chart = alt.Chart(df_receipts).mark_area().encode(
+            x='Data:T',
+            y='Cumulativo:Q',
+            tooltip=['Data', 'Cumulativo']
+        ).properties(
+            title="Somatório Cumulativo dos Recebimentos"
+        )
+        st.altair_chart(area_chart, use_container_width=True)
+
+        # Mapa de calor
+        st.subheader("🔥 Mapa de Calor (Recebimentos por Dia da Semana)")
+        df_receipts['Dia da Semana'] = df_receipts['Data'].dt.day_name()
+        heatmap_data = df_receipts.groupby(['Dia da Semana']).sum()[['Dinheiro', 'Cartao', 'Pix']]
+        fig_heatmap, ax = plt.subplots()
+        sns.heatmap(heatmap_data, annot=True, fmt=".2f", cmap="YlGnBu", ax=ax)
+        st.pyplot(fig_heatmap)
     else:
         st.info("Nenhum recebimento cadastrado.")
