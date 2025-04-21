@@ -502,7 +502,7 @@ with tab3:
             else:
                 df_dia = df_mes.copy()
 
-        with col_visu:
+        with col_visualizacao:
             st.header("Totais Diários")
             df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
             plot_diario = alt.Chart(df_dia).mark_bar().encode(
