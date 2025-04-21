@@ -6,7 +6,7 @@ import random
 import os
 
 # --- CONFIGURAÇÃO DA PÁGINA (DEVE SER A PRIMEIRA CHAMADA STREAMLIT) ---
-st.set_page_config(page_title="Análise de Vendas & Combinações", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Sistema de Gestao - Clips Burger", layout="centered", initial_sidebar_state="expanded")
 
 # Nome do arquivo CSV para armazenar os dados
 CSV_FILE = 'recebimentos.csv'
@@ -174,12 +174,13 @@ def display_receipts_table(df):
 
 # ----- Interface Streamlit -----
 
-# Colunas para Título e Emoji
-col_title1, col_title2 = st.columns([0.9, 0.1])
+# Colunas para Título e Logo
+col_title1, col_title2 = st.columns([0.30, 0.70])
 with col_title1:
-    st.title("📊 Análise de Vendas e Geração de Combinações")
+    st.image("logo.png", width=1000)  # Usa a imagem local logo.png
 with col_title2:
-    st.image("https://cdn-icons-png.flaticon.com/128/1041/1041880.png", width=70)
+    st.title("Sistema de Gestão")
+    st.markdown("**Clip's Burger**") 
 
 st.markdown("""
 Bem-vindo(a)! Esta ferramenta ajuda a visualizar suas vendas por forma de pagamento
@@ -443,9 +444,9 @@ with tab2:
 with tab3:
     #st.header("💰 Cadastro de Recebimentos Diários")
 
-    col_cadastro, col_visualizacao = st.columns(2)
+    #col_cadastro, col_visualizacao = st.columns(2)
 
-    with col_cadastro:
+    #with col_cadastro:
         st.subheader("💰 Cadastro de Recebimentos Diários")
 
         with st.form("daily_receipt_form"):
@@ -462,7 +463,7 @@ with tab3:
                 st.success(f"Recebimento de {data_hoje.strftime('%d/%m/%Y')} adicionado e salvo!")
                 st.rerun()
 
-    with col_visualizacao:
+    #with col_visualizacao:
         st.subheader("Visualização dos Recebimentos")
         
         if not df_receipts.empty:
@@ -501,7 +502,7 @@ with tab3:
             else:
                 df_dia = df_mes.copy()
                 
-            st.header("Totais Diários")
+            st.subheader("Totais Diários")
             df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
             plot_diario = alt.Chart(df_dia).mark_bar().encode(
                 x=alt.X('Data_Formatada:N', axis=alt.Axis(title='Data')),
@@ -512,11 +513,7 @@ with tab3:
             ).interactive()
             st.altair_chart(plot_diario, use_container_width=True)
 
-            st.header("Detalhes dos Recebimentos")
-            df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
-            display_receipts_table(df_dia[['Data_Formatada', 'Dinheiro', 'Cartao', 'Pix', 'Total']].rename(columns={'Data_Formatada': 'Data'}))
-
-            st.header("Gráfico de Formas de Pagamento")
+            st.subheader("Gráfico de Formas de Pagamento")
             df_melted = df_dia.melt(id_vars=['Data'], value_vars=['Dinheiro', 'Cartao', 'Pix'], var_name='Forma', value_name='Valor')
             df_melted['Data_Formatada'] = df_melted['Data'].dt.strftime('%d/%m/%Y')
             chart_pagamentos = alt.Chart(df_melted).mark_bar().encode(
@@ -528,6 +525,11 @@ with tab3:
                 title=f"Recebimentos por Forma de Pagamento em {dia_selecionado if dia_selecionado != 'Todos' else 'Todos os Dias'} de {nomes_meses.get(mes_selecionado, '') if meses_nomes_disponiveis else 'Todos os Meses'} de {ano_selecionado}"
             ).interactive() # Tornar o gráfico interativo
             st.altair_chart(chart_pagamentos, use_container_width=True)
+
+            st.subheader("Detalhes dos Recebimentos")
+            df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
+            display_receipts_table(df_dia[['Data_Formatada', 'Dinheiro', 'Cartao', 'Pix', 'Total']].rename(columns={'Data_Formatada': 'Data'}))
+
 
         else:
             st.info("Nenhum recebimento cadastrado ainda.")
