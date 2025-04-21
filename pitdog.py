@@ -443,9 +443,9 @@ with tab2:
 with tab3:
     #st.header("💰 Cadastro de Recebimentos Diários")
 
-    col_cadastro, col_visualizacao = st.columns(2)
+    #col_cadastro, col_visualizacao = st.columns(2)
 
-    with col_cadastro:
+    #with col_cadastro:
         st.subheader("💰 Cadastro de Recebimentos Diários")
 
         with st.form("daily_receipt_form"):
@@ -462,7 +462,7 @@ with tab3:
                 st.success(f"Recebimento de {data_hoje.strftime('%d/%m/%Y')} adicionado e salvo!")
                 st.rerun()
 
-    with col_visualizacao:
+    #with col_visualizacao:
         st.subheader("Visualização dos Recebimentos")
         
         if not df_receipts.empty:
