@@ -177,9 +177,10 @@ def display_receipts_table(df):
 # Colunas para Título e Logo
 col_title1, col_title2 = st.columns([0.20, 0.80])
 with col_title1:
-    st.image("logo.png", width=500)  # Usa a imagem local logo.png
+    st.image("logo.png", width=100)  # Usa a imagem local logo.png
 with col_title2:
-    st.title("Sistema de Gestão - Clip's Burger")
+    st.title("Sistema de Gestão")
+    st.subtitle("Clips Burger")
 
 st.markdown("""
 Bem-vindo(a) ao sistema de gestão do **Clip's Burger**!  
