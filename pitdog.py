@@ -174,15 +174,16 @@ def display_receipts_table(df):
 
 # ----- Interface Streamlit -----
 
-# Colunas para Título e Emoji
-col_title1, col_title2 = st.columns([0.9, 0.1])
+# Colunas para Título e Logo
+col_title1, col_title2 = st.columns([0.85, 0.15])
 with col_title1:
-    st.title("📊 Análise de Vendas e Geração de Combinações")
+    st.title("📊 Sistema de Gestão do Clip's Burger")
 with col_title2:
-    st.image("https://cdn-icons-png.flaticon.com/128/1041/1041880.png", width=70)
+    st.image("logo.png", width=90)  # Usa a imagem local logo.png
 
 st.markdown("""
-Bem-vindo(a)! Esta ferramenta ajuda a visualizar suas vendas por forma de pagamento
+Bem-vindo(a) ao sistema de gestão do **Clip's Burger**!  
+Esta ferramenta ajuda a visualizar suas vendas por forma de pagamento
 e tenta encontrar combinações *hipotéticas* de produtos que poderiam corresponder a esses totais.
 
 **Como usar:**
