@@ -255,3 +255,6 @@ with tab3:
             tooltip=["Data:T", "Forma:N", "Valor:Q"]
         ).properties(title="Recebimentos por Forma de Pagamento")
         st.altair_chart(chart, use_container_width=True)
+
+if __name__ == "__main__":
+    main()
