@@ -6,7 +6,7 @@ import random
 import os
 
 # --- CONFIGURAÇÃO DA PÁGINA (DEVE SER A PRIMEIRA CHAMADA STREAMLIT) ---
-st.set_page_config(page_title="Análise de Vendas & Combinações", layout="center", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Análise de Vendas & Combinações", layout="centered", initial_sidebar_state="expanded")
 
 # Nome do arquivo CSV para armazenar os dados
 CSV_FILE = 'recebimentos.csv'
