@@ -102,159 +102,148 @@ def exhaustive_combination_search(item_prices, target_value, max_quantity):
 
     return best_combination
 
-df_receipts = load_data()
+def main():
+    df_receipts = load_data()
 
-# Colunas para Título e Logo
-col_title1, col_title2 = st.columns([0.30, 0.70])
-with col_title1:
-    st.image("logo.png", width=1000)  # Usa a imagem local logo.png
-with col_title2:
-    st.title("Sistema de Gestão")
-    st.markdown("**Clip's Burger**") 
+    # Colunas para Título e Logo
+    col_title1, col_title2 = st.columns([0.30, 0.70])
+    with col_title1:
+        st.image("logo.png", width=1000)  # Usa a imagem local logo.png
+    with col_title2:
+        st.title("Sistema de Gestão")
+        st.markdown("**Clip's Burger**") 
 
-st.markdown("""
-Bem-vindo(a)! Esta ferramenta ajuda a visualizar suas vendas por forma de pagamento
-e tenta encontrar combinações *hipotéticas* de produtos que poderiam corresponder a esses totais.
-""")
-st.divider()
+    st.markdown("""
+    Bem-vindo(a)! Esta ferramenta ajuda a visualizar suas vendas por forma de pagamento
+    e tenta encontrar combinações *hipotéticas* de produtos que poderiam corresponder a esses totais.
+    """)
+    st.divider()
 
-# --- Configuration Sidebar ---
-with st.sidebar:
-    st.header("⚙️ Configurações")
-    drink_percentage = st.slider(
-        "Percentual para Bebidas (%) 🍹",
-        min_value=0, max_value=100, value=20, step=5
-    )
-    sandwich_percentage = 100 - drink_percentage
-    st.caption(f"({sandwich_percentage}% será alocado para Sanduíches 🍔)")
+    # --- Configuration Sidebar ---
+    with st.sidebar:
+        st.header("⚙️ Configurações")
+        drink_percentage = st.slider(
+            "Percentual para Bebidas (%) 🍹",
+            min_value=0, max_value=100, value=20, step=5
+        )
+        sandwich_percentage = 100 - drink_percentage
+        st.caption(f"({sandwich_percentage}% será alocado para Sanduíches 🍔)")
 
-    max_quantity_sanduiches = st.slider(
-        "Quantidade máxima por Sanduíche",
-        min_value=1, max_value=20, value=10, step=1
-    )
-    max_quantity_bebidas = st.slider(
-        "Quantidade máxima por Bebida",
-        min_value=1, max_value=20, value=10, step=1
-    )
-    st.info("As combinações são calculadas exaustivamente com limites separados para sanduíches e bebidas.")
+        max_quantity_sanduiches = st.slider(
+            "Quantidade máxima por Sanduíche",
+            min_value=1, max_value=20, value=10, step=1
+        )
+        max_quantity_bebidas = st.slider(
+            "Quantidade máxima por Bebida",
+            min_value=1, max_value=20, value=10, step=1
+        )
+        st.info("As combinações são calculadas exaustivamente com limites separados para sanduíches e bebidas.")
 
-# --- Abas ---
-tab1, tab2, tab3 = st.tabs(["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💰 Cadastro de Recebimentos"])
+    # --- Abas ---
+    tab1, tab2, tab3 = st.tabs(["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💰 Cadastro de Recebimentos"])
 
-# --- Tab 1: Resumo das Vendas ---
-with tab1:
-    st.header("📈 Resumo das Vendas")
-    arquivo = st.file_uploader("📤 Envie o arquivo de transações (.csv ou .xlsx)", type=["csv", "xlsx"])
+    # Tab 1: Resumo das Vendas
+    with tab1:
+        st.header("📈 Resumo das Vendas")
+        arquivo = st.file_uploader("📤 Envie o arquivo de transações (.csv ou .xlsx)", type=["csv", "xlsx"])
 
-    vendas = {}
-    if arquivo:
-        with st.spinner(f'Processando "{arquivo.name}"...'):
-            try:
-                if arquivo.name.endswith(".csv"):
-                    df = pd.read_csv(arquivo, sep=';', encoding='utf-8', dtype=str)
-                else:
-                    df = pd.read_excel(arquivo, dtype=str)
+        vendas = {}
+        if arquivo:
+            with st.spinner(f'Processando "{arquivo.name}"...'):
+                try:
+                    if arquivo.name.endswith(".csv"):
+                        df = pd.read_csv(arquivo, sep=';', encoding='utf-8', dtype=str)
+                    else:
+                        df = pd.read_excel(arquivo, dtype=str)
 
-                st.success(f"Arquivo '{arquivo.name}' carregado com sucesso!")
-                required_columns = ['Tipo', 'Bandeira', 'Valor']
-                if not all(col in df.columns for col in required_columns):
-                    st.error(f"Erro: O arquivo precisa conter as colunas: {', '.join(required_columns)}")
-                    st.stop()
+                    st.success(f"Arquivo '{arquivo.name}' carregado com sucesso!")
+                    required_columns = ['Tipo', 'Bandeira', 'Valor']
+                    if not all(col in df.columns for col in required_columns):
+                        st.error(f"Erro: O arquivo precisa conter as colunas: {', '.join(required_columns)}")
+                        st.stop()
 
-                df['Valor_Numeric'] = pd.to_numeric(
-                    df['Valor'].str.replace('.', '', regex=False).str.replace(',', '.', regex=False),
-                    errors='coerce'
-                )
-                df['Categoria'] = df['Tipo'] + ' ' + df['Bandeira']
-                categorias_desejadas = {
-                    'débito visa': 'Débito Visa',
-                    'débito mastercard': 'Débito MasterCard',
-                    'débito elo': 'Débito Elo',
-                    'crédito visa': 'Crédito Visa',
-                    'crédito mastercard': 'Crédito MasterCard',
-                    'crédito elo': 'Crédito Elo',
-                    'crédito american express': 'Crédito American Express',
-                    'pix': 'PIX'
-                }
-                df['Forma Nomeada'] = df['Categoria'].map(categorias_desejadas)
-                df_filtrado = df.dropna(subset=['Forma Nomeada'])
-                vendas = df_filtrado.groupby('Forma Nomeada')['Valor_Numeric'].sum().to_dict()
-                st.write(vendas)
-            except Exception as e:
-                st.error(f"Erro no processamento do arquivo: {str(e)}")
+                    df['Valor_Numeric'] = pd.to_numeric(
+                        df['Valor'].str.replace('.', '', regex=False).str.replace(',', '.', regex=False),
+                        errors='coerce'
+                    )
+                    vendas = df.groupby('Tipo')['Valor_Numeric'].sum().to_dict()
+                    st.write(vendas)
+                except Exception as e:
+                    st.error(f"Erro no processamento do arquivo: {str(e)}")
 
-# --- Tab 2: Detalhes das Combinações ---
-with tab2:
-    st.header("🧩 Detalhes das Combinações Geradas")
-    if vendas:
-        for forma, total_pagamento in vendas.items():
-            st.subheader(f"Forma de Pagamento: {forma} (Total: {format_currency(total_pagamento)})")
-            dados_sanduiches = """
-                X Salada Simples R$ 18,00
-                X Salada Especial R$ 20,00
-                X Bacon Simples R$ 22,00
-                X Bacon Especial R$ 24,00
-                X Bacon Duplo R$ 28,00
-                X Frango Simples R$ 22,00
-                X Frango Especial R$ 24,00
-                Cebola R$ 0.50
-            """
-            dados_bebidas = """
-                Suco R$ 10,00
-                Creme R$ 15,00
-                Refri Lata R$ 7,00
-                Refri 600ml R$ 8,00
-                Refri 2L R$ 15,00
-                Água R$ 3,00
-                Água com Gás R$ 4,00
-            """
-            sanduiches_precos = parse_menu_string(dados_sanduiches)
-            bebidas_precos = parse_menu_string(dados_bebidas)
+    # Tab 2: Detalhes das Combinações
+    with tab2:
+        st.header("🧩 Detalhes das Combinações Geradas")
+        if vendas:
+            for forma, total_pagamento in vendas.items():
+                st.subheader(f"Forma de Pagamento: {forma} (Total: {format_currency(total_pagamento)})")
+                dados_sanduiches = """
+                    X Salada Simples R$ 18,00
+                    X Salada Especial R$ 20,00
+                    X Bacon Simples R$ 22,00
+                    X Bacon Especial R$ 24,00
+                    X Bacon Duplo R$ 28,00
+                    X Frango Simples R$ 22,00
+                    X Frango Especial R$ 24,00
+                    Cebola R$ 0.50
+                """
+                dados_bebidas = """
+                    Suco R$ 10,00
+                    Creme R$ 15,00
+                    Refri Lata R$ 7,00
+                    Refri 600ml R$ 8,00
+                    Refri 2L R$ 15,00
+                    Água R$ 3,00
+                    Água com Gás R$ 4,00
+                """
+                sanduiches_precos = parse_menu_string(dados_sanduiches)
+                bebidas_precos = parse_menu_string(dados_bebidas)
 
-            target_bebidas = round(total_pagamento * (drink_percentage / 100.0), 2)
-            target_sanduiches = round(total_pagamento - target_bebidas, 2)
+                target_bebidas = round(total_pagamento * (drink_percentage / 100.0), 2)
+                target_sanduiches = round(total_pagamento - target_bebidas, 2)
 
-            comb_bebidas = exhaustive_combination_search(bebidas_precos, target_bebidas, max_quantity_bebidas)
-            comb_sanduiches = exhaustive_combination_search(sanduiches_precos, target_sanduiches, max_quantity_sanduiches)
+                comb_bebidas = exhaustive_combination_search(bebidas_precos, target_bebidas, max_quantity_bebidas)
+                comb_sanduiches = exhaustive_combination_search(sanduiches_precos, target_sanduiches, max_quantity_sanduiches)
 
-            st.markdown(f"**Combinação de Bebidas:** {comb_bebidas}")
-            st.markdown(f"**Combinação de Sanduíches:** {comb_sanduiches}")
-    else:
-        st.info("Nenhuma venda processada na aba anterior.")
+                st.markdown(f"**Combinação de Bebidas:** {comb_bebidas}")
+                st.markdown(f"**Combinação de Sanduíches:** {comb_sanduiches}")
+        else:
+            st.info("Nenhuma venda processada na aba anterior.")
 
-# --- Tab 3: Cadastro de Recebimentos ---
-with tab3:
-    st.header("💰 Cadastro de Recebimentos")
-    st.caption("Cadastre e visualize os recebimentos diários de forma prática.")
+    # Tab 3: Cadastro de Recebimentos
+    with tab3:
+        st.header("💰 Cadastro de Recebimentos")
+        st.caption("Cadastre e visualize os recebimentos diários de forma prática.")
 
-    with st.form("daily_receipt_form"):
-        data_hoje = st.date_input("Data do Recebimento", datetime.now().date())
-        dinheiro = st.number_input("Dinheiro (R$)", min_value=0.0, step=0.50, format="%.2f")
-        cartao = st.number_input("Cartão (R$)", min_value=0.0, step=0.50, format="%.2f")
-        pix = st.number_input("Pix (R$)", min_value=0.0, step=0.50, format="%.2f")
-        submitted = st.form_submit_button("Adicionar Recebimento")
+        with st.form("daily_receipt_form"):
+            data_hoje = st.date_input("Data do Recebimento", datetime.now().date())
+            dinheiro = st.number_input("Dinheiro (R$)", min_value=0.0, step=0.50, format="%.2f")
+            cartao = st.number_input("Cartão (R$)", min_value=0.0, step=0.50, format="%.2f")
+            pix = st.number_input("Pix (R$)", min_value=0.0, step=0.50, format="%.2f")
+            submitted = st.form_submit_button("Adicionar Recebimento")
 
-        if submitted:
-            new_receipt = pd.DataFrame([{'Data': data_hoje, 'Dinheiro': dinheiro, 'Cartao': cartao, 'Pix': pix}])
-            df_receipts = pd.concat([df_receipts, new_receipt], ignore_index=True)
-            save_data(df_receipts)
-            st.success(f"Recebimento de {data_hoje.strftime('%d/%m/%Y')} adicionado com sucesso!")
-            st.experimental_rerun()
+            if submitted:
+                new_receipt = pd.DataFrame([{'Data': data_hoje, 'Dinheiro': dinheiro, 'Cartao': cartao, 'Pix': pix}])
+                df_receipts = pd.concat([df_receipts, new_receipt], ignore_index=True)
+                save_data(df_receipts)
+                st.success(f"Recebimento de {data_hoje.strftime('%d/%m/%Y')} adicionado com sucesso!")
+                st.experimental_rerun()
 
-    if not df_receipts.empty:
-        st.subheader("Recebimentos Cadastrados")
-        df_receipts['Total'] = df_receipts['Dinheiro'] + df_receipts['Cartao'] + df_receipts['Pix']
-        st.dataframe(df_receipts)
+        if not df_receipts.empty:
+            st.subheader("Recebimentos Cadastrados")
+            df_receipts['Total'] = df_receipts['Dinheiro'] + df_receipts['Cartao'] + df_receipts['Pix']
+            st.dataframe(df_receipts)
 
-        st.subheader("Gráfico de Recebimentos por Forma de Pagamento")
-        df_melted = df_receipts.melt(id_vars=["Data"], value_vars=["Dinheiro", "Cartao", "Pix"], var_name="Forma", value_name="Valor")
-        chart = alt.Chart(df_melted).mark_bar().encode(
-            x="Data:T",
-            y="Valor:Q",
-            color="Forma:N",
-            tooltip=["Data:T", "Forma:N", "Valor:Q"]
-        ).properties(title="Recebimentos por Forma de Pagamento")
-        st.altair_chart(chart, use_container_width=True)
+            st.subheader("Gráfico de Recebimentos por Forma de Pagamento")
+            df_melted = df_receipts.melt(id_vars=["Data"], value_vars=["Dinheiro", "Cartao", "Pix"], var_name="Forma", value_name="Valor")
+            chart = alt.Chart(df_melted).mark_bar().encode(
+                x="Data:T",
+                y="Valor:Q",
+                color="Forma:N",
+                tooltip=["Data:T", "Forma:N", "Valor:Q"]
+            ).properties(title="Recebimentos por Forma de Pagamento")
+            st.altair_chart(chart, use_container_width=True)
+
 
 if __name__ == "__main__":
     main()
