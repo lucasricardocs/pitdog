@@ -182,6 +182,16 @@ with col_title2:
     st.title("Sistema de Gestão")
     st.markdown("**Clip's Burger**") 
 
+st.markdown("""
+Bem-vindo(a)! Esta ferramenta ajuda a visualizar suas vendas por forma de pagamento
+e tenta encontrar combinações *hipotéticas* de produtos que poderiam corresponder a esses totais.
+
+**Como usar:**
+1. Ajuste as configurações na barra lateral (para análise do arquivo)
+2. Faça o upload do seu arquivo de transações (.csv ou .xlsx) na aba "📈 Resumo das Vendas"
+3. Cadastre os valores recebidos diariamente na aba "💰 Cadastro de Recebimentos"
+4. Explore os resultados nas abas abaixo
+""")
 st.divider()
 
 # --- Configuration Sidebar ---
@@ -201,6 +211,11 @@ with st.sidebar:
     tamanho_combinacao_sanduiches = st.slider(
         "Número de tipos de Sanduíches",
         min_value=1, max_value=10, value=5, step=1
+    )
+    max_iterations = st.select_slider(
+        "Qualidade da Otimização ✨",
+        options=[1000, 5000, 10000, 20000, 50000],
+        value=10000
     )
     st.info("Lembre-se: As combinações são aproximações heurísticas.")
 
