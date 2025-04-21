@@ -164,24 +164,40 @@ with tab2:
     if vendas:
         for forma, total_pagamento in vendas.items():
             st.subheader(f"Forma de Pagamento: {forma} (Total: {format_currency(total_pagamento)})")
+            # Definição dos Cardápios
             dados_sanduiches = """
-                X Salada Simples R$ 18,00
-                X Salada Especial R$ 20,00
-                X Bacon Simples R$ 22,00
-                X Bacon Especial R$ 24,00
-                X Bacon Duplo R$ 28,00
-                X Frango Simples R$ 22,00
-                X Frango Especial R$ 24,00
-                Cebola R$ 0.50
+            X Salada Simples R$ 18,00
+            X Salada Especial R$ 20,00
+            X Especial Duplo R$ 24,00
+            X Bacon Simples R$ 22,00
+            X Bacon Especial R$ 24,00
+            X Bacon Duplo R$ 28,00
+            X Hamburgão R$ 35,00
+            X Mata-Fome R$ 39,00
+            X Frango Simples R$ 22,00
+            X Frango Especial R$ 24,00
+            X Frango Bacon R$ 27,00
+            X Frango Tudo R$ 30,00
+            X Lombo Simples R$ 23,00
+            X Lombo Especial R$ 25,00
+            X Lombo Bacon R$ 28,00
+            X Lombo Tudo R$ 31,00
+            X Filé Simples R$ 28,00
+            X Filé Especial R$ 30,00
+            X Filé Bacon R$ 33,00
+            X Filé Tudo R$ 36,00
+            Cebola R$ 0.50
             """
             dados_bebidas = """
-                Suco R$ 10,00
-                Creme R$ 15,00
-                Refri Lata R$ 7,00
-                Refri 600ml R$ 8,00
-                Refri 2L R$ 15,00
-                Água R$ 3,00
-                Água com Gás R$ 4,00
+            Suco R$ 10,00
+            Creme R$ 15,00
+            Refri caçula R$ 3.50
+            Refri Lata R$ 7,00
+            Refri 600 R$ 8,00
+            Refri 1L R$ 10,00
+            Refri 2L R$ 15,00
+            Água R$ 3,00
+            Água com Gas R$ 4,00
             """
             sanduiches_precos = parse_menu_string(dados_sanduiches)
             bebidas_precos = parse_menu_string(dados_bebidas)
