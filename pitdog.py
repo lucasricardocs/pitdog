@@ -501,7 +501,7 @@ with tab3:
             else:
                 df_dia = df_mes.copy()
                 
-            st.header("Totais Diários")
+            st.subheader("Totais Diários")
             df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
             plot_diario = alt.Chart(df_dia).mark_bar().encode(
                 x=alt.X('Data_Formatada:N', axis=alt.Axis(title='Data')),
@@ -512,11 +512,7 @@ with tab3:
             ).interactive()
             st.altair_chart(plot_diario, use_container_width=True)
 
-            st.header("Detalhes dos Recebimentos")
-            df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
-            display_receipts_table(df_dia[['Data_Formatada', 'Dinheiro', 'Cartao', 'Pix', 'Total']].rename(columns={'Data_Formatada': 'Data'}))
-
-            st.header("Gráfico de Formas de Pagamento")
+            st.subheader("Gráfico de Formas de Pagamento")
             df_melted = df_dia.melt(id_vars=['Data'], value_vars=['Dinheiro', 'Cartao', 'Pix'], var_name='Forma', value_name='Valor')
             df_melted['Data_Formatada'] = df_melted['Data'].dt.strftime('%d/%m/%Y')
             chart_pagamentos = alt.Chart(df_melted).mark_bar().encode(
@@ -528,6 +524,11 @@ with tab3:
                 title=f"Recebimentos por Forma de Pagamento em {dia_selecionado if dia_selecionado != 'Todos' else 'Todos os Dias'} de {nomes_meses.get(mes_selecionado, '') if meses_nomes_disponiveis else 'Todos os Meses'} de {ano_selecionado}"
             ).interactive() # Tornar o gráfico interativo
             st.altair_chart(chart_pagamentos, use_container_width=True)
+
+            st.subheader("Detalhes dos Recebimentos")
+            df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
+            display_receipts_table(df_dia[['Data_Formatada', 'Dinheiro', 'Cartao', 'Pix', 'Total']].rename(columns={'Data_Formatada': 'Data'}))
+
 
         else:
             st.info("Nenhum recebimento cadastrado ainda.")
