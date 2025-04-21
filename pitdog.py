@@ -245,12 +245,5 @@ with tab3:
         )
         st.altair_chart(area_chart, use_container_width=True)
 
-        # Mapa de calor
-        st.subheader("🔥 Mapa de Calor (Recebimentos por Dia da Semana)")
-        df_receipts['Dia da Semana'] = df_receipts['Data'].dt.day_name()
-        heatmap_data = df_receipts.groupby(['Dia da Semana'])[['Dinheiro', 'Cartao', 'Pix']].sum()
-        fig_heatmap, ax = plt.subplots()
-        sns.heatmap(heatmap_data, annot=True, fmt=".2f", cmap="YlGnBu", ax=ax)
-        st.pyplot(fig_heatmap)
     else:
         st.info("Nenhum dado disponível para o mapa de calor.")
