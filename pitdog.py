@@ -180,19 +180,8 @@ with col_title1:
     st.image("logo.png", width=100)  # Usa a imagem local logo.png
 with col_title2:
     st.title("Sistema de Gestão")
-    st.markdown("*Clip's Burger*") 
+    st.markdown("**Clip's Burger**") 
 
-st.markdown("""
-Bem-vindo(a) ao sistema de gestão do **Clip's Burger**!  
-Esta ferramenta ajuda a visualizar suas vendas por forma de pagamento
-e tenta encontrar combinações *hipotéticas* de produtos que poderiam corresponder a esses totais.
-
-**Como usar:**
-1. Ajuste as configurações na barra lateral (para análise do arquivo)
-2. Faça o upload do seu arquivo de transações (.csv ou .xlsx) na aba "📈 Resumo das Vendas"
-3. Cadastre os valores recebidos diariamente na aba "💰 Cadastro de Recebimentos"
-4. Explore os resultados nas abas abaixo
-""")
 st.divider()
 
 # --- Configuration Sidebar ---
