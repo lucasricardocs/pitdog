@@ -443,7 +443,7 @@ with tab2:
 with tab3:
     #st.header("💰 Cadastro de Recebimentos Diários")
 
-    col_cadastro, col_visualizacao = st.columns(1)
+    col_cadastro, col_visualizacao = st.columns(2)
 
     with col_cadastro:
         st.subheader("💰 Cadastro de Recebimentos Diários")
