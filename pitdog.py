@@ -202,11 +202,6 @@ with st.sidebar:
         "Número de tipos de Sanduíches",
         min_value=1, max_value=10, value=5, step=1
     )
-    max_iterations = st.select_slider(
-        "Qualidade da Otimização ✨",
-        options=[1000, 5000, 10000, 20000, 50000],
-        value=10000
-    )
     st.info("Lembre-se: As combinações são aproximações heurísticas.")
 
 # --- Abas ---
