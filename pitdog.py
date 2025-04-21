@@ -244,6 +244,5 @@ def main():
             ).properties(title="Recebimentos por Forma de Pagamento")
             st.altair_chart(chart, use_container_width=True)
 
-
 if __name__ == "__main__":
     main()
