@@ -501,7 +501,7 @@ with tab3:
             else:
                 df_dia = df_mes.copy()
 
-    st.header("Totais Diários")
+            st.header("Totais Diários")
             df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
             plot_diario = alt.Chart(df_dia).mark_bar().encode(
                 x=alt.X('Data_Formatada:N', axis=alt.Axis(title='Data')),
@@ -512,7 +512,7 @@ with tab3:
             ).interactive()
             st.altair_chart(plot_diario, use_container_width=True)
 
-    st.header("Detalhes dos Recebimentos")
+            st.header("Detalhes dos Recebimentos")
             df_dia['Data_Formatada'] = df_dia['Data'].dt.strftime('%d/%m/%Y')
             display_receipts_table(df_dia[['Data_Formatada', 'Dinheiro', 'Cartao', 'Pix', 'Total']].rename(columns={'Data_Formatada': 'Data'}))
 
