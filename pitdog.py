@@ -203,6 +203,10 @@ with tab3:
 
     st.subheader("Recebimentos Registrados")
     if not df_receipts.empty:
+        # Garantir que as colunas de valores numéricos estão no tipo correto
+        df_receipts['Dinheiro'] = pd.to_numeric(df_receipts['Dinheiro'], errors='coerce').fillna(0)
+        df_receipts['Cartao'] = pd.to_numeric(df_receipts['Cartao'], errors='coerce').fillna(0)
+        df_receipts['Pix'] = pd.to_numeric(df_receipts['Pix'], errors='coerce').fillna(0)
         df_receipts['Total'] = df_receipts['Dinheiro'] + df_receipts['Cartao'] + df_receipts['Pix']
         st.dataframe(df_receipts)
 
@@ -244,9 +248,9 @@ with tab3:
         # Mapa de calor
         st.subheader("🔥 Mapa de Calor (Recebimentos por Dia da Semana)")
         df_receipts['Dia da Semana'] = df_receipts['Data'].dt.day_name()
-        heatmap_data = df_receipts.groupby(['Dia da Semana']).sum()[['Dinheiro', 'Cartao', 'Pix']]
+        heatmap_data = df_receipts.groupby(['Dia da Semana'])[['Dinheiro', 'Cartao', 'Pix']].sum()
         fig_heatmap, ax = plt.subplots()
         sns.heatmap(heatmap_data, annot=True, fmt=".2f", cmap="YlGnBu", ax=ax)
         st.pyplot(fig_heatmap)
     else:
-        st.info("Nenhum recebimento cadastrado.")
+        st.info("Nenhum dado disponível para o mapa de calor.")
