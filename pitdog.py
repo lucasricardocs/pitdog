@@ -595,27 +595,6 @@ with tab3:
                         hide_index=True
                     )
 
-            with tab_export:
-                format_type = st.radio("Formato", ["CSV", "Excel"])
-                
-                if format_type == "CSV":
-                    st.download_button(
-                        "Baixar CSV",
-                        df.to_csv(index=False).encode('utf-8'),
-                        f"recebimentos_{year}_{month}.csv",
-                        "text/csv"
-                    )
-                else:
-                    output = BytesIO()
-                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                        df.to_excel(writer, index=False)
-                    st.download_button(
-                        "Baixar Excel",
-                        output.getvalue(),
-                        f"recebimentos_{year}_{month}.xlsx",
-                        "application/vnd.ms-excel"
-                    )
-
         else:
             st.info("Nenhum recebimento cadastrado ainda.")
             st.image("https://cdn-icons-png.flaticon.com/512/4076/4076478.png", width=150)
