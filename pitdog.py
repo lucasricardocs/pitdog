@@ -441,8 +441,6 @@ with tab2:
 
 # --- Tab 3: Cadastro de Recebimentos ---
 with tab3:
-    st.header("💰 Cadastro Diário")
-
     col_cadastro, col_visualizacao = st.columns(2)
 
     with col_cadastro:
