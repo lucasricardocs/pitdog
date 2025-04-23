@@ -279,7 +279,7 @@ with tab1:
                 vendas, 'bar', 'Forma', 'Valor', 'Forma',
                 title='Total de Vendas por Forma de Pagamento'
             )
-            st.altair_chart(bar_chart, use_container_width=True)
+            st.altair_chart(bar_chart, use_container_width=False)
             
             # Resumo Financeiro
             st.subheader("💰 Resumo Financeiro")
