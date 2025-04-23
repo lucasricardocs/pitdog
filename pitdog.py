@@ -502,7 +502,7 @@ with tab3:
             
             save_data(st.session_state['df_receipts'])
             st.success("Dados salvos com sucesso!")
-            st.experimental_rerun()
+            #st.experimental_rerun()
 
     # Visualização dos dados
     st.header("📊 Análise de Recebimentos")
