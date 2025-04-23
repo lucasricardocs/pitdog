@@ -14,18 +14,20 @@ st.set_page_config(
 )
 
 # --- BANCO DE DADOS SQLITE ---
-DB_FILE = 'recebimentos.db'
+DB_FILE = 'recebimentos.db'  # Arquivo no diretório atual
 
 def init_db():
     """Inicializa o banco de dados SQLite"""
-    # Cria o diretório se não existir
-    os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS recebimentos
-                 (data TEXT, dinheiro REAL, cartao REAL, pix REAL)''')
-    conn.commit()
-    conn.close()
+    try:
+        # Cria o arquivo diretamente no diretório atual
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS recebimentos
+                     (data TEXT, dinheiro REAL, cartao REAL, pix REAL)''')
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        st.error(f"Erro ao inicializar banco de dados: {str(e)}")
 
 def load_receipts_data():
     """Carrega os dados do banco SQLite"""
@@ -42,7 +44,7 @@ def load_receipts_data():
     except Exception as e:
         st.error(f"Erro ao carregar dados do banco: {e}")
         return pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
-
+        
 def save_receipts_data(df):
     """Salva os dados no banco SQLite"""
     try:
