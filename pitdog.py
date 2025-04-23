@@ -54,7 +54,7 @@ FORMAS_PAGAMENTO = {
     'crédito à vista elo': 'Crédito Elo',
     'crédito à vista mastercard': 'Crédito MasterCard',
     'crédito à vista visa': 'Crédito Visa',
-    'crédito à vista american express': 'Crédito Amex',  # Já estava presente
+    'crédito à vista american express': 'Crédito Amex',
     'débito elo': 'Débito Elo',
     'débito mastercard': 'Débito MasterCard',
     'débito visa': 'Débito Visa',
@@ -184,7 +184,11 @@ st.set_page_config(
 # --- INICIALIZAÇÃO ---
 init_data_file()
 if 'df_receipts' not in st.session_state:
-    st.session_state['df_receipts'] = load_data()
+    st.session_state.df_receipts = load_data()
+if 'uploaded_data' not in st.session_state:
+    st.session_state.uploaded_data = None
+if 'vendas_data' not in st.session_state:
+    st.session_state.vendas_data = None
 
 # --- INTERFACE PRINCIPAL ---
 col_title1, col_title2 = st.columns([0.30, 0.70])
@@ -239,16 +243,14 @@ with tab1:
             with st.spinner("Processando arquivo..."):
                 # Verificar o tipo de arquivo
                 if arquivo.name.endswith(".csv"):
-                    # Tentar ler com diferentes delimitadores
                     try:
                         df = pd.read_csv(arquivo, sep=';', encoding='utf-8', dtype=str)
                     except pd.errors.ParserError:
-                        arquivo.seek(0)  # Resetar o ponteiro do arquivo
+                        arquivo.seek(0)
                         try:
                             df = pd.read_csv(arquivo, sep=',', encoding='utf-8', dtype=str)
                         except:
                             arquivo.seek(0)
-                            # Tentar ler automaticamente se ainda falhar
                             df = pd.read_csv(arquivo, engine='python', dtype=str)
                 else:
                     df = pd.read_excel(arquivo, dtype=str)
@@ -276,17 +278,22 @@ with tab1:
 
                 vendas = df.groupby('Forma')['Valor'].sum().reset_index()
                 total_vendas = vendas['Valor'].sum()
+                
+                # Salva os dados no session state
+                st.session_state.uploaded_data = df
+                st.session_state.vendas_data = vendas
+                st.session_state.total_vendas = total_vendas
             
             # Seção de Visualização de Dados
             st.header("📊 Visualização de Dados")
             
-            # Gráfico de Barras (maior)
+            # Gráfico de Barras
             st.subheader("Total de Vendas por Forma de Pagamento")
             bar_chart = create_altair_chart(
                 vendas, 'bar', 'Forma', 'Valor', 'Forma',
                 title=''
             ).properties(
-                width=800,  # Aumentando o tamanho
+                width=800,
                 height=500
             )
             st.altair_chart(bar_chart, use_container_width=True)
@@ -329,7 +336,6 @@ with tab1:
             # Seção de Detalhamento
             st.header("🔍 Detalhamento")
             
-            # Abas para organizar os detalhes
             tab_detalhes1, tab_detalhes2, tab_detalhes3 = st.tabs([
                 "📝 Composição de Custos", 
                 "📚 Explicação dos Cálculos",
@@ -372,7 +378,7 @@ with tab1:
                     color='Item',
                     tooltip=['Item', alt.Tooltip('Valor', format='$.2f')]
                 ).properties(
-                    width=600,  # Gráfico maior
+                    width=600,
                     height=500
                 )
                 
@@ -386,26 +392,11 @@ with tab1:
 with tab2:
     st.header("🧩 Detalhes das Combinações Geradas")
     
-    # Verifica se os dados foram carregados (modificado)
-    if 'df' not in st.session_state or st.session_state.df.empty:
+    if st.session_state.vendas_data is None:
         st.warning("Por favor, carregue os dados de vendas na aba 'Resumo das Vendas' primeiro.")
         st.stop()
     
-    # Garante que temos os dados de vendas processados
-    if 'vendas' not in st.session_state:
-        try:
-            # Recria o processamento feito na aba 1
-            df = st.session_state.df
-            df['Forma'] = (df['Tipo'] + ' ' + df['Bandeira']).map(FORMAS_PAGAMENTO)
-            df = df.dropna(subset=['Forma', 'Valor'])
-            vendas = df.groupby('Forma')['Valor'].sum().reset_index()
-            st.session_state.vendas = vendas
-        except Exception as e:
-            st.error(f"Erro ao processar dados para combinações: {e}")
-            st.stop()
-    else:
-        vendas = st.session_state.vendas
-    
+    vendas = st.session_state.vendas_data
     sandwich_percentage = 100 - drink_percentage
     st.caption(f"Alocação: {drink_percentage}% bebidas | {sandwich_percentage}% sanduíches")
 
@@ -419,7 +410,6 @@ with tab2:
     ]
     
     for forma in ordem_formas:
-        # Restante do código permanece igual...
         if forma not in vendas['Forma'].values:
             continue
             
@@ -428,8 +418,9 @@ with tab2:
             continue
 
         with st.expander(f"**{forma}** (Total: {format_currency(total_pagamento)})", expanded=False):
+            target_bebidas = round_to_50_or_00(total_pagamento * (drink_percentage / 100.0))
+            target_sanduiches = round_to_50_or_00(total_pagamento - target_bebidas)
 
-            # Gerar combinações
             comb_bebidas = optimize_combination(
                 bebidas_precos, target_bebidas, tamanho_combinacao_bebidas, max_iterations
             )
@@ -437,16 +428,13 @@ with tab2:
                 sanduiches_precos, target_sanduiches, tamanho_combinacao_sanduiches, max_iterations
             )
 
-            # Arredondar quantidades
             comb_bebidas_rounded = {k: round(v) for k, v in comb_bebidas.items() if round(v) > 0}
             comb_sanduiches_rounded = {k: round(v) for k, v in comb_sanduiches.items() if round(v) > 0}
 
-            # Calcular totais
             total_bebidas = calculate_combination_value(comb_bebidas_rounded, bebidas_precos)
             total_sanduiches = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
             total_geral = total_bebidas + total_sanduiches
 
-            # Exibir resultados em colunas
             col1, col2 = st.columns(2)
 
             with col1:
@@ -483,7 +471,7 @@ with tab2:
 with tab3:
     st.header("💰 Cadastro de Recebimentos Diários")
     
-    # Carrega os dados existentes (modificado)
+    # Carrega os dados existentes
     try:
         if 'df_receipts' not in st.session_state or st.session_state.df_receipts.empty:
             if os.path.exists(CONFIG["excel_file"]):
@@ -496,7 +484,7 @@ with tab3:
         st.warning(f"Não foi possível carregar dados existentes: {e}")
         st.session_state.df_receipts = pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
 
-    # Formulário para novos dados (mantido igual)
+    # Formulário para novos dados
     with st.form("receipt_form", clear_on_submit=True):
         data = st.date_input("Data", datetime.now().date())
         dinheiro = st.number_input("Dinheiro (R$)", min_value=0.0, format="%.2f")
@@ -520,11 +508,10 @@ with tab3:
             st.success("Dados salvos com sucesso!")
             st.rerun()
 
-    # Visualização dos dados (modificado para usar session_state)
+    # Visualização dos dados
     st.header("📊 Análise de Recebimentos")
     if not st.session_state.df_receipts.empty:
         df = st.session_state.df_receipts.copy()
-        # Restante do código de visualização permanece igual...
         df['Total'] = df[['Dinheiro', 'Cartao', 'Pix']].sum(axis=1)
         df = df.sort_values('Data')
         
@@ -544,8 +531,49 @@ with tab3:
         )
         st.altair_chart(pie_chart, use_container_width=True)
         
-        # Restante do código de visualização...
+        # Gráfico de Evolução
+        st.subheader("Evolução Patrimonial")
+        df['Acumulado'] = df['Total'].cumsum()
         
+        line_chart = alt.Chart(df).mark_line(point=True).encode(
+            x='Data:T',
+            y='Acumulado:Q',
+            tooltip=['Data', 'Dinheiro', 'Cartao', 'Pix', 'Total', 'Acumulado']
+        ).properties(
+            title='Evolução do Total Recebido',
+            width=800,
+            height=400
+        )
+        
+        st.altair_chart(line_chart, use_container_width=True)
+        
+        # Tabela com dados
+        st.subheader("Histórico Completo")
+        st.dataframe(
+            df.sort_values('Data', ascending=False).style.format({
+                'Dinheiro': format_currency,
+                'Cartao': format_currency,
+                'Pix': format_currency,
+                'Total': format_currency,
+                'Acumulado': format_currency
+            }),
+            height=400
+        )
+        
+        # Opção para deletar registros
+        with st.expander("🗑️ Gerenciar Registros", expanded=False):
+            registros_para_deletar = st.multiselect(
+                "Selecione registros para deletar",
+                options=df.index,
+                format_func=lambda x: f"{df.loc[x, 'Data']} - {format_currency(df.loc[x, 'Total'])}"
+            )
+            
+            if st.button("Confirmar Exclusão") and registros_para_deletar:
+                df = df.drop(registros_para_deletar)
+                st.session_state.df_receipts = df
+                save_data(df)
+                st.success(f"{len(registros_para_deletar)} registros removidos!")
+                st.rerun()
     else:
         st.info("Nenhum recebimento cadastrado ainda.")
 
