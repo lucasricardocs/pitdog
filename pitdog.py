@@ -138,6 +138,42 @@ def format_currency(value):
     except (ValueError, TypeError):
         return "R$ Inválido"
 
+# --- CARDÁPIOS ATUALIZADOS ---
+DADOS_SANDUICHES = """
+X Salada Simples R$ 18,00
+X Salada Especial R$ 20,00
+X Especial Duplo R$ 24,00
+X Bacon Simples R$ 22,00
+X Bacon Especial R$ 24,00
+X Bacon Duplo R$ 28,00
+X Hamburgão R$ 35,00
+X Mata-Fome R$ 39,00
+X Frango Simples R$ 22,00
+X Frango Especial R$ 24,00
+X Frango Bacon R$ 27,00
+X Frango Tudo R$ 30,00
+X Lombo Simples R$ 23,00
+X Lombo Especial R$ 25,00
+X Lombo Bacon R$ 28,00
+X Lombo Tudo R$ 31,00
+X Filé Simples R$ 28,00
+X Filé Especial R$ 30,00
+X Filé Bacon R$ 33,00
+X Filé Tudo R$ 36,00
+"""
+
+DADOS_BEBIDAS = """
+Suco R$ 10,00
+Creme R$ 15,00
+Refri caçula R$ 3.50
+Refri Lata R$ 7,00
+Refri 600 R$ 8,00
+Refri 1L R$ 10,00
+Refri 2L R$ 15,00
+Água R$ 3,00
+Água com Gas R$ 4,00
+"""
+
 # --- INTERFACE STREAMLIT ---
 col_title1, col_title2 = st.columns([0.30, 0.70])
 with col_title1:
@@ -248,19 +284,7 @@ with tab1:
 
                 vendas = df_filtered.groupby('Forma Nomeada')['Valor_Numeric'].sum().to_dict()
 
-                # Cardápios
-                DADOS_SANDUICHES = """X Salada Simples R$ 18,00
-X Bacon R$ 22,00
-X Tudo R$ 25,00
-X Frango R$ 20,00
-X Egg R$ 21,00
-Cebola R$ 5,00"""
-                
-                DADOS_BEBIDAS = """Suco R$ 10,00
-Refrigerante R$ 8,00
-Água R$ 5,00
-Cerveja R$ 12,00"""
-                
+                # Carrega cardápios
                 sanduiches_precos = parse_menu_string(DADOS_SANDUICHES)
                 bebidas_precos = parse_menu_string(DADOS_BEBIDAS)
 
@@ -388,22 +412,9 @@ with tab2:
             comb_bebidas_rounded = {name: round(qty) for name, qty in comb_bebidas.items() if round(qty) > 0}
             comb_sanduiches_rounded = {name: round(qty) for name, qty in comb_sanduiches.items() if round(qty) > 0}
 
-            total_bebidas_inicial = calculate_combination_value(comb_bebidas_rounded, bebidas_precos)
-            total_sanduiches_inicial = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
-            total_geral_inicial = total_bebidas_inicial + total_sanduiches_inicial
-
-            comb_sanduiches_final, total_sanduiches_final = comb_sanduiches_rounded.copy(), total_sanduiches_inicial
-
-            if total_geral_inicial < total_pagamento and "Cebola" in sanduiches_precos:
-                diferenca = total_pagamento - total_geral_inicial
-                preco_cebola = sanduiches_precos["Cebola"]
-                cebolas_adicionar = min(int(round(diferenca / preco_cebola)), 20)
-                if cebolas_adicionar > 0:
-                    comb_sanduiches_final["Cebola"] = comb_sanduiches_final.get("Cebola", 0) + cebolas_adicionar
-                    total_sanduiches_final = calculate_combination_value(comb_sanduiches_final, sanduiches_precos)
-
-            total_bebidas_final = calculate_combination_value(comb_bebidas_rounded, bebidas_precos)
-            total_geral_final = total_bebidas_final + total_sanduiches_final
+            total_bebidas = calculate_combination_value(comb_bebidas_rounded, bebidas_precos)
+            total_sanduiches = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
+            total_geral = total_bebidas + total_sanduiches
 
             with st.expander(f"**{forma}** (Total: {format_currency(total_pagamento)})", expanded=False):
                 col1, col2 = st.columns(2)
@@ -415,37 +426,26 @@ with tab2:
                             val_item = bebidas_precos[nome] * qtt
                             st.markdown(f"- **{qtt}** **{nome}:** {format_currency(val_item)}")
                         st.divider()
-                        st.metric("Total Calculado", format_currency(total_bebidas_final))
+                        st.metric("Total Calculado", format_currency(total_bebidas))
                     else:
                         st.info("Nenhuma bebida na combinação")
 
                 with col2:
                     st.subheader(f"🍔 Sanduíches: {format_currency(target_sanduiches)}")
-                    if comb_sanduiches_final:
-                        original_sandwich_value = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
-                        has_onion_adjustment = "Cebola" in comb_sanduiches_final and comb_sanduiches_final.get("Cebola", 0) > comb_sanduiches_rounded.get("Cebola", 0)
-
-                        for nome, qtt in comb_sanduiches_final.items():
-                            display_name = nome
-                            prefix = ""
-
-                            if nome == "Cebola" and has_onion_adjustment:
-                                display_name = "Cebola (Ajuste)"
-                                prefix = "🔹 "
-
+                    if comb_sanduiches_rounded:
+                        for nome, qtt in comb_sanduiches_rounded.items():
                             val_item = sanduiches_precos[nome] * qtt
-                            st.markdown(f"- {prefix}**{qtt}** **{display_name}:** {format_currency(val_item)}")
-
+                            st.markdown(f"- **{qtt}** **{nome}:** {format_currency(val_item)}")
                         st.divider()
-                        st.metric("Total Calculado", format_currency(total_sanduiches_final))
+                        st.metric("Total Calculado", format_currency(total_sanduiches))
                     else:
                         st.info("Nenhum sanduíche na combinação")
 
                 st.divider()
-                diff = total_geral_final - total_pagamento
+                diff = total_geral - total_pagamento
                 st.metric(
                     "💰 TOTAL GERAL (Calculado)",
-                    format_currency(total_geral_final),
+                    format_currency(total_geral),
                     delta=f"{format_currency(diff)} vs Meta",
                     delta_color="normal" if diff <= 0 else "inverse"
                 )
