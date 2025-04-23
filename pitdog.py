@@ -362,122 +362,109 @@ with tab1:
         
         *Obs: Valores aproximados, não considerando outros custos operacionais*
         """)
-    
-    # Gráfico de composição (novo)
-    custos_df = pd.DataFrame({
-        'Item': ['Impostos', 'Funcionário', 'Contadora'],
-        'Valor': [imposto_simples, custo_funcionario, custo_contadora]
-    })
-    
-    graf_composicao = alt.Chart(custos_df).mark_arc().encode(
-        theta='Valor',
-        color='Item',
-        tooltip=['Item', alt.Tooltip('Valor', format='$.2f')]
-    ).properties(
-        title='Composição dos Custos',
-        width=400,
-        height=400
-    )
-    
-    st.altair_chart(graf_composicao, use_container_width=True)
 
         except Exception as e:
             st.error(f"Erro no processamento: {str(e)}")
     else:
         st.info("✨ Aguardando envio do arquivo de transações...")
 
-# ... (o código anterior permanece igual até a definição das abas)
-
-# --- ABAS PRINCIPAIS ---
-tab1, tab2, tab3 = st.tabs(["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💰 Cadastro de Recebimentos"])
-
-with tab1:
-    # ... (o conteúdo da Tab1 permanece igual)
-
 with tab2:
-    st.header("🧩 Detalhes das Combinações")
+    st.header("🧩 Detalhes das Combinações Geradas")
     
-    if 'vendas' in locals() and vendas:  # Verifica se existem dados de vendas
-        total_vendas = sum(vendas['Valor'])
-        st.subheader(f"Total de Vendas: {format_currency(total_vendas)}")
-        
-        # Calcula valores alvo para sanduíches e bebidas
-        valor_sanduiches = total_vendas * (100 - drink_percentage) / 100
-        valor_bebidas = total_vendas * drink_percentage / 100
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("Valor para Sanduíches", format_currency(valor_sanduiches))
-        with col2:
-            st.metric("Valor para Bebidas", format_currency(valor_bebidas))
-        
-        # Otimização para sanduíches
-        st.subheader("🍔 Combinações de Sanduíches")
-        comb_sanduiches = optimize_combination(
-            CARDAPIOS['sanduiches'],
-            valor_sanduiches,
-            tamanho_combinacao_sanduiches,
-            max_iterations
-        )
-        
-        if comb_sanduiches:
-            df_sanduiches = pd.DataFrame.from_dict(comb_sanduiches, orient='index', columns=['Quantidade'])
-            df_sanduiches['Preço Unitário'] = df_sanduiches.index.map(CARDAPIOS['sanduiches'].get)
-            df_sanduiches['Subtotal'] = df_sanduiches['Quantidade'] * df_sanduiches['Preço Unitário']
-            
-            # Gráfico de barras para sanduíches
-            chart_sanduiches = alt.Chart(df_sanduiches.reset_index()).mark_bar().encode(
-                x=alt.X('index:N', title='Sanduíche', sort='-y'),
-                y=alt.Y('Subtotal:Q', title='Valor (R$)'),
-                color=alt.Color('index:N', legend=None),
-                tooltip=['index', 'Quantidade', 'Preço Unitário', 'Subtotal']
-            ).properties(
-                title=f"Combinação sugerida (Total: {format_currency(df_sanduiches['Subtotal'].sum())})",
-                height=400
-            )
-            st.altair_chart(chart_sanduiches, use_container_width=True)
-            
-            st.dataframe(df_sanduiches.style.format({
-                'Preço Unitário': format_currency,
-                'Subtotal': format_currency
-            }))
-        
-        # Otimização para bebidas
-        st.subheader("🍹 Combinações de Bebidas")
-        comb_bebidas = optimize_combination(
-            CARDAPIOS['bebidas'],
-            valor_bebidas,
-            tamanho_combinacao_bebidas,
-            max_iterations
-        )
-        
-        if comb_bebidas:
-            df_bebidas = pd.DataFrame.from_dict(comb_bebidas, orient='index', columns=['Quantidade'])
-            df_bebidas['Preço Unitário'] = df_bebidas.index.map(CARDAPIOS['bebidas'].get)
-            df_bebidas['Subtotal'] = df_bebidas['Quantidade'] * df_bebidas['Preço Unitário']
-            
-            # Gráfico de barras para bebidas
-            chart_bebidas = alt.Chart(df_bebidas.reset_index()).mark_bar().encode(
-                x=alt.X('index:N', title='Bebida', sort='-y'),
-                y=alt.Y('Subtotal:Q', title='Valor (R$)'),
-                color=alt.Color('index:N', legend=None),
-                tooltip=['index', 'Quantidade', 'Preço Unitário', 'Subtotal']
-            ).properties(
-                title=f"Combinação sugerida (Total: {format_currency(df_bebidas['Subtotal'].sum())})",
-                height=400
-            )
-            st.altair_chart(chart_bebidas, use_container_width=True)
-            
-            st.dataframe(df_bebidas.style.format({
-                'Preço Unitário': format_currency,
-                'Subtotal': format_currency
-            }))
-    else:
+    if 'vendas' not in locals():
         st.warning("Por favor, carregue os dados de vendas na aba 'Resumo das Vendas' primeiro.")
+        st.stop()
+    
+    sandwich_percentage = 100 - drink_percentage
+    st.caption(f"Alocação: {drink_percentage}% bebidas | {sandwich_percentage}% sanduíches")
+
+    # Definir a ordem de exibição
+    ordem_formas = [
+        'Débito Visa', 'Débito MasterCard', 'Débito Elo',
+        'Crédito Visa', 'Crédito MasterCard', 'Crédito Elo', 'PIX'
+    ]
+    
+    # Processar sanduiches_precos e bebidas_precos
+    bebidas_precos = CARDAPIOS['bebidas']
+    sanduiches_precos = CARDAPIOS['sanduiches']
+    
+    for forma in ordem_formas:
+        if forma not in vendas:
+            continue
+            
+        total_pagamento = vendas[forma]
+        if total_pagamento <= 0:
+            continue
+
+        with st.expander(f"**{forma}** (Total: {format_currency(total_pagamento)})", expanded=False):
+            # Calcular targets
+            target_bebidas = round_to_50_or_00(total_pagamento * (drink_percentage / 100.0))
+            target_sanduiches = round_to_50_or_00(total_pagamento - target_bebidas)
+
+            # Gerar combinações
+            comb_bebidas = optimize_combination(
+                bebidas_precos, target_bebidas, tamanho_combinacao_bebidas, max_iterations
+            )
+            comb_sanduiches = optimize_combination(
+                sanduiches_precos, target_sanduiches, tamanho_combinacao_sanduiches, max_iterations
+            )
+
+            # Arredondar quantidades
+            comb_bebidas_rounded = {k: round(v) for k, v in comb_bebidas.items() if round(v) > 0}
+            comb_sanduiches_rounded = {k: round(v) for k, v in comb_sanduiches.items() if round(v) > 0}
+
+            # Calcular totais
+            total_bebidas = calculate_combination_value(comb_bebidas_rounded, bebidas_precos)
+            total_sanduiches = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
+            total_geral = total_bebidas + total_sanduiches
+
+            # Exibir resultados em colunas
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.subheader(f"🍹 Bebidas: {format_currency(target_bebidas)}")
+                if comb_bebidas_rounded:
+                    for nome, qtd in comb_bebidas_rounded.items():
+                        val = bebidas_precos[nome] * qtd
+                        st.markdown(f"- **{qtd}** {nome}: {format_currency(val)}")
+                    st.divider()
+                    st.metric("Total Bebidas", format_currency(total_bebidas))
+                else:
+                    st.info("Nenhuma bebida na combinação")
+
+            with col2:
+                st.subheader(f"🍔 Sanduíches: {format_currency(target_sanduiches)}")
+                if comb_sanduiches_rounded:
+                    for nome, qtd in comb_sanduiches_rounded.items():
+                        val = sanduiches_precos[nome] * qtd
+                        st.markdown(f"- **{qtd}** {nome}: {format_currency(val)}")
+                    st.divider()
+                    st.metric("Total Sanduíches", format_currency(total_sanduiches))
+                else:
+                    st.info("Nenhum sanduíche na combinação")
+
+            st.divider()
+            diff = total_geral - total_pagamento
+            st.metric(
+                "💰 TOTAL GERAL",
+                format_currency(total_geral),
+                delta=f"{format_currency(abs(diff))} {'a menos' if diff < 0 else 'a mais'} que o total",
+                delta_color="normal" if diff <= 0 else "inverse"
+            )
 
 with tab3:
     st.header("💰 Cadastro de Recebimentos Diários")
     
+    # Primeiro carrega os dados existentes
+    try:
+        df_existente = pd.read_excel(CONFIG["excel_file"])
+        df_existente['Data'] = pd.to_datetime(df_existente['Data']).dt.date
+        st.session_state['df_receipts'] = df_existente
+    except Exception as e:
+        st.warning(f"Não foi possível carregar dados existentes: {e}")
+        st.session_state['df_receipts'] = pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
+
+    # Formulário para novos dados
     with st.form("receipt_form", clear_on_submit=True):
         data = st.date_input("Data", datetime.now().date())
         dinheiro = st.number_input("Dinheiro (R$)", min_value=0.0, format="%.2f")
@@ -485,53 +472,61 @@ with tab3:
         pix = st.number_input("Pix (R$)", min_value=0.0, format="%.2f")
         
         if st.form_submit_button("Salvar") and (dinheiro + cartao + pix) > 0:
-            new_data = pd.DataFrame([{
-                'Data': data, 'Dinheiro': dinheiro, 'Cartao': cartao, 'Pix': pix
+            novo_registro = pd.DataFrame([{
+                'Data': data,
+                'Dinheiro': dinheiro,
+                'Cartao': cartao, 
+                'Pix': pix
             }])
-            st.session_state['df_receipts'] = pd.concat(
-                [st.session_state['df_receipts'], new_data], ignore_index=True)
+            
+            if st.session_state['df_receipts'].empty:
+                st.session_state['df_receipts'] = novo_registro
+            else:
+                st.session_state['df_receipts'] = pd.concat(
+                    [st.session_state['df_receipts'], novo_registro], 
+                    ignore_index=True
+                )
+            
             save_data(st.session_state['df_receipts'])
-            st.success("Dados salvos!")
-    
-    st.header("📊 Análise de Recebimentos")
+            st.success("Dados salvos com sucesso!")
+            st.experimental_rerun()  # Recarrega a página para atualizar os dados
+
+    # Mostrar dados existentes
+    st.header("📊 Histórico de Recebimentos")
     if not st.session_state['df_receipts'].empty:
         df = st.session_state['df_receipts'].copy()
         df['Total'] = df[['Dinheiro', 'Cartao', 'Pix']].sum(axis=1)
-        df['Data'] = pd.to_datetime(df['Data'])
         
-        # Gráfico de Pizza
-        totais = df[['Dinheiro', 'Cartao', 'Pix']].sum().reset_index()
-        totais.columns = ['Forma', 'Total']
+        # Ordenar por data (mais recente primeiro)
+        df = df.sort_values('Data', ascending=False)
         
-        pie_chart = create_altair_chart(
-            totais, 'pie', 'Forma', 'Total',
-            title='Distribuição dos Recebimentos'
+        # Mostrar tabela com todos os registros
+        st.dataframe(
+            df.style.format({
+                'Dinheiro': format_currency,
+                'Cartao': format_currency,
+                'Pix': format_currency,
+                'Total': format_currency
+            }),
+            height=400
         )
-        st.altair_chart(pie_chart, use_container_width=True)
         
-        # Gráfico de Linha Temporal
-        line_chart = create_altair_chart(
-            df, 'line', 'Data', 'Total',
-            title='Evolução dos Recebimentos Diários'
-        )
-        st.altair_chart(line_chart, use_container_width=True)
-        
-        # Gráfico de Barras Agrupadas
-        melted_df = df.melt(id_vars=['Data'], 
-                           value_vars=['Dinheiro', 'Cartao', 'Pix'],
-                           var_name='Forma', 
-                           value_name='Valor')
-        
-        bar_chart = create_altair_chart(
-            melted_df, 'bar', 'Data', 'Valor', 'Forma',
-            title='Recebimentos Diários por Forma de Pagamento'
-        )
-        st.altair_chart(bar_chart, use_container_width=True)
-        
-        # Tabela de Dados
-        st.dataframe(df.sort_values('Data', ascending=False))
+        # Opção para deletar registros
+        with st.expander("🗑️ Deletar Registros", expanded=False):
+            registros_para_deletar = st.multiselect(
+                "Selecione registros para deletar",
+                options=df.index,
+                format_func=lambda x: f"{df.loc[x, 'Data']} - {format_currency(df.loc[x, 'Total'])}"
+            )
+            
+            if st.button("Confirmar Exclusão") and registros_para_deletar:
+                df = df.drop(registros_para_deletar)
+                st.session_state['df_receipts'] = df
+                save_data(df)
+                st.success(f"{len(registros_para_deletar)} registros removidos!")
+                st.experimental_rerun()
     else:
-        st.info("Nenhum recebimento cadastrado.")
+        st.info("Nenhum recebimento cadastrado ainda.")
 
 if __name__ == '__main__':
     pass
