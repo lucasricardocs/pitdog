@@ -282,104 +282,104 @@ with tab1:
             # Resumo Financeiro
             # --- DENTRO DA TAB1, NA SEÇÃO DE RESUMO FINANCEIRO ---
 
-st.subheader("💰 Resumo Financeiro")
-
-# Inputs básicos
-salario_minimo = st.number_input("💼 Salário Mínimo (R$)", value=1518.0, step=50.0)
-custo_contadora = st.number_input("📋 Custo com Contadora (R$)", value=316.0, step=10.0)
-
-# Cálculos (agora com variáveis explicativas)
-with st.expander("🔍 Detalhamento dos Cálculos", expanded=False):
-    st.markdown("""
-    **Fórmulas Utilizadas:**
+    st.subheader("💰 Resumo Financeiro")
     
-    1. **Imposto Simples Nacional** = Faturamento Bruto × 6%
-    2. **Custo Funcionário CLT** = Salário + FGTS + Férias + 13º
-    3. **Total de Custos** = Imposto + Funcionário + Contadora
-    4. **Lucro Estimado** = Faturamento Bruto - Total de Custos
-    """)
-
-# Container principal para métricas
-col1, col2 = st.columns(2)
-
-with col1:
-    # Faturamento Bruto
-    st.metric("💵 Faturamento Bruto", format_currency(total_vendas))
+    # Inputs básicos
+    salario_minimo = st.number_input("💼 Salário Mínimo (R$)", value=1518.0, step=50.0)
+    custo_contadora = st.number_input("📋 Custo com Contadora (R$)", value=316.0, step=10.0)
     
-    # Imposto Simples
-    imposto_simples = total_vendas * 0.06
-    with st.expander("📊 Simples Nacional (6%)", expanded=False):
-        st.markdown(f"""
-        - **Cálculo**: R$ {total_vendas:,.2f} × 6%  
-        - **Valor**: {format_currency(imposto_simples)}
-        """.replace(",", "X").replace(".", ",").replace("X", "."))
-
-with col2:
-    # Custo Funcionário
-    fgts = salario_minimo * 0.08
-    ferias = (salario_minimo / 12) * (4/3)  # 1 mês + 1/3 constitucional
-    decimo_terceiro = salario_minimo / 12
-    custo_funcionario = salario_minimo + fgts + ferias + decimo_terceiro
-    
-    with st.expander("👷‍♂️ Custo Funcionário CLT", expanded=False):
-        st.markdown(f"""
-        - **Salário Bruto**: {format_currency(salario_minimo)}  
-        - **FGTS (8%)**: {format_currency(fgts)}  
-        - **Férias + 1/3**: {format_currency(ferias)}  
-        - **13º Salário**: {format_currency(decimo_terceiro)}  
-        - **Total**: {format_currency(custo_funcionario)}
+    # Cálculos (agora com variáveis explicativas)
+    with st.expander("🔍 Detalhamento dos Cálculos", expanded=False):
+        st.markdown("""
+        **Fórmulas Utilizadas:**
+        
+        1. **Imposto Simples Nacional** = Faturamento Bruto × 6%
+        2. **Custo Funcionário CLT** = Salário + FGTS + Férias + 13º
+        3. **Total de Custos** = Imposto + Funcionário + Contadora
+        4. **Lucro Estimado** = Faturamento Bruto - Total de Custos
         """)
     
-    # Custo Contadora
-    with st.expander("📋 Custo Contadora", expanded=False):
-        st.markdown(f"Valor fixo mensal: {format_currency(custo_contadora)}")
-
-# Linha de totais
-st.divider()
-
-# Cálculo do total de custos (agora com explicação)
-total_custos = imposto_simples + custo_funcionario + custo_contadora
-with st.expander("🧮 TOTAL DE CUSTOS (Como Calculado)", expanded=True):
-    st.markdown(f"""
-    - **Imposto Simples**: {format_currency(imposto_simples)}  
-    - **Custo Funcionário**: {format_currency(custo_funcionario)}  
-    - **Custo Contadora**: {format_currency(custo_contadora)}  
+    # Container principal para métricas
+    col1, col2 = st.columns(2)
     
-    **Fórmula**:  
-    `Imposto + Funcionário + Contadora = {format_currency(imposto_simples)} + {format_currency(custo_funcionario)} + {format_currency(custo_contadora)}`  
+    with col1:
+        # Faturamento Bruto
+        st.metric("💵 Faturamento Bruto", format_currency(total_vendas))
+        
+        # Imposto Simples
+        imposto_simples = total_vendas * 0.06
+        with st.expander("📊 Simples Nacional (6%)", expanded=False):
+            st.markdown(f"""
+            - **Cálculo**: R$ {total_vendas:,.2f} × 6%  
+            - **Valor**: {format_currency(imposto_simples)}
+            """.replace(",", "X").replace(".", ",").replace("X", "."))
     
-    **Total de Custos**: {format_currency(total_custos)}
-    """)
-
-# Lucro Estimado
-lucro_estimado = total_vendas - total_custos
-with st.expander("💡 LUCRO ESTIMADO (Como Calculado)", expanded=True):
-    st.markdown(f"""
-    **Fórmula**:  
-    `Faturamento Bruto - Total de Custos = {format_currency(total_vendas)} - {format_currency(total_custos)}`  
+    with col2:
+        # Custo Funcionário
+        fgts = salario_minimo * 0.08
+        ferias = (salario_minimo / 12) * (4/3)  # 1 mês + 1/3 constitucional
+        decimo_terceiro = salario_minimo / 12
+        custo_funcionario = salario_minimo + fgts + ferias + decimo_terceiro
+        
+        with st.expander("👷‍♂️ Custo Funcionário CLT", expanded=False):
+            st.markdown(f"""
+            - **Salário Bruto**: {format_currency(salario_minimo)}  
+            - **FGTS (8%)**: {format_currency(fgts)}  
+            - **Férias + 1/3**: {format_currency(ferias)}  
+            - **13º Salário**: {format_currency(decimo_terceiro)}  
+            - **Total**: {format_currency(custo_funcionario)}
+            """)
+        
+        # Custo Contadora
+        with st.expander("📋 Custo Contadora", expanded=False):
+            st.markdown(f"Valor fixo mensal: {format_currency(custo_contadora)}")
     
-    **Lucro Estimado**: {format_currency(lucro_estimado)}  
+    # Linha de totais
+    st.divider()
     
-    *Obs: Valores aproximados, não considerando outros custos operacionais*
-    """)
-
-# Gráfico de composição (novo)
-custos_df = pd.DataFrame({
-    'Item': ['Impostos', 'Funcionário', 'Contadora'],
-    'Valor': [imposto_simples, custo_funcionario, custo_contadora]
-})
-
-graf_composicao = alt.Chart(custos_df).mark_arc().encode(
-    theta='Valor',
-    color='Item',
-    tooltip=['Item', alt.Tooltip('Valor', format='$.2f')]
-).properties(
-    title='Composição dos Custos',
-    width=400,
-    height=400
-)
-
-st.altair_chart(graf_composicao, use_container_width=True)
+    # Cálculo do total de custos (agora com explicação)
+    total_custos = imposto_simples + custo_funcionario + custo_contadora
+    with st.expander("🧮 TOTAL DE CUSTOS (Como Calculado)", expanded=True):
+        st.markdown(f"""
+        - **Imposto Simples**: {format_currency(imposto_simples)}  
+        - **Custo Funcionário**: {format_currency(custo_funcionario)}  
+        - **Custo Contadora**: {format_currency(custo_contadora)}  
+        
+        **Fórmula**:  
+        `Imposto + Funcionário + Contadora = {format_currency(imposto_simples)} + {format_currency(custo_funcionario)} + {format_currency(custo_contadora)}`  
+        
+        **Total de Custos**: {format_currency(total_custos)}
+        """)
+    
+    # Lucro Estimado
+    lucro_estimado = total_vendas - total_custos
+    with st.expander("💡 LUCRO ESTIMADO (Como Calculado)", expanded=True):
+        st.markdown(f"""
+        **Fórmula**:  
+        `Faturamento Bruto - Total de Custos = {format_currency(total_vendas)} - {format_currency(total_custos)}`  
+        
+        **Lucro Estimado**: {format_currency(lucro_estimado)}  
+        
+        *Obs: Valores aproximados, não considerando outros custos operacionais*
+        """)
+    
+    # Gráfico de composição (novo)
+    custos_df = pd.DataFrame({
+        'Item': ['Impostos', 'Funcionário', 'Contadora'],
+        'Valor': [imposto_simples, custo_funcionario, custo_contadora]
+    })
+    
+    graf_composicao = alt.Chart(custos_df).mark_arc().encode(
+        theta='Valor',
+        color='Item',
+        tooltip=['Item', alt.Tooltip('Valor', format='$.2f')]
+    ).properties(
+        title='Composição dos Custos',
+        width=400,
+        height=400
+    )
+    
+    st.altair_chart(graf_composicao, use_container_width=True)
 
         except Exception as e:
             st.error(f"Erro no processamento: {str(e)}")
