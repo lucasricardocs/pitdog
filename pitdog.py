@@ -54,7 +54,7 @@ FORMAS_PAGAMENTO = {
     'crédito à vista elo': 'Crédito Elo',
     'crédito à vista mastercard': 'Crédito MasterCard',
     'crédito à vista visa': 'Crédito Visa',
-    'crédito à vista american express': 'Crédito Amex',
+    'crédito à vista american express': 'Crédito Amex',  # Já estava presente
     'débito elo': 'Débito Elo',
     'débito mastercard': 'Débito MasterCard',
     'débito visa': 'Débito Visa',
@@ -399,9 +399,15 @@ with tab2:
     
     # Definir ordem de exibição
     ordem_formas = [
-        'Débito Visa', 'Débito MasterCard', 'Débito Elo',
-        'Crédito Visa', 'Crédito MasterCard', 'Crédito Elo', 'Crédito Amex', 'PIX'
-    ]
+    'Débito Visa', 
+    'Débito MasterCard', 
+    'Débito Elo',
+    'Crédito Visa', 
+    'Crédito MasterCard', 
+    'Crédito Elo',
+    'Crédito Amex',  # Adicionado aqui
+    'PIX'
+]
     
     for forma in ordem_formas:
         if forma not in vendas:
