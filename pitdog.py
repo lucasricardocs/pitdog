@@ -386,31 +386,41 @@ with tab1:
 with tab2:
     st.header("🧩 Detalhes das Combinações Geradas")
     
-    if 'vendas' not in locals():
+    # Verifica se os dados foram carregados (modificado)
+    if 'df' not in st.session_state or st.session_state.df.empty:
         st.warning("Por favor, carregue os dados de vendas na aba 'Resumo das Vendas' primeiro.")
         st.stop()
+    
+    # Garante que temos os dados de vendas processados
+    if 'vendas' not in st.session_state:
+        try:
+            # Recria o processamento feito na aba 1
+            df = st.session_state.df
+            df['Forma'] = (df['Tipo'] + ' ' + df['Bandeira']).map(FORMAS_PAGAMENTO)
+            df = df.dropna(subset=['Forma', 'Valor'])
+            vendas = df.groupby('Forma')['Valor'].sum().reset_index()
+            st.session_state.vendas = vendas
+        except Exception as e:
+            st.error(f"Erro ao processar dados para combinações: {e}")
+            st.stop()
+    else:
+        vendas = st.session_state.vendas
     
     sandwich_percentage = 100 - drink_percentage
     st.caption(f"Alocação: {drink_percentage}% bebidas | {sandwich_percentage}% sanduíches")
 
-    # Processar sanduiches_precos e bebidas_precos
     bebidas_precos = CARDAPIOS['bebidas']
     sanduiches_precos = CARDAPIOS['sanduiches']
     
-    # Definir ordem de exibição
     ordem_formas = [
-    'Débito Visa', 
-    'Débito MasterCard', 
-    'Débito Elo',
-    'Crédito Visa', 
-    'Crédito MasterCard', 
-    'Crédito Elo',
-    'Crédito Amex',  # Adicionado aqui
-    'PIX'
-]
+        'Débito Visa', 'Débito MasterCard', 'Débito Elo',
+        'Crédito Visa', 'Crédito MasterCard', 'Crédito Elo',
+        'Crédito Amex', 'PIX'
+    ]
     
     for forma in ordem_formas:
-        if forma not in vendas:
+        # Restante do código permanece igual...
+        if forma not in vendas['Forma'].values:
             continue
             
         total_pagamento = vendas.loc[vendas['Forma'] == forma, 'Valor'].values[0]
@@ -418,9 +428,6 @@ with tab2:
             continue
 
         with st.expander(f"**{forma}** (Total: {format_currency(total_pagamento)})", expanded=False):
-            # Calcular targets
-            target_bebidas = round_to_50_or_00(total_pagamento * (drink_percentage / 100.0))
-            target_sanduiches = round_to_50_or_00(total_pagamento - target_bebidas)
 
             # Gerar combinações
             comb_bebidas = optimize_combination(
