@@ -228,161 +228,160 @@ with st.sidebar:
 tab1, tab2, tab3 = st.tabs(["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💰 Cadastro de Recebimentos"])
 
 with tab1:
-    st.header("📈 Resumo das Vendas")
-    arquivo = st.file_uploader("📤 Envie o arquivo de transações (.csv ou .xlsx)", 
+    # Seção de upload de arquivo
+    st.header("📤 Upload de Dados")
+    arquivo = st.file_uploader("Envie o arquivo de transações (.csv ou .xlsx)", 
                              type=["csv", "xlsx"])
-
+    
     if arquivo:
         try:
-            # Verificar o tipo de arquivo
-            if arquivo.name.endswith(".csv"):
-                # Tentar ler com diferentes delimitadores
-                try:
-                    df = pd.read_csv(arquivo, sep=';', encoding='utf-8', dtype=str)
-                except pd.errors.ParserError:
-                    arquivo.seek(0)  # Resetar o ponteiro do arquivo
+            # Processamento do arquivo
+            with st.spinner("Processando arquivo..."):
+                # Verificar o tipo de arquivo
+                if arquivo.name.endswith(".csv"):
+                    # Tentar ler com diferentes delimitadores
                     try:
-                        df = pd.read_csv(arquivo, sep=',', encoding='utf-8', dtype=str)
-                    except:
-                        arquivo.seek(0)
-                        # Tentar ler automaticamente se ainda falhar
-                        df = pd.read_csv(arquivo, engine='python', dtype=str)
-            else:
-                df = pd.read_excel(arquivo, dtype=str)
-            
-            # Verificar colunas obrigatórias
-            required_cols = ['Tipo', 'Bandeira', 'Valor']
-            if not all(col in df.columns for col in required_cols):
-                st.error(f"Erro: O arquivo precisa conter as colunas: {', '.join(required_cols)}")
-                st.stop()
+                        df = pd.read_csv(arquivo, sep=';', encoding='utf-8', dtype=str)
+                    except pd.errors.ParserError:
+                        arquivo.seek(0)  # Resetar o ponteiro do arquivo
+                        try:
+                            df = pd.read_csv(arquivo, sep=',', encoding='utf-8', dtype=str)
+                        except:
+                            arquivo.seek(0)
+                            # Tentar ler automaticamente se ainda falhar
+                            df = pd.read_csv(arquivo, engine='python', dtype=str)
+                else:
+                    df = pd.read_excel(arquivo, dtype=str)
+                
+                # Verificar colunas obrigatórias
+                required_cols = ['Tipo', 'Bandeira', 'Valor']
+                if not all(col in df.columns for col in required_cols):
+                    st.error(f"Erro: O arquivo precisa conter as colunas: {', '.join(required_cols)}")
+                    st.stop()
 
-            # Processamento dos dados
-            df['Tipo'] = df['Tipo'].str.lower().str.strip().fillna('desconhecido')
-            df['Bandeira'] = df['Bandeira'].str.lower().str.strip().fillna('desconhecida')
-            df['Valor'] = pd.to_numeric(
-                df['Valor'].str.replace('.', '').str.replace(',', '.'), 
-                errors='coerce')
-            df = df.dropna(subset=['Valor'])
-            
-            df['Forma'] = (df['Tipo'] + ' ' + df['Bandeira']).map(FORMAS_PAGAMENTO)
-            df = df.dropna(subset=['Forma'])
-            
-            if df.empty:
-                st.warning("Nenhuma transação válida encontrada.")
-                st.stop()
+                # Processamento dos dados
+                df['Tipo'] = df['Tipo'].str.lower().str.strip().fillna('desconhecido')
+                df['Bandeira'] = df['Bandeira'].str.lower().str.strip().fillna('desconhecida')
+                df['Valor'] = pd.to_numeric(
+                    df['Valor'].str.replace('.', '').str.replace(',', '.'), 
+                    errors='coerce')
+                df = df.dropna(subset=['Valor'])
+                
+                df['Forma'] = (df['Tipo'] + ' ' + df['Bandeira']).map(FORMAS_PAGAMENTO)
+                df = df.dropna(subset=['Forma'])
+                
+                if df.empty:
+                    st.warning("Nenhuma transação válida encontrada.")
+                    st.stop()
 
-            vendas = df.groupby('Forma')['Valor'].sum().reset_index()
-            total_vendas = vendas['Valor'].sum()
+                vendas = df.groupby('Forma')['Valor'].sum().reset_index()
+                total_vendas = vendas['Valor'].sum()
             
-            # Gráfico de Barras
+            # Seção de Visualização de Dados
+            st.header("📊 Visualização de Dados")
+            
+            # Gráfico de Barras (maior)
+            st.subheader("Total de Vendas por Forma de Pagamento")
             bar_chart = create_altair_chart(
                 vendas, 'bar', 'Forma', 'Valor', 'Forma',
-                title='Total de Vendas por Forma de Pagamento'
+                title=''
+            ).properties(
+                width=800,  # Aumentando o tamanho
+                height=500
             )
-            st.altair_chart(bar_chart, use_container_width=False)
+            st.altair_chart(bar_chart, use_container_width=True)
             
-            # Resumo Financeiro
-            st.subheader("💰 Resumo Financeiro")
-            salario_minimo = st.number_input("💼 Salário Mínimo (R$)", value=1518.0, step=50.0)
-            custo_contadora = st.number_input("📋 Custo com Contadora (R$)", value=316.0, step=10.0)
-            
-            # Cálculos com explicação detalhada
-            with st.expander("🔍 Detalhamento dos Cálculos", expanded=False):
-                st.markdown("""
-                **Fórmulas Utilizadas:**
-                
-                1. **Imposto Simples Nacional** = Faturamento Bruto × 6%
-                2. **Custo Funcionário CLT** = Salário + FGTS + Férias + 13º
-                3. **Total de Custos** = Imposto + Funcionário + Contadora
-                4. **Lucro Estimado** = Faturamento Bruto - Total de Custos
-                """)
-            
-            # Container principal para métricas
+            # Seção de Parâmetros Financeiros
+            st.header("⚙️ Parâmetros Financeiros")
             col1, col2 = st.columns(2)
-            
             with col1:
-                # Faturamento Bruto
-                st.metric("💵 Faturamento Bruto", format_currency(total_vendas))
-                
-                # Imposto Simples
-                imposto_simples = total_vendas * 0.06
-                with st.expander("📊 Simples Nacional (6%)", expanded=False):
-                    st.markdown(f"""
-                    - **Cálculo**: R$ {total_vendas:,.2f} × 6%  
-                    - **Valor**: {format_currency(imposto_simples)}
-                    """.replace(",", "X").replace(".", ",").replace("X", "."))
-            
+                salario_minimo = st.number_input("Salário Mínimo (R$)", value=1518.0, step=50.0)
             with col2:
-                # Custo Funcionário
+                custo_contadora = st.number_input("Custo com Contadora (R$)", value=316.0, step=10.0)
+            
+            # Seção de Resultados
+            st.header("💰 Resultados Financeiros")
+            
+            # Métricas Principais
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Faturamento Bruto", format_currency(total_vendas))
+            with col2:
+                imposto_simples = total_vendas * 0.06
+                st.metric("Imposto Simples (6%)", format_currency(imposto_simples))
+            with col3:
                 fgts = salario_minimo * 0.08
-                ferias = (salario_minimo / 12) * (4/3)  # 1 mês + 1/3 constitucional
+                ferias = (salario_minimo / 12) * (4/3)
                 decimo_terceiro = salario_minimo / 12
                 custo_funcionario = salario_minimo + fgts + ferias + decimo_terceiro
-                
-                with st.expander("👷‍♂️ Custo Funcionário CLT", expanded=False):
-                    st.markdown(f"""
-                    - **Salário Bruto**: {format_currency(salario_minimo)}  
-                    - **FGTS (8%)**: {format_currency(fgts)}  
-                    - **Férias + 1/3**: {format_currency(ferias)}  
-                    - **13º Salário**: {format_currency(decimo_terceiro)}  
-                    - **Total**: {format_currency(custo_funcionario)}
-                    """)
-                
-                # Custo Contadora
-                with st.expander("📋 Custo Contadora", expanded=False):
-                    st.markdown(f"Valor fixo mensal: {format_currency(custo_contadora)}")
+                st.metric("Custo Funcionário CLT", format_currency(custo_funcionario))
             
-            # Linha de totais
-            st.divider()
-            
-            # Cálculo do total de custos com explicação
+            # Cálculo do Total de Custos
             total_custos = imposto_simples + custo_funcionario + custo_contadora
-            with st.expander("🧮 TOTAL DE CUSTOS (Como Calculado)", expanded=True):
-                st.markdown(f"""
-                - **Imposto Simples**: {format_currency(imposto_simples)}  
-                - **Custo Funcionário**: {format_currency(custo_funcionario)}  
-                - **Custo Contadora**: {format_currency(custo_contadora)}  
-                
-                **Fórmula**:  
-                `Imposto + Funcionário + Contadora = {format_currency(imposto_simples)} + {format_currency(custo_funcionario)} + {format_currency(custo_contadora)}`  
-                
-                **Total de Custos**: {format_currency(total_custos)}
-                """)
-            
-            # Lucro Estimado
             lucro_estimado = total_vendas - total_custos
-            with st.expander("💡 LUCRO ESTIMADO (Como Calculado)", expanded=True):
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Total de Custos", format_currency(total_custos))
+            with col2:
+                st.metric("Lucro Estimado", format_currency(lucro_estimado))
+            
+            # Seção de Detalhamento
+            st.header("🔍 Detalhamento")
+            
+            # Abas para organizar os detalhes
+            tab_detalhes1, tab_detalhes2, tab_detalhes3 = st.tabs([
+                "📝 Composição de Custos", 
+                "📚 Explicação dos Cálculos",
+                "🍰 Gráfico de Composição"
+            ])
+            
+            with tab_detalhes1:
+                st.subheader("Composição dos Custos")
                 st.markdown(f"""
-                **Fórmula**:  
-                `Faturamento Bruto - Total de Custos = {format_currency(total_vendas)} - {format_currency(total_custos)}`  
-                
-                **Lucro Estimado**: {format_currency(lucro_estimado)}  
-                
-                *Obs: Valores aproximados, não considerando outros custos operacionais*
+                - **Imposto Simples Nacional (6%)**: {format_currency(imposto_simples)}
+                - **Custo Funcionário CLT**: {format_currency(custo_funcionario)}
+                - **Custo Contadora**: {format_currency(custo_contadora)}
                 """)
             
-            # Gráfico de composição dos custos
-            custos_df = pd.DataFrame({
-                'Item': ['Impostos', 'Funcionário', 'Contadora'],
-                'Valor': [imposto_simples, custo_funcionario, custo_contadora]
-            })
+            with tab_detalhes2:
+                st.subheader("Fórmulas Utilizadas")
+                st.markdown("""
+                **1. Imposto Simples Nacional**  
+                `Faturamento Bruto × 6%`  
+                
+                **2. Custo Funcionário CLT**  
+                `Salário + FGTS (8%) + Férias (1 mês + 1/3) + 13º Salário`  
+                
+                **3. Total de Custos**  
+                `Imposto + Funcionário + Contadora`  
+                
+                **4. Lucro Estimado**  
+                `Faturamento Bruto - Total de Custos`
+                """)
             
-            graf_composicao = alt.Chart(custos_df).mark_arc().encode(
-                theta='Valor',
-                color='Item',
-                tooltip=['Item', alt.Tooltip('Valor', format='$.2f')]
-            ).properties(
-                title='Composição dos Custos',
-                width=400,
-                height=400
-            )
-            
-            st.altair_chart(graf_composicao, use_container_width=True)
+            with tab_detalhes3:
+                st.subheader("Composição dos Custos")
+                custos_df = pd.DataFrame({
+                    'Item': ['Impostos', 'Funcionário', 'Contadora'],
+                    'Valor': [imposto_simples, custo_funcionario, custo_contadora]
+                })
+                
+                graf_composicao = alt.Chart(custos_df).mark_arc().encode(
+                    theta='Valor',
+                    color='Item',
+                    tooltip=['Item', alt.Tooltip('Valor', format='$.2f')]
+                ).properties(
+                    width=600,  # Gráfico maior
+                    height=500
+                )
+                
+                st.altair_chart(graf_composicao, use_container_width=True)
             
         except Exception as e:
             st.error(f"Erro no processamento: {str(e)}")
     else:
-        st.info("✨ Aguardando envio do arquivo de transações...")
+        st.info("Por favor, envie um arquivo de transações para análise.")
 
 with tab2:
     st.header("🧩 Detalhes das Combinações Geradas")
