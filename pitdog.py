@@ -230,15 +230,30 @@ tab1, tab2, tab3 = st.tabs(["📈 Resumo das Vendas", "🧩 Detalhes das Combina
 with tab1:
     st.header("📈 Resumo das Vendas")
     arquivo = st.file_uploader("📤 Envie o arquivo de transações (.csv ou .xlsx)", 
-                              type=["csv", "xlsx"])
+                             type=["csv", "xlsx"])
 
     if arquivo:
         try:
-            df = pd.read_csv(arquivo) if arquivo.name.endswith(".csv") else pd.read_excel(arquivo)
+            # Verificar o tipo de arquivo
+            if arquivo.name.endswith(".csv"):
+                # Tentar ler com diferentes delimitadores
+                try:
+                    df = pd.read_csv(arquivo, sep=';', encoding='utf-8', dtype=str)
+                except pd.errors.ParserError:
+                    arquivo.seek(0)  # Resetar o ponteiro do arquivo
+                    try:
+                        df = pd.read_csv(arquivo, sep=',', encoding='utf-8', dtype=str)
+                    except:
+                        arquivo.seek(0)
+                        # Tentar ler automaticamente se ainda falhar
+                        df = pd.read_csv(arquivo, engine='python', dtype=str)
+            else:
+                df = pd.read_excel(arquivo, dtype=str)
             
+            # Verificar colunas obrigatórias
             required_cols = ['Tipo', 'Bandeira', 'Valor']
             if not all(col in df.columns for col in required_cols):
-                st.error(f"Arquivo precisa conter: {', '.join(required_cols)}")
+                st.error(f"Erro: O arquivo precisa conter as colunas: {', '.join(required_cols)}")
                 st.stop()
 
             df['Tipo'] = df['Tipo'].str.lower().str.strip().fillna('desconhecido')
