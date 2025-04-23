@@ -1,6 +1,6 @@
-streamlit==1.32.2
-pandas==2.1.4
-altair==5.2.0
-numpy==1.26.3
-python-dateutil==2.8.2
-sqlite3==  # Já incluído no Python
+streamlit
+pandas
+altair
+numpy
+python-dateutil
+sqlite3
