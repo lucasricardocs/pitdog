@@ -18,6 +18,8 @@ DB_FILE = 'recebimentos.db'
 
 def init_db():
     """Inicializa o banco de dados SQLite"""
+    # Cria o diretório se não existir
+    os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS recebimentos
@@ -27,31 +29,38 @@ def init_db():
 
 def load_receipts_data():
     """Carrega os dados do banco SQLite"""
-    conn = sqlite3.connect(DB_FILE)
-    df = pd.read_sql("SELECT * FROM recebimentos", conn)
-    conn.close()
-    
-    if not df.empty:
-        df['Data'] = pd.to_datetime(df['data'])
-        df = df.drop(columns=['data'])
-        return df.sort_values('Data', ascending=False)
-    return pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        df = pd.read_sql("SELECT * FROM recebimentos", conn)
+        conn.close()
+        
+        if not df.empty:
+            df['Data'] = pd.to_datetime(df['data'])
+            df = df.drop(columns=['data'])
+            return df.sort_values('Data', ascending=False)
+        return pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
+    except Exception as e:
+        st.error(f"Erro ao carregar dados do banco: {e}")
+        return pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
 
 def save_receipts_data(df):
     """Salva os dados no banco SQLite"""
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    
-    # Limpa a tabela antes de inserir novos dados
-    c.execute("DELETE FROM recebimentos")
-    
-    # Prepara os dados para inserção
-    df['data'] = df['Data'].dt.strftime('%Y-%m-%d')
-    df[['data', 'Dinheiro', 'Cartao', 'Pix']].to_sql('recebimentos', conn, if_exists='append', index=False)
-    
-    conn.commit()
-    conn.close()
-    st.success("Dados salvos com sucesso!")
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        
+        # Limpa a tabela antes de inserir novos dados
+        c.execute("DELETE FROM recebimentos")
+        
+        # Prepara os dados para inserção
+        df['data'] = df['Data'].dt.strftime('%Y-%m-%d')
+        df[['data', 'Dinheiro', 'Cartao', 'Pix']].to_sql('recebimentos', conn, if_exists='append', index=False)
+        
+        conn.commit()
+        conn.close()
+        st.success("Dados salvos com sucesso!")
+    except Exception as e:
+        st.error(f"Erro ao salvar dados: {e}")
 
 # Inicializa o banco de dados
 init_db()
@@ -231,18 +240,20 @@ with tab1:
             try:
                 if arquivo.name.endswith(".csv"):
                     try:
-                        df = pd.read_csv(arquivo, sep=';', encoding='utf-8', dtype=str)
-                    except Exception:
-                        arquivo.seek(0)
-                        try:
-                            df = pd.read_csv(arquivo, sep=',', encoding='utf-8', dtype=str)
-                        except Exception as e:
-                            st.error(f"Não foi possível ler o CSV. Erro: {e}")
-                            st.stop()
+                        # Tenta ler com encoding UTF-8-SIG (para lidar com BOM)
+                        df = pd.read_csv(arquivo, sep=';', encoding='utf-8-sig', dtype=str)
+                        # Verifica se a leitura foi bem-sucedida
+                        if df.empty or len(df.columns) == 1:
+                            arquivo.seek(0)
+                            df = pd.read_csv(arquivo, sep=',', encoding='utf-8-sig', dtype=str)
+                    except Exception as e:
+                        st.error(f"Erro ao ler CSV: {e}")
+                        st.stop()
                 else:
                     df = pd.read_excel(arquivo, dtype=str)
 
                 st.success(f"Arquivo '{arquivo.name}' carregado com sucesso!")
+                st.write("Primeiras linhas do arquivo:", df.head())
 
                 required_columns = ['Tipo', 'Bandeira', 'Valor']
                 if not all(col in df.columns for col in required_columns):
@@ -252,6 +263,8 @@ with tab1:
                 df_processed = df.copy()
                 df_processed['Tipo'] = df_processed['Tipo'].str.lower().str.strip().fillna('desconhecido')
                 df_processed['Bandeira'] = df_processed['Bandeira'].str.lower().str.strip().fillna('desconhecida')
+                
+                # Processamento do valor numérico
                 df_processed['Valor_Numeric'] = pd.to_numeric(
                     df_processed['Valor'].str.replace('.', '', regex=False).str.replace(',', '.', regex=False),
                     errors='coerce'
