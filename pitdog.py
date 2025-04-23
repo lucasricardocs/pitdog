@@ -400,7 +400,7 @@ with tab2:
     # Definir ordem de exibição
     ordem_formas = [
         'Débito Visa', 'Débito MasterCard', 'Débito Elo',
-        'Crédito Visa', 'Crédito MasterCard', 'Crédito Elo', 'Crédito Elo', 'PIX'
+        'Crédito Visa', 'Crédito MasterCard', 'Crédito Elo', 'Crédito Amex', 'PIX'
     ]
     
     for forma in ordem_formas:
