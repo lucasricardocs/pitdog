@@ -324,6 +324,95 @@ with tab1:
     else:
         st.info("✨ Aguardando envio do arquivo de transações...")
 
+# ... (o código anterior permanece igual até a definição das abas)
+
+# --- ABAS PRINCIPAIS ---
+tab1, tab2, tab3 = st.tabs(["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💰 Cadastro de Recebimentos"])
+
+with tab1:
+    # ... (o conteúdo da Tab1 permanece igual)
+
+with tab2:
+    st.header("🧩 Detalhes das Combinações")
+    
+    if 'vendas' in locals() and vendas:  # Verifica se existem dados de vendas
+        total_vendas = sum(vendas['Valor'])
+        st.subheader(f"Total de Vendas: {format_currency(total_vendas)}")
+        
+        # Calcula valores alvo para sanduíches e bebidas
+        valor_sanduiches = total_vendas * (100 - drink_percentage) / 100
+        valor_bebidas = total_vendas * drink_percentage / 100
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Valor para Sanduíches", format_currency(valor_sanduiches))
+        with col2:
+            st.metric("Valor para Bebidas", format_currency(valor_bebidas))
+        
+        # Otimização para sanduíches
+        st.subheader("🍔 Combinações de Sanduíches")
+        comb_sanduiches = optimize_combination(
+            CARDAPIOS['sanduiches'],
+            valor_sanduiches,
+            tamanho_combinacao_sanduiches,
+            max_iterations
+        )
+        
+        if comb_sanduiches:
+            df_sanduiches = pd.DataFrame.from_dict(comb_sanduiches, orient='index', columns=['Quantidade'])
+            df_sanduiches['Preço Unitário'] = df_sanduiches.index.map(CARDAPIOS['sanduiches'].get)
+            df_sanduiches['Subtotal'] = df_sanduiches['Quantidade'] * df_sanduiches['Preço Unitário']
+            
+            # Gráfico de barras para sanduíches
+            chart_sanduiches = alt.Chart(df_sanduiches.reset_index()).mark_bar().encode(
+                x=alt.X('index:N', title='Sanduíche', sort='-y'),
+                y=alt.Y('Subtotal:Q', title='Valor (R$)'),
+                color=alt.Color('index:N', legend=None),
+                tooltip=['index', 'Quantidade', 'Preço Unitário', 'Subtotal']
+            ).properties(
+                title=f"Combinação sugerida (Total: {format_currency(df_sanduiches['Subtotal'].sum())})",
+                height=400
+            )
+            st.altair_chart(chart_sanduiches, use_container_width=True)
+            
+            st.dataframe(df_sanduiches.style.format({
+                'Preço Unitário': format_currency,
+                'Subtotal': format_currency
+            }))
+        
+        # Otimização para bebidas
+        st.subheader("🍹 Combinações de Bebidas")
+        comb_bebidas = optimize_combination(
+            CARDAPIOS['bebidas'],
+            valor_bebidas,
+            tamanho_combinacao_bebidas,
+            max_iterations
+        )
+        
+        if comb_bebidas:
+            df_bebidas = pd.DataFrame.from_dict(comb_bebidas, orient='index', columns=['Quantidade'])
+            df_bebidas['Preço Unitário'] = df_bebidas.index.map(CARDAPIOS['bebidas'].get)
+            df_bebidas['Subtotal'] = df_bebidas['Quantidade'] * df_bebidas['Preço Unitário']
+            
+            # Gráfico de barras para bebidas
+            chart_bebidas = alt.Chart(df_bebidas.reset_index()).mark_bar().encode(
+                x=alt.X('index:N', title='Bebida', sort='-y'),
+                y=alt.Y('Subtotal:Q', title='Valor (R$)'),
+                color=alt.Color('index:N', legend=None),
+                tooltip=['index', 'Quantidade', 'Preço Unitário', 'Subtotal']
+            ).properties(
+                title=f"Combinação sugerida (Total: {format_currency(df_bebidas['Subtotal'].sum())})",
+                height=400
+            )
+            st.altair_chart(chart_bebidas, use_container_width=True)
+            
+            st.dataframe(df_bebidas.style.format({
+                'Preço Unitário': format_currency,
+                'Subtotal': format_currency
+            }))
+    else:
+        st.warning("Por favor, carregue os dados de vendas na aba 'Resumo das Vendas' primeiro.")
+
 with tab3:
     st.header("💰 Cadastro de Recebimentos Diários")
     
