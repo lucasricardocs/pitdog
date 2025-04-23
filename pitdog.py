@@ -130,7 +130,7 @@ def optimize_combination(item_prices, target_value, combination_size, max_iterat
             break
 
         neighbor = best_combination.copy()
-        item = random.choice(list(neighbor.keys()))
+        item = random.choice(list(best_combination.keys()))
         change = random.choice([-0.50, 0.50, -1.00, 1.00])
         
         neighbor[item] = max(0.50, round_to_50_or_00(neighbor[item] + change))
@@ -144,21 +144,35 @@ def optimize_combination(item_prices, target_value, combination_size, max_iterat
 
     return best_combination
 
-def create_pie_chart(data, labels_col, values_col):
-    """Cria um gráfico de pizza padronizado."""
-    return alt.Chart(data).mark_arc().encode(
-        theta=f'{values_col}:Q',
-        color=f'{labels_col}:N',
-        tooltip=[labels_col, values_col]
-    ).properties(height=400)
-
-def create_line_chart(data, x_col, y_col):
-    """Cria um gráfico de linha padronizado."""
-    return alt.Chart(data).mark_line().encode(
-        x=f'{x_col}:T',
-        y=f'{y_col}:Q',
-        tooltip=[x_col, y_col]
-    ).properties(height=400)
+def create_altair_chart(data, chart_type, x_col, y_col, color_col=None, title=None, interactive=True):
+    """Cria gráficos Altair com configuração padronizada."""
+    if chart_type == 'line':
+        chart = alt.Chart(data).mark_line(point=True).encode(
+            x=alt.X(f'{x_col}:T', title=x_col),
+            y=alt.Y(f'{y_col}:Q', title=y_col),
+            tooltip=[x_col, y_col]
+        )
+    elif chart_type == 'bar':
+        chart = alt.Chart(data).mark_bar().encode(
+            x=alt.X(f'{x_col}:N', title=x_col),
+            y=alt.Y(f'{y_col}:Q', title=y_col),
+            color=alt.Color(f'{color_col}:N') if color_col else alt.value('steelblue'),
+            tooltip=[x_col, y_col]
+        )
+    elif chart_type == 'pie':
+        chart = alt.Chart(data).mark_arc().encode(
+            theta=alt.Theta(f'{y_col}:Q', stack=True),
+            color=alt.Color(f'{x_col}:N', legend=alt.Legend(title=x_col)),
+            tooltip=[x_col, y_col]
+        )
+    
+    chart = chart.properties(
+        title=title if title else f'{y_col} por {x_col}',
+        width=700,
+        height=400
+    )
+    
+    return chart.interactive() if interactive else chart
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -241,24 +255,35 @@ with tab1:
                 st.warning("Nenhuma transação válida encontrada.")
                 st.stop()
 
-            vendas = df.groupby('Forma')['Valor'].sum().to_dict()
+            vendas = df.groupby('Forma')['Valor'].sum().reset_index()
             
+            # Gráfico de Pizza
             st.subheader("Vendas por Forma de Pagamento")
-            if vendas:
-                df_vendas = pd.DataFrame(vendas.items(), columns=['Forma', 'Valor'])
-                st.altair_chart(create_pie_chart(df_vendas, 'Forma', 'Valor'), 
-                               use_container_width=True)
+            pie_chart = create_altair_chart(
+                vendas, 'pie', 'Forma', 'Valor', 
+                title='Distribuição das Vendas por Forma de Pagamento'
+            )
+            st.altair_chart(pie_chart, use_container_width=True)
             
+            # Gráfico de Barras
+            bar_chart = create_altair_chart(
+                vendas, 'bar', 'Forma', 'Valor', 'Forma',
+                title='Total de Vendas por Forma de Pagamento'
+            )
+            st.altair_chart(bar_chart, use_container_width=True)
+            
+            # Resumo Financeiro
             st.subheader("💰 Resumo Financeiro")
             salario_minimo = st.number_input("💼 Salário Mínimo (R$)", value=1518.0, step=50.0)
             custo_contadora = st.number_input("📋 Custo com Contadora (R$)", value=316.0, step=10.0)
             
-            total_vendas = sum(vendas.values())
+            total_vendas = vendas['Valor'].sum()
             imposto_simples = total_vendas * 0.06
             fgts = salario_minimo * 0.08
             custo_funcionario = salario_minimo + fgts + (salario_minimo / 12) * (1 + 1/3)
             total_custos = imposto_simples + custo_funcionario + custo_contadora
             
+            # Métricas em colunas
             col1, col2 = st.columns(2)
             with col1:
                 st.metric("💵 Faturamento Bruto", format_currency(total_vendas))
@@ -267,8 +292,17 @@ with tab1:
                 st.metric("👷‍♂️ Custo Funcionário", format_currency(custo_funcionario))
                 st.metric("📋 Custo Contadora", format_currency(custo_contadora))
             
-            st.metric("💸 Total de Custos", format_currency(total_custos))
-            st.metric("📈 Lucro Estimado", format_currency(total_vendas - total_custos))
+            # Gráfico de Comparação
+            comparacao = pd.DataFrame({
+                'Categoria': ['Faturamento', 'Custos', 'Lucro'],
+                'Valor': [total_vendas, total_custos, total_vendas - total_custos]
+            })
+            
+            comp_chart = create_altair_chart(
+                comparacao, 'bar', 'Categoria', 'Valor', 'Categoria',
+                title='Comparação Faturamento x Custos x Lucro'
+            )
+            st.altair_chart(comp_chart, use_container_width=True)
             
         except Exception as e:
             st.error(f"Erro no processamento: {str(e)}")
@@ -297,16 +331,38 @@ with tab3:
     if not st.session_state['df_receipts'].empty:
         df = st.session_state['df_receipts'].copy()
         df['Total'] = df[['Dinheiro', 'Cartao', 'Pix']].sum(axis=1)
+        df['Data'] = pd.to_datetime(df['Data'])
         
-        st.altair_chart(create_pie_chart(
-            pd.DataFrame({
-                'Forma': ['Dinheiro', 'Cartao', 'Pix'],
-                'Valor': df[['Dinheiro', 'Cartao', 'Pix']].sum().values
-            }), 'Forma', 'Valor'), use_container_width=True)
+        # Gráfico de Pizza
+        totais = df[['Dinheiro', 'Cartao', 'Pix']].sum().reset_index()
+        totais.columns = ['Forma', 'Total']
         
-        st.altair_chart(create_line_chart(df, 'Data', 'Total'), 
-                       use_container_width=True)
+        pie_chart = create_altair_chart(
+            totais, 'pie', 'Forma', 'Total',
+            title='Distribuição dos Recebimentos'
+        )
+        st.altair_chart(pie_chart, use_container_width=True)
         
+        # Gráfico de Linha Temporal
+        line_chart = create_altair_chart(
+            df, 'line', 'Data', 'Total',
+            title='Evolução dos Recebimentos Diários'
+        )
+        st.altair_chart(line_chart, use_container_width=True)
+        
+        # Gráfico de Barras Agrupadas
+        melted_df = df.melt(id_vars=['Data'], 
+                           value_vars=['Dinheiro', 'Cartao', 'Pix'],
+                           var_name='Forma', 
+                           value_name='Valor')
+        
+        bar_chart = create_altair_chart(
+            melted_df, 'bar', 'Data', 'Valor', 'Forma',
+            title='Recebimentos Diários por Forma de Pagamento'
+        )
+        st.altair_chart(bar_chart, use_container_width=True)
+        
+        # Tabela de Dados
         st.dataframe(df.sort_values('Data', ascending=False))
     else:
         st.info("Nenhum recebimento cadastrado.")
