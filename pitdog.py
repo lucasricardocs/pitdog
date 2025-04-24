@@ -252,8 +252,8 @@ with tab1:
                         except:
                             arquivo.seek(0)
                             df = pd.read_csv(arquivo, engine='python', dtype=str)
-                else:
-                    df = pd.read_excel(arquivo, dtype=str)
+                #else:
+                    #df = pd.read_excel(arquivo, dtype=str)
                 
                 # Verificar colunas obrigatórias
                 required_cols = ['Tipo', 'Bandeira', 'Valor']
