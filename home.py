@@ -454,13 +454,6 @@ def create_altair_chart(data, chart_type, x_col, y_col, color_col=None, title=No
     
     return chart.interactive() if interactive else chart
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(
-    page_title=CONFIG["page_title"],
-    layout=CONFIG["layout"],
-    initial_sidebar_state=CONFIG["sidebar_state"]
-)
-
 # --- INICIALIZAÇÃO ---
 init_data_file()
 if 'df_receipts' not in st.session_state:
