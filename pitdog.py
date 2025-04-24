@@ -738,7 +738,6 @@ with tab2:
         vendas = st.session_state.vendas_data
         total_vendas = st.session_state.total_vendas
         
-        # Seleção da forma de pagamento
         forma_selecionada = st.selectbox(
             "Selecione a forma de pagamento",
             options=vendas['Forma'].unique(),
@@ -749,8 +748,8 @@ with tab2:
         st.subheader(f"💰 Valor Total: {format_currency(valor_selecionado)}")
         
         # Distribuição entre sanduíches e bebidas
-        valor_sanduiches = valor_selecionado * (1 - drink_percentage/100)
-        valor_bebidas = valor_selecionado * (drink_percentage/100)
+        valor_sanduiches = valor_selecionado * (1 - drink_percentage / 100)
+        valor_bebidas = valor_selecionado * (drink_percentage / 100)
         
         col1, col2 = st.columns(2)
         with col1:
@@ -758,65 +757,9 @@ with tab2:
         with col2:
             st.info(f"**Valor Esperado para Bebidas:** {format_currency(valor_bebidas)}")
         
-        # Implementação do Algoritmo Genético
-                def genetic_algorithm(menu, target, population_size=200, generations=500, 
-                            combination_size=5, elite_size=10, mutation_rate=0.1):
-            
-            # Inicialização da população
-            population = [create_individual(menu, combination_size) for _ in range(population_size)]
-            best_individual = {}
-            best_fitness = float('inf')
-            
-            for _ in range(generations):
-                # Avaliação
-                fitness = [evaluate_fitness(ind, menu, target) for ind in population]
-                
-                # Atualiza melhor indivíduo
-                current_best_idx = np.argmin(fitness)
-                if fitness[current_best_idx] < best_fitness:
-                    best_individual = population[current_best_idx].copy()
-                    best_fitness = fitness[current_best_idx]
-                
-                # Critério de parada antecipada
-                if best_fitness <= 0.1:  # 10 centavos de tolerância
-                    break
-                
-                # Seleção por torneio
-                selected = tournament_selection(population, fitness)
-                
-                # Cruzamento uniforme
-                new_population = []
-                for i in range(0, len(selected), 2):
-                    parent1 = selected[i]
-                    parent2 = selected[i+1] if (i+1) < len(selected) else selected[0]
-                    child = {}
-                    for item in set(parent1.keys()) | set(parent2.keys()):
-                        if random.random() < 0.5:
-                            child[item] = parent1.get(item, 0)
-                        else:
-                            child[item] = parent2.get(item, 0)
-                    new_population.append(child)
-                
-                # Mutação controlada
-                for i in range(len(new_population)):
-                    if random.random() < mutation_rate:
-                        item = random.choice(list(menu.keys()))
-                        new_population[i][item] = max(0, new_population[i].get(item, 0) + random.choice([-1, 0, 1]))
-                
-                population = new_population
-            
-            # Filtra combinações válidas (95-105% do target)
-            valid_combinations = [
-                ind for ind in population 
-                if 0.95*target <= sum(menu[item]*qtd for item, qtd in ind.items()) <= 1.05*target
-            ]
-            
-            return valid_combinations[0] if valid_combinations else best_individual
-        
-        # Cálculo das combinações
-        with st.spinner("🔍 Buscando combinações precisas..."):
-            if algoritmo == "Algoritmo Genético":
-                # Combinação para sanduíches
+        # Verifica qual algoritmo foi selecionado
+        if algoritmo == "Algoritmo Genético":
+            with st.spinner("🔍 Calculando combinações usando Algoritmo Genético..."):
                 combinacao_sanduiches = genetic_algorithm(
                     CARDAPIOS["sanduiches"],
                     valor_sanduiches,
@@ -824,98 +767,44 @@ with tab2:
                     generations=generations,
                     combination_size=tamanho_combinacao_sanduiches
                 )
-                
-                # Combinação para bebidas (IMPLEMENTAÇÃO COMPLETA)
                 combinacao_bebidas = genetic_algorithm(
-                    CARDAPIOS["bebidas"],  # Usa o cardápio de bebidas
-                    valor_bebidas,         # Valor alvo para bebidas
+                    CARDAPIOS["bebidas"],
+                    valor_bebidas,
                     population_size=population_size,
                     generations=generations,
-                    combination_size=tamanho_combinacao_bebidas  # Número de tipos de bebidas
+                    combination_size=tamanho_combinacao_bebidas
                 )
-                
-            else:  # Busca Local
-                # Implementação para sanduíches
-                best_sanduiches = {}
-                best_diff_sanduiches = float('inf')
-                for _ in range(max_iterations):
-                    candidate = {
-                        item: random.randint(1, 15) 
-                        for item in random.sample(
-                            CARDAPIOS["sanduiches"].keys(), 
-                            tamanho_combinacao_sanduiches
-                        )
-                    }
-                    total = sum(CARDAPIOS["sanduiches"][item] * qtd for item, qtd in candidate.items())
-                    diff = abs(total - valor_sanduiches)
-                    if diff < best_diff_sanduiches:
-                        best_sanduiches = candidate
-                        best_diff_sanduiches = diff
-                combinacao_sanduiches = best_sanduiches
-
-                # Implementação COMPLETA para bebidas
-                best_bebidas = {}
-                best_diff_bebidas = float('inf')
-                for _ in range(max_iterations):
-                    candidate = {
-                        item: random.randint(1, 15)
-                        for item in random.sample(
-                            CARDAPIOS["bebidas"].keys(), 
-                            tamanho_combinacao_bebidas
-                        )
-                    }
-                    total = sum(CARDAPIOS["bebidas"][item] * qtd for item, qtd in candidate.items())
-                    diff = abs(total - valor_bebidas)
-                    if diff < best_diff_bebidas:
-                        best_bebidas = candidate
-                        best_diff_bebidas = diff
-                combinacao_bebidas = best_bebidas
-
-        # Cálculo dos valores reais
-        valor_real_sanduiches = sum(CARDAPIOS["sanduiches"][item] * qtd for item, qtd in combinacao_sanduiches.items())
-        valor_real_bebidas = sum(CARDAPIOS["bebidas"][item] * qtd for item, qtd in combinacao_bebidas.items())
-        valor_real_total = valor_real_sanduiches + valor_real_bebidas
-
-        # Exibição dos resultados
-        st.markdown("---")
-        st.subheader("🍟 Combinação Proposta")
+        else:  # Busca Local
+            with st.spinner("🔍 Calculando combinações usando Busca Local..."):
+                combinacao_sanduiches = busca_local(
+                    CARDAPIOS["sanduiches"],
+                    valor_sanduiches,
+                    max_iterations=max_iterations,
+                    combination_size=tamanho_combinacao_sanduiches
+                )
+                combinacao_bebidas = busca_local(
+                    CARDAPIOS["bebidas"],
+                    valor_bebidas,
+                    max_iterations=max_iterations,
+                    combination_size=tamanho_combinacao_bebidas
+                )
         
+        # Exibe os resultados
+        st.subheader("🍟 Combinação Proposta")
         col1, col2 = st.columns(2)
         
-        # Seção Sanduíches
-        with col1:
-            st.markdown("### 🍔 Sanduíches")
-            if combinacao_sanduiches:
-                itens_ordenados = sorted(
-                    combinacao_sanduiches.items(),
-                    key=lambda x: x[1] * CARDAPIOS["sanduiches"][x[0]],
-                    reverse=True
-                )
-                for produto, qtd in itens_ordenados:
+        if combinacao_sanduiches:
+            with col1:
+                st.markdown("### 🍔 Sanduíches")
+                for produto, qtd in combinacao_sanduiches.items():
                     total_item = qtd * CARDAPIOS["sanduiches"][produto]
                     st.markdown(f"- **{qtd} X {produto}**  \n`{format_currency(total_item)}`")
-                
-                diferenca_sand = valor_real_sanduiches - valor_sanduiches
-                st.metric(
-                    "Total Sanduíches", 
-                    format_currency(valor_real_sanduiches),
-                    delta=f"{format_currency(diferenca_sand)} ({diferenca_sand/valor_sanduiches:.1%})",
-                    delta_color="normal" if abs(diferenca_sand) < 0.05*valor_sanduiches else "inverse"
-                )
-            else:
-                st.warning("Não foi possível encontrar combinação para sanduíches")
-
-        # Seção Bebidas (IMPLEMENTAÇÃO COMPLETA)
-        with col2:
-            st.markdown("### 🥤 Bebidas")
-            if combinacao_bebidas:
-                itens_ordenados = sorted(
-                    combinacao_bebidas.items(),
-                    key=lambda x: x[1] * CARDAPIOS["bebidas"][x[0]],  # Usa preços de bebidas
-                    reverse=True
-                )
-                for produto, qtd in itens_ordenados:
-                    total_item = qtd * CARDAPIOS["bebidas"][produto]  # Multiplica pela quantidade
+        
+        if combinacao_bebidas:
+            with col2:
+                st.markdown("### 🥤 Bebidas")
+                for produto, qtd in combinacao_bebidas.items():
+                    total_item = qtd * CARDAPIOS["bebidas"][produto]
                     st.markdown(f"- **{qtd} X {produto}**  \n`{format_currency(total_item)}`")
                 
                 diferenca_beb = valor_real_bebidas - valor_bebidas
