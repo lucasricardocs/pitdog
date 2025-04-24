@@ -915,28 +915,24 @@ with tab3:
                         st.error(f"Erro ao salvar: {str(e)}")
 
     # Exibição dos dados se houver registros
-    if not st.session_state.df_receipts.empty:
+        if not st.session_state.df_receipts.empty:
         st.subheader("📅 Filtros de Período")
-
+    
         filtro_tipo = st.radio("Tipo de Filtro:",
                                ["Intervalo de Datas", "Mês Específico"],
                                horizontal=True)
-
+    
         if filtro_tipo == "Intervalo de Datas":
             cols = st.columns(2)
-        
-            if not st.session_state.df_receipts.empty and 'Data' in st.session_state.df_receipts.columns:
-                data_minima = st.session_state.df_receipts['Data'].min()
-                data_maxima = st.session_state.df_receipts['Data'].max()
-            else:
-                data_minima = datetime.today()
-                data_maxima = datetime.today()
-        
+    
+            data_minima = st.session_state.df_receipts['Data'].min()
+            data_maxima = st.session_state.df_receipts['Data'].max()
+    
             with cols[0]:
                 inicio = st.date_input("Data inicial", value=data_minima)
             with cols[1]:
                 fim = st.date_input("Data final", value=data_maxima)
-        
+    
         else:
             meses = sorted(st.session_state.df_receipts['Data'].dt.to_period('M').unique(), reverse=True)
             mes = st.selectbox("Selecione o mês:",
@@ -944,6 +940,13 @@ with tab3:
                                format_func=lambda x: x.strftime('%B/%Y'))
             inicio = pd.to_datetime(mes.start_time)
             fim = pd.to_datetime(mes.end_time)
+    
+        # 🔥 Aqui garantimos que df_filtered seja sempre criado
+        df_filtered = st.session_state.df_receipts[
+            (st.session_state.df_receipts['Data'] >= pd.to_datetime(inicio)) &
+            (st.session_state.df_receipts['Data'] <= pd.to_datetime(fim))
+        ].copy()
+
 
         if not df_filtered.empty:
             df_filtered['Total'] = df_filtered['Dinheiro'] + df_filtered['Cartao'] + df_filtered['Pix']
