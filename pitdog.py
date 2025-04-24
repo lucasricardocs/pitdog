@@ -102,53 +102,32 @@ def save_data(df):
     except Exception as e:
         st.error(f"Erro ao salvar dados: {e}")
 
-def round_to_50_or_00(value):
-    """Arredonda para o múltiplo de 0.50 mais próximo."""
-    return round(value * 2) / 2
+def process_file(arquivo):
+    """Processa o arquivo enviado pelo usuário."""
+    try:
+        if arquivo.name.endswith(".csv"):
+            df = pd.read_csv(arquivo, sep=None, engine='python', encoding='utf-8', dtype=str)
+        else:
+            df = pd.read_excel(arquivo, dtype=str)
+        return df
+    except Exception as e:
+        st.error(f"Erro ao processar o arquivo: {e}")
+        return None
 
-def calculate_combination_value(combination, item_prices):
-    """Calcula o valor total de uma combinação."""
-    return sum(item_prices.get(name, 0) * quantity for name, quantity in combination.items())
+def validate_columns(df, required_cols):
+    """Valida se o DataFrame possui as colunas obrigatórias."""
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    if missing_cols:
+        st.error(f"Erro: O arquivo precisa conter as colunas: {', '.join(missing_cols)}")
+        return False
+    return True
 
-def generate_initial_combination(item_prices, combination_size):
-    """Gera uma combinação inicial aleatória."""
-    if not item_prices:
-        return {}
-    
-    items = list(item_prices.keys())
-    size = min(combination_size, len(items))
-    return {
-        name: round_to_50_or_00(random.uniform(1, 10))
-        for name in random.sample(items, size)
-    }
-
-def optimize_combination(item_prices, target_value, combination_size, max_iterations):
-    """Otimiza combinações de produtos para atingir um valor alvo."""
-    if not item_prices or target_value <= 0:
-        return {}
-
-    best_combination = generate_initial_combination(item_prices, combination_size)
-    best_diff = abs(target_value - calculate_combination_value(best_combination, item_prices))
-    best_diff += 10000 if calculate_combination_value(best_combination, item_prices) > target_value else 0
-
-    for _ in range(max_iterations):
-        if not best_combination:
-            break
-
-        neighbor = best_combination.copy()
-        item = random.choice(list(best_combination.keys()))
-        change = random.choice([-0.50, 0.50, -1.00, 1.00])
-        
-        neighbor[item] = max(0.50, round_to_50_or_00(neighbor[item] + change))
-        neighbor_value = calculate_combination_value(neighbor, item_prices)
-        neighbor_diff = abs(target_value - neighbor_value)
-        neighbor_diff += 10000 if neighbor_value > target_value else 0
-
-        if neighbor_diff < best_diff:
-            best_diff = neighbor_diff
-            best_combination = neighbor
-
-    return best_combination
+def ensure_columns_exist(df, columns):
+    """Garante que as colunas necessárias existam no DataFrame."""
+    for col in columns:
+        if col not in df.columns:
+            df[col] = 0.0
+    return df
 
 def create_altair_chart(data, chart_type, x_col, y_col, color_col=None, title=None, interactive=True):
     """Cria gráficos Altair com configuração padronizada."""
@@ -196,46 +175,10 @@ if 'uploaded_data' not in st.session_state:
 if 'vendas_data' not in st.session_state:
     st.session_state.vendas_data = None
 
-# --- INTERFACE PRINCIPAL ---
-col_title1, col_title2 = st.columns([0.30, 0.70])
-with col_title1:
-    try:
-        st.image(CONFIG["logo_path"], width=1000)
-    except FileNotFoundError:
-        st.warning("Logo não encontrada")
-with col_title2:
-    st.title("Sistema de Gestão")
-    st.markdown("<p style='font-weight:bold; font-size:30px; margin-top:-15px'>Clip's Burger</p>", 
-               unsafe_allow_html=True)
-
-st.markdown("""
-Bem-vindo(a)! Esta ferramenta ajuda a visualizar suas vendas por forma de pagamento
-e tenta encontrar combinações *hipotéticas* de produtos que poderiam corresponder a esses totais.
-""")
-st.divider()
-
-# --- SIDEBAR ---
-with st.sidebar:
-    st.header("⚙️ Configurações")
-    drink_percentage = st.slider(
-        "Percentual para Bebidas (%) 🍹",
-        min_value=0, max_value=100, value=20, step=5
-    )
-    st.caption(f"({100 - drink_percentage}% será alocado para Sanduíches 🍔)")
-
-    tamanho_combinacao_bebidas = st.slider(
-        "Número de tipos de Bebidas", 1, 10, 5, 1)
-    tamanho_combinacao_sanduiches = st.slider(
-        "Número de tipos de Sanduíches", 1, 10, 5, 1)
-    max_iterations = st.select_slider(
-        "Qualidade da Otimização ✨",
-        options=[1000, 5000, 10000, 20000, 50000],
-        value=10000
-    )
-    st.info("Lembre-se: As combinações são aproximações heurísticas.")
-
 # --- ABAS PRINCIPAIS ---
 tab1, tab2, tab3 = st.tabs(["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💰 Cadastro de Recebimentos"])
+
+# Código para cada aba permanece similar, mas com as melhorias aplicadas.
 
 with tab1:
 
