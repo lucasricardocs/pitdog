@@ -32,6 +32,11 @@ st.set_page_config(
     layout=CONFIG["layout"],
     initial_sidebar_state=CONFIG["sidebar_state"]
 )
+
+# Inicializando a variável de session_state caso não exista
+if 'vendas_data' not in st.session_state:
+    st.session_state.vendas_data = None
+    
 CARDAPIOS = {
     "sanduiches": {
         "X Salada Simples": 18.00,
