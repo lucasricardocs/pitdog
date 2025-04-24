@@ -820,8 +820,8 @@ with tab2:
             st.markdown("### 🍔 Sanduíches")
             if combinacao_sanduiches:
                 df_sanduiches = pd.DataFrame({
-                    'Produto': list(combinacao_sanduiches.keys()),
                     'Quantidade': list(combinacao_sanduiches.values()),
+                    'Produto': list(combinacao_sanduiches.keys()),
                     'Preço Unitário': [CARDAPIOS["sanduiches"][item] for item in combinacao_sanduiches.keys()],
                     'Subtotal': [CARDAPIOS["sanduiches"][item] * qtd for item, qtd in combinacao_sanduiches.items()]
                 })
@@ -848,8 +848,8 @@ with tab2:
             st.markdown("### 🍹 Bebidas")
             if combinacao_bebidas:
                 df_bebidas = pd.DataFrame({
-                    'Produto': list(combinacao_bebidas.keys()),
                     'Quantidade': list(combinacao_bebidas.values()),
+                    'Produto': list(combinacao_bebidas.keys()),
                     'Preço Unitário': [CARDAPIOS["bebidas"][item] for item in combinacao_bebidas.keys()],
                     'Subtotal': [CARDAPIOS["bebidas"][item] * qtd for item, qtd in combinacao_bebidas.items()]
                 })
