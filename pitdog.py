@@ -738,15 +738,16 @@ with tab2:
         vendas = st.session_state.vendas_data
         total_vendas = st.session_state.total_vendas
         
-        # Seleção da forma de pagamento para análise
+        # Seleção da forma de pagamento
         forma_selecionada = st.selectbox(
             "Selecione a forma de pagamento",
-            options=vendas['Forma'].tolist(),
+            options=vendas['Forma'].unique(),
             format_func=lambda x: f"{x} ({format_currency(vendas.loc[vendas['Forma'] == x, 'Valor'].iloc[0])})"
         )
         
+        # Valor total da forma selecionada
         valor_selecionado = vendas.loc[vendas['Forma'] == forma_selecionada, 'Valor'].iloc[0]
-        st.subheader(f"Valor total: {format_currency(valor_selecionado)}")
+        st.subheader(f"💰 Valor Total: {format_currency(valor_selecionado)}")
         
         # Distribuição entre sanduíches e bebidas
         valor_sanduiches = valor_selecionado * (1 - drink_percentage/100)
@@ -754,141 +755,170 @@ with tab2:
         
         col1, col2 = st.columns(2)
         with col1:
-            st.info(f"Valor para Sanduíches: {format_currency(valor_sanduiches)} ({100-drink_percentage}%)")
+            st.info(f"**Valor Esperado para Sanduíches:** {format_currency(valor_sanduiches)}")
         with col2:
-            st.info(f"Valor para Bebidas: {format_currency(valor_bebidas)} ({drink_percentage}%)")
+            st.info(f"**Valor Esperado para Bebidas:** {format_currency(valor_bebidas)}")
         
-        # Encontrar combinações
-        with st.spinner("Calculando possíveis combinações..."):
+        # Funções do Algoritmo Genético (MANTIDAS DA VERSÃO ORIGINAL)
+        def create_individual(menu, max_items):
+            individual = {}
+            items = random.sample(list(menu.keys()), min(max_items, len(menu)))
+            for item in items:
+                individual[item] = random.uniform(0.1, 5.0)
+            return individual
+
+        def crossover(parent1, parent2):
+            child1, child2 = parent1.copy(), parent2.copy()
+            if len(parent1) > 1:
+                crossover_point = random.randint(1, len(parent1)-1)
+                items = list(parent1.keys())
+                child1 = dict(list(parent1.items())[:crossover_point] + list(parent2.items())[crossover_point:])
+                child2 = dict(list(parent2.items())[:crossover_point] + list(parent1.items())[crossover_point:])
+            return child1, child2
+
+        def mutate(individual, menu, mutation_rate=0.3):
+            if random.random() < mutation_rate:
+                item = random.choice(list(menu.keys()))
+                individual[item] = max(0, individual.get(item, 0) + random.uniform(-1, 1))
+            return individual
+
+        def evaluate_fitness(individual, menu, target):
+            total = sum(qtd * menu[item] for item, qtd in individual.items())
+            return abs(total - target)
+
+        def genetic_algorithm(menu, target, population_size=50, generations=100, combination_size=5):
+            population = [create_individual(menu, combination_size) for _ in range(population_size)]
+            
+            for _ in range(generations):
+                fitness = [evaluate_fitness(ind, menu, target) for ind in population]
+                selected = random.choices(
+                    population,
+                    weights=[1/(f+1e-6) for f in fitness],
+                    k=population_size
+                )
+                
+                new_population = []
+                for i in range(0, population_size, 2):
+                    parent1, parent2 = selected[i], selected[i+1]
+                    child1, child2 = crossover(parent1, parent2)
+                    new_population.extend([mutate(child1, menu), mutate(child2, menu)])
+                
+                population = new_population
+            
+            best = min(population, key=lambda x: evaluate_fitness(x, menu, target))
+            return {k: round(v) for k, v in best.items() if round(v) > 0}
+
+        # Cálculo das combinações
+        with st.spinner("🔍 Buscando melhores combinações..."):
             if algoritmo == "Algoritmo Genético":
                 combinacao_sanduiches = genetic_algorithm(
-                    CARDAPIOS["sanduiches"], 
+                    CARDAPIOS["sanduiches"],
                     valor_sanduiches,
                     population_size=population_size,
                     generations=generations,
                     combination_size=tamanho_combinacao_sanduiches
                 )
-                
                 combinacao_bebidas = genetic_algorithm(
-                    CARDAPIOS["bebidas"], 
+                    CARDAPIOS["bebidas"],
                     valor_bebidas,
                     population_size=population_size,
                     generations=generations,
                     combination_size=tamanho_combinacao_bebidas
                 )
-            else:  # Busca Local
-                # Implementação da busca local para sanduíches
+            else:
+                # Implementação da Busca Local (MANTIDA DA VERSÃO ORIGINAL)
                 best_sanduiches = {}
                 best_diff_sanduiches = float('inf')
-                
                 for _ in range(max_iterations):
                     candidate = create_individual(CARDAPIOS["sanduiches"], tamanho_combinacao_sanduiches)
                     candidate = mutate(candidate, CARDAPIOS["sanduiches"], mutation_rate=0.3)
-                    
                     diff = evaluate_fitness(candidate, CARDAPIOS["sanduiches"], valor_sanduiches)
                     if diff < best_diff_sanduiches:
                         best_sanduiches = candidate
                         best_diff_sanduiches = diff
-                
                 combinacao_sanduiches = {k: round(v) for k, v in best_sanduiches.items() if round(v) > 0}
-                
-                # Implementação da busca local para bebidas
+
                 best_bebidas = {}
                 best_diff_bebidas = float('inf')
-                
                 for _ in range(max_iterations):
                     candidate = create_individual(CARDAPIOS["bebidas"], tamanho_combinacao_bebidas)
                     candidate = mutate(candidate, CARDAPIOS["bebidas"], mutation_rate=0.3)
-                    
                     diff = evaluate_fitness(candidate, CARDAPIOS["bebidas"], valor_bebidas)
                     if diff < best_diff_bebidas:
                         best_bebidas = candidate
                         best_diff_bebidas = diff
-                
                 combinacao_bebidas = {k: round(v) for k, v in best_bebidas.items() if round(v) > 0}
-        
-        # Calcular valores reais
-        valor_real_sanduiches = calculate_combination_value(combinacao_sanduiches, CARDAPIOS["sanduiches"])
-        valor_real_bebidas = calculate_combination_value(combinacao_bebidas, CARDAPIOS["bebidas"])
+
+        # Cálculos finais
+        valor_real_sanduiches = sum(qtd * CARDAPIOS["sanduiches"][item] for item, qtd in combinacao_sanduiches.items())
+        valor_real_bebidas = sum(qtd * CARDAPIOS["bebidas"][item] for item, qtd in combinacao_bebidas.items())
         valor_real_total = valor_real_sanduiches + valor_real_bebidas
+
+        # Exibição dos resultados em tópicos
+        st.markdown("---")
+        st.subheader("🍟 Combinação Proposta")
         
-        # Exibir combinações
-        st.subheader("Combinação Sugerida")
         col1, col2 = st.columns(2)
-        
         with col1:
             st.markdown("### 🍔 Sanduíches")
             if combinacao_sanduiches:
-                df_sanduiches = pd.DataFrame({
-                    'Produto': list(combinacao_sanduiches.keys()),
-                    'Quantidade': list(combinacao_sanduiches.values()),
-                    'Preço Unitário': [CARDAPIOS["sanduiches"][item] for item in combinacao_sanduiches.keys()],
-                    'Subtotal': [CARDAPIOS["sanduiches"][item] * qtd for item, qtd in combinacao_sanduiches.items()]
-                })
-                df_sanduiches = df_sanduiches.sort_values('Subtotal', ascending=False)
-                
-                st.dataframe(
-                    df_sanduiches.style.format({
-                        'Preço Unitário': 'R$ {:.2f}',
-                        'Subtotal': 'R$ {:.2f}'
-                    }),
-                    hide_index=True,
-                    use_container_width=True
+                itens_sanduiches = sorted(
+                    combinacao_sanduiches.items(),
+                    key=lambda x: x[1] * CARDAPIOS["sanduiches"][x[0]],
+                    reverse=True
                 )
+                for produto, qtd in itens_sanduiches:
+                    total_item = qtd * CARDAPIOS["sanduiches"][produto]
+                    st.markdown(f"- **{qtd} X {produto}**  \n`{format_currency(total_item)}`")
                 
+                diferenca_sand = valor_real_sanduiches - valor_sanduiches
                 st.metric(
-                    "Total Sanduíches", 
-                    format_currency(valor_real_sanduiches),
-                    delta=format_currency(valor_real_sanduiches - valor_sanduiches)
+                    label="**Total Sanduíches**",
+                    value=format_currency(valor_real_sanduiches),
+                    delta=f"{'↑' if diferenca_sand >=0 else '↓'} {format_currency(abs(diferenca_sand))}",
+                    delta_color="normal"
                 )
-            else:
-                st.info("Não foi possível encontrar uma combinação para sanduíches.")
-        
+
         with col2:
-            st.markdown("### 🍹 Bebidas")
+            st.markdown("### 🥤 Bebidas")
             if combinacao_bebidas:
-                df_bebidas = pd.DataFrame({
-                    'Produto': list(combinacao_bebidas.keys()),
-                    'Quantidade': list(combinacao_bebidas.values()),
-                    'Preço Unitário': [CARDAPIOS["bebidas"][item] for item in combinacao_bebidas.keys()],
-                    'Subtotal': [CARDAPIOS["bebidas"][item] * qtd for item, qtd in combinacao_bebidas.items()]
-                })
-                df_bebidas = df_bebidas.sort_values('Subtotal', ascending=False)
-                
-                st.dataframe(
-                    df_bebidas.style.format({
-                        'Preço Unitário': 'R$ {:.2f}',
-                        'Subtotal': 'R$ {:.2f}'
-                    }),
-                    hide_index=True,
-                    use_container_width=True
+                itens_bebidas = sorted(
+                    combinacao_bebidas.items(),
+                    key=lambda x: x[1] * CARDAPIOS["bebidas"][x[0]],
+                    reverse=True
                 )
+                for produto, qtd in itens_bebidas:
+                    total_item = qtd * CARDAPIOS["bebidas"][produto]
+                    st.markdown(f"- **{qtd} X {produto}**  \n`{format_currency(total_item)}`")
                 
+                diferenca_beb = valor_real_bebidas - valor_bebidas
                 st.metric(
-                    "Total Bebidas", 
-                    format_currency(valor_real_bebidas),
-                    delta=format_currency(valor_real_bebidas - valor_bebidas)
+                    label="**Total Bebidas**",
+                    value=format_currency(valor_real_bebidas),
+                    delta=f"{'↑' if diferenca_beb >=0 else '↓'} {format_currency(abs(diferenca_beb))}",
+                    delta_color="normal"
                 )
-            else:
-                st.info("Não foi possível encontrar uma combinação para bebidas.")
-        
-        # Total geral
-        st.markdown("### 💰 Total")
+
+        # Total Geral
+        st.markdown("---")
+        st.markdown("### 📊 Resumo Geral")
+        diferenca_total = valor_real_total - valor_selecionado
         st.metric(
-            "Valor Total da Combinação", 
-            format_currency(valor_real_total),
-            delta=format_currency(valor_real_total - valor_selecionado)
+            label="**Valor Total Combinado**",
+            value=format_currency(valor_real_total),
+            delta=f"{'↑' if diferenca_total >=0 else '↓'} {format_currency(abs(diferenca_total))}",
+            delta_color="normal"
         )
         
         # Disclaimer
         st.warning("""
-        **Atenção:** Esta é apenas uma combinação hipotética que corresponde aproximadamente 
-        ao valor vendido. O número real de produtos pode variar. Use essa informação apenas 
-        como um indicativo para análise de vendas.
+        ⚠️ **Nota Importante:**  
+        Esta combinação é uma aproximação teórica. Fatores como arredondamentos e variações de consumo 
+        podem afetar os valores reais. Use como referência geral.
         """)
-        
+
     else:
-        st.info("Faça o upload de dados na aba 'Resumo das Vendas' para visualizar possíveis combinações.")
+        st.info("📤 Faça upload dos dados na aba 'Resumo das Vendas' para gerar combinações.")
 
 with tab3:
     st.header("💰 Cadastro e Análise de Recebimentos")
