@@ -454,14 +454,6 @@ def create_altair_chart(data, chart_type, x_col, y_col, color_col=None, title=No
     
     return chart.interactive() if interactive else chart
 
-# --- INICIALIZAÇÃO ---
-init_data_file()
-if 'df_receipts' not in st.session_state:
-    st.session_state.df_receipts = load_data()
-if 'uploaded_data' not in st.session_state:
-    st.session_state.uploaded_data = None
-if 'vendas_data' not in st.session_state:
-    st.session_state.vendas_data = None
 
 # --- INTERFACE PRINCIPAL ---
 col_title1, col_title2 = st.columns([0.30, 0.70])
