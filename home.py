@@ -822,7 +822,7 @@ with tab2:
                 df_sanduiches = pd.DataFrame({
                     'Qnt': list(combinacao_sanduiches.values()),
                     'Produto': list(combinacao_sanduiches.keys()),
-                    'Preço Unt': [CARDAPIOS["sanduiches"][item] for item in combinacao_sanduiches.keys()],
+                    'Preço Unitário': [CARDAPIOS["sanduiches"][item] for item in combinacao_sanduiches.keys()],
                     'Subtotal': [CARDAPIOS["sanduiches"][item] * qtd for item, qtd in combinacao_sanduiches.items()]
                 })
                 df_sanduiches = df_sanduiches.sort_values('Subtotal', ascending=False)
@@ -850,7 +850,7 @@ with tab2:
                 df_bebidas = pd.DataFrame({
                     'Qnt': list(combinacao_bebidas.values()),
                     'Produto': list(combinacao_bebidas.keys()),
-                    'Preço Unt': [CARDAPIOS["bebidas"][item] for item in combinacao_bebidas.keys()],
+                    'Preço Unitário': [CARDAPIOS["bebidas"][item] for item in combinacao_bebidas.keys()],
                     'Subtotal': [CARDAPIOS["bebidas"][item] * qtd for item, qtd in combinacao_bebidas.items()]
                 })
                 df_bebidas = df_bebidas.sort_values('Subtotal', ascending=False)
