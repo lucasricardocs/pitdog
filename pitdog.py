@@ -1,7 +1,3 @@
-quero que analise os erros, o pq de tab3 nao mostrar nada, se eu nao tiver upado o arquivo.csv em tab1. 
-
-quero que implemente em tab1 um gerador de pdf, que explica os dados explicitamente e textualmente contidos em tab1.
-
 import streamlit as st
 import pandas as pd
 import altair as alt
