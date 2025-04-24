@@ -85,6 +85,13 @@ FORMAS_PAGAMENTO = {
 }
 
 # --- FUNÇÕES UTILITÁRIAS ---
+# Caminho do arquivo
+caminho_arquivo = "recebimentos.xlsx"
+
+# Função para salvar os dados no arquivo
+def salvar_dados(df):
+    df.to_excel(caminho_arquivo, index=False)
+
 def format_currency(value):
     """Formata um valor como moeda brasileira."""
     if pd.isna(value) or value is None:
