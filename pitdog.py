@@ -87,6 +87,9 @@ def load_data():
         st.error(f"Erro ao carregar dados: {e}")
         return pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
 
+if 'df_receipts' not in st.session_state:
+    st.session_state.df_receipts = pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
+
 def save_data(df):
     """Salva os dados no arquivo Excel."""
     try:
