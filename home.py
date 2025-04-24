@@ -1,4 +1,4 @@
-# Adicionando as importações necessárias para PDF e algoritmo genético
+# #Adicionando as importações necessárias para PDF e algoritmo genético
 import streamlit as st
 import pandas as pd
 import altair as alt
