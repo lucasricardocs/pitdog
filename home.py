@@ -872,14 +872,15 @@ with tab2:
 with tab3:
     st.header("💰 Registro de Recebimentos")
 
-    # Carrega o DataFrame do Excel se existir
     caminho_arquivo = "recebimentos.xlsx"
+
+    # Carregar dados existentes
     if os.path.exists(caminho_arquivo):
-        df_recebimentos = pd.read_excel(caminho_arquivo)
+        df_recebimentos = pd.read_excel(caminho_arquivo, parse_dates=["Data"])
     else:
         df_recebimentos = pd.DataFrame(columns=["Data", "Dinheiro", "Cartao", "Pix"])
 
-    # Formulário para adicionar novo registro
+    # Formulário de entrada
     with st.form("form_recebimento"):
         data = st.date_input("Data", value=datetime.today())
         dinheiro = st.number_input("Dinheiro (R$)", min_value=0.0, step=10.0)
@@ -889,21 +890,48 @@ with tab3:
         enviado = st.form_submit_button("Salvar")
 
         if enviado:
-            novo_registro = pd.DataFrame([{
+            novo = pd.DataFrame([{
                 "Data": data,
                 "Dinheiro": dinheiro,
                 "Cartao": cartao,
                 "Pix": pix
             }])
-            df_recebimentos = pd.concat([df_recebimentos, novo_registro], ignore_index=True)
+            df_recebimentos = pd.concat([df_recebimentos, novo], ignore_index=True)
             df_recebimentos.to_excel(caminho_arquivo, index=False)
             st.success("Registro salvo com sucesso!")
             st.experimental_rerun()
 
-    # Exibe os registros salvos
+    # Escolher data para apagar
+    if not df_recebimentos.empty:
+        datas_disponiveis = sorted(df_recebimentos["Data"].dt.date.unique())
+        data_para_apagar = st.selectbox("🗑️ Selecionar data para apagar", options=datas_disponiveis)
+
+        if st.button("Apagar registros dessa data"):
+            df_recebimentos = df_recebimentos[df_recebimentos["Data"].dt.date != data_para_apagar]
+            df_recebimentos.to_excel(caminho_arquivo, index=False)
+            st.success(f"Registros do dia {data_para_apagar.strftime('%d/%m/%Y')} foram apagados!")
+            st.experimental_rerun()
+
+    # Exibir tabela e gráfico acumulativo
     if not df_recebimentos.empty:
         st.subheader("📋 Registros Salvos")
-        st.dataframe(df_recebimentos)
+        st.dataframe(df_recebimentos.sort_values("Data"))
+
+        df_recebimentos["Total"] = (
+            df_recebimentos["Dinheiro"] +
+            df_recebimentos["Cartao"] +
+            df_recebimentos["Pix"]
+        )
+        df_acumulado = df_recebimentos.sort_values("Data").copy()
+        df_acumulado["Acumulado"] = df_acumulado["Total"].cumsum()
+
+        st.subheader("📈 Receita Total Acumulada")
+        chart = alt.Chart(df_acumulado).mark_line(point=True).encode(
+            x="Data:T",
+            y="Acumulado:Q",
+            tooltip=["Data", "Acumulado"]
+        ).properties(height=400)
+        st.altair_chart(chart, use_container_width=True)
     else:
         st.info("Nenhum dado registrado ainda.")
 
