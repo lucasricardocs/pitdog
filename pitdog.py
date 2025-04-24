@@ -759,8 +759,59 @@ with tab2:
             st.info(f"**Valor Esperado para Bebidas:** {format_currency(valor_bebidas)}")
         
         # Implementação do Algoritmo Genético
-        def genetic_algorithm(menu, target, population_size=200, generations=500, combination_size=5):
-            # ... (mesma implementação anterior mantida)
+                def genetic_algorithm(menu, target, population_size=200, generations=500, 
+                            combination_size=5, elite_size=10, mutation_rate=0.1):
+            
+            # Inicialização da população
+            population = [create_individual(menu, combination_size) for _ in range(population_size)]
+            best_individual = {}
+            best_fitness = float('inf')
+            
+            for _ in range(generations):
+                # Avaliação
+                fitness = [evaluate_fitness(ind, menu, target) for ind in population]
+                
+                # Atualiza melhor indivíduo
+                current_best_idx = np.argmin(fitness)
+                if fitness[current_best_idx] < best_fitness:
+                    best_individual = population[current_best_idx].copy()
+                    best_fitness = fitness[current_best_idx]
+                
+                # Critério de parada antecipada
+                if best_fitness <= 0.1:  # 10 centavos de tolerância
+                    break
+                
+                # Seleção por torneio
+                selected = tournament_selection(population, fitness)
+                
+                # Cruzamento uniforme
+                new_population = []
+                for i in range(0, len(selected), 2):
+                    parent1 = selected[i]
+                    parent2 = selected[i+1] if (i+1) < len(selected) else selected[0]
+                    child = {}
+                    for item in set(parent1.keys()) | set(parent2.keys()):
+                        if random.random() < 0.5:
+                            child[item] = parent1.get(item, 0)
+                        else:
+                            child[item] = parent2.get(item, 0)
+                    new_population.append(child)
+                
+                # Mutação controlada
+                for i in range(len(new_population)):
+                    if random.random() < mutation_rate:
+                        item = random.choice(list(menu.keys()))
+                        new_population[i][item] = max(0, new_population[i].get(item, 0) + random.choice([-1, 0, 1]))
+                
+                population = new_population
+            
+            # Filtra combinações válidas (95-105% do target)
+            valid_combinations = [
+                ind for ind in population 
+                if 0.95*target <= sum(menu[item]*qtd for item, qtd in ind.items()) <= 1.05*target
+            ]
+            
+            return valid_combinations[0] if valid_combinations else best_individual
         
         # Cálculo das combinações
         with st.spinner("🔍 Buscando combinações precisas..."):
