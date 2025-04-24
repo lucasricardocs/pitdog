@@ -123,11 +123,14 @@ def create_individual(item_prices, combination_size):
         return {}
     
     items = list(item_prices.keys())
+    # Garante que não tentaremos selecionar mais itens do que existem
     size = min(combination_size, len(items))
+    
+    # Seleciona exatamente 'size' itens (sem repetição)
     selected_items = random.sample(items, size)
     
     return {
-        name: round_to_50_or_00(random.uniform(1, 10))
+        name: round_to_50_or_00(random.uniform(1, 100))
         for name in selected_items 
     }
 
@@ -163,18 +166,21 @@ def crossover(parent1, parent2):
     
     return child
 
-def mutate(individual, item_prices, mutation_rate=0.2):
-    """Aplica mutação a um indivíduo."""
+def mutate(individual, item_prices, mutation_rate=0.2, max_items=5):
+    """Aplica mutação a um indivíduo, respeitando o número máximo de itens."""
     new_individual = individual.copy()
     
-    # Possivelmente adicionar um novo item
-    if random.random() < mutation_rate and len(individual) < len(item_prices):
-        possible_new_items = [item for item in item_prices.keys() if item not in individual]
+    # Possivelmente adicionar um novo item (só se ainda não atingiu o máximo)
+    if (random.random() < mutation_rate and 
+        len(new_individual) < max_items and 
+        len(new_individual) < len(item_prices)):
+        
+        possible_new_items = [item for item in item_prices.keys() if item not in new_individual]
         if possible_new_items:
             new_item = random.choice(possible_new_items)
-            new_individual[new_item] = round_to_50_or_00(random.uniform(1, 10))
+            new_individual[new_item] = round_to_50_or_00(random.uniform(1, 100))
     
-    # Possivelmente remover um item existente
+    # Possivelmente remover um item existente (só se tiver mais de 1 item)
     if random.random() < mutation_rate and len(new_individual) > 1:
         item_to_remove = random.choice(list(new_individual.keys()))
         del new_individual[item_to_remove]
@@ -193,18 +199,6 @@ def genetic_algorithm(item_prices, target_value, population_size=50, generations
     """
     Implementa um algoritmo genético para encontrar combinações de produtos
     que se aproximem de um valor alvo.
-    
-    Args:
-        item_prices (dict): Dicionário com preços dos itens
-        target_value (float): Valor alvo a ser alcançado
-        population_size (int): Tamanho da população
-        generations (int): Número de gerações
-        combination_size (int): Tamanho máximo da combinação inicial
-        elite_size (int): Número de melhores indivíduos que passam diretamente para próxima geração
-        tournament_size (int): Tamanho do torneio para seleção
-    
-    Returns:
-        dict: Melhor combinação encontrada
     """
     if not item_prices or target_value <= 0:
         return {}
@@ -249,8 +243,8 @@ def genetic_algorithm(item_prices, target_value, population_size=50, generations
             # Cruzamento
             child = crossover(parent1, parent2)
             
-            # Mutação
-            child = mutate(child, item_prices)
+            # Mutação (passando o combination_size como max_items)
+            child = mutate(child, item_prices, max_items=combination_size)
             
             next_generation.append(child)
         
@@ -289,20 +283,6 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
                     custo_contadora, total_custos, lucro_estimado, logo_path):
     """
     Cria um relatório em PDF com os dados financeiros.
-    
-    Args:
-        df: DataFrame com os dados de transações
-        vendas: DataFrame com o resumo de vendas por forma de pagamento
-        total_vendas: Valor total das vendas
-        imposto_simples: Valor do imposto simples
-        custo_funcionario: Custo total com funcionário
-        custo_contadora: Custo com contadora
-        total_custos: Total de custos
-        lucro_estimado: Lucro estimado
-        logo_path: Caminho para o arquivo da logo
-    
-    Returns:
-        BytesIO: Buffer com o PDF gerado
     """
     buffer = BytesIO()
     
@@ -777,6 +757,20 @@ with tab2:
                     combination_size=tamanho_combinacao_bebidas
                 )
             else:  # Busca Local
+                best_sanduiches = {}
+                best_diff_sanduiches = float('inf')
+                
+                for _ in range(max_iterations):
+                    candidate = create_individual(CARDAPIOS["sanduiches"], tamanho_combinacao_sanduiches)
+                    candidate = mutate(candidate, CARDAPIOS["sanduiches"], mutation_rate=0.3, max_items=tamanho_combinacao_sanduiches)
+                    
+                    diff = evaluate_fitness(candidate, CARDAPIOS["sanduiches"], valor_sanduiches)
+                    if diff < best_diff_sanduiches:
+                        best_sanduiches = candidate
+                        best_diff_sanduiches = diff
+                
+                combinacao_sanduiches = {k: round(v) for k, v in best_sanduiches.items() if round(v) > 0}
+                
                 # Implementação da busca local para sanduíches
                 best_sanduiches = {}
                 best_diff_sanduiches = float('inf')
