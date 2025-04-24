@@ -90,7 +90,9 @@ caminho_arquivo = "recebimentos.xlsx"
 
 # Função para salvar os dados no arquivo
 def salvar_dados(df):
-    df.to_excel(caminho_arquivo, index=False)
+    # Usando ExcelWriter para salvar corretamente no arquivo
+    with pd.ExcelWriter(caminho_arquivo, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False)
 
 def format_currency(value):
     """Formata um valor como moeda brasileira."""
