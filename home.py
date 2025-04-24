@@ -878,6 +878,21 @@ with tab2:
     else:
         st.info("Faça o upload de dados na aba 'Resumo das Vendas' para visualizar possíveis combinações.")
 
+import os
+import pandas as pd
+import streamlit as st
+from datetime import datetime
+
+# Caminho do arquivo
+caminho_arquivo = "recebimentos.xlsx"
+
+# Função para salvar os dados no arquivo
+def salvar_dados(df):
+    # Usando ExcelWriter para salvar corretamente no arquivo
+    with pd.ExcelWriter(caminho_arquivo, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False)
+
+# Início da aba tab3
 with tab3:
     st.header("💰 Cadastro e Análise de Recebimentos")
 
@@ -995,6 +1010,7 @@ with tab3:
             st.warning("Nenhum registro encontrado.")
     else:
         st.info("Nenhum dado cadastrado ainda. Adicione seu primeiro registro acima.")
+
 # Rodapé
 st.divider()
 st.markdown("""
