@@ -936,18 +936,14 @@ with tab3:
                 inicio = st.date_input("Data inicial", value=data_minima)
             with cols[1]:
                 fim = st.date_input("Data final", value=data_maxima)
-                else:
+        
+        else:
             meses = sorted(st.session_state.df_receipts['Data'].dt.to_period('M').unique(), reverse=True)
             mes = st.selectbox("Selecione o mês:",
                                options=meses,
                                format_func=lambda x: x.strftime('%B/%Y'))
             inicio = pd.to_datetime(mes.start_time)
             fim = pd.to_datetime(mes.end_time)
-
-        df_filtered = st.session_state.df_receipts[
-            (st.session_state.df_receipts['Data'] >= pd.to_datetime(inicio)) &
-            (st.session_state.df_receipts['Data'] <= pd.to_datetime(fim))
-        ].copy()
 
         if not df_filtered.empty:
             df_filtered['Total'] = df_filtered['Dinheiro'] + df_filtered['Cartao'] + df_filtered['Pix']
