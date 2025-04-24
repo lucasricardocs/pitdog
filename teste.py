@@ -130,7 +130,7 @@ def create_individual(item_prices, combination_size):
     selected_items = random.sample(items, size)
     
     return {
-        name: round_to_50_or_00(random.uniform(1, 10))
+        name: round_to_50_or_00(random.uniform(1, 100))
         for name in selected_items 
     }
 
@@ -178,7 +178,7 @@ def mutate(individual, item_prices, mutation_rate=0.2, max_items=5):
         possible_new_items = [item for item in item_prices.keys() if item not in new_individual]
         if possible_new_items:
             new_item = random.choice(possible_new_items)
-            new_individual[new_item] = round_to_50_or_00(random.uniform(1, 10))
+            new_individual[new_item] = round_to_50_or_00(random.uniform(1, 100))
     
     # Possivelmente remover um item existente (só se tiver mais de 1 item)
     if random.random() < mutation_rate and len(new_individual) > 1:
