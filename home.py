@@ -20,7 +20,7 @@ import base64
 # --- CONSTANTES E CONFIGURAÇÕES ---
 CONFIG = {
     "page_title": "Gestão - Clips Burger",
-    "layout": "centered",
+    "layout": "wide",
     "sidebar_state": "expanded",
     "excel_file": "recebimentos.xlsx",
     "logo_path": "logo.png"
