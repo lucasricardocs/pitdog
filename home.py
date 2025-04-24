@@ -924,13 +924,19 @@ with tab3:
 
         if filtro_tipo == "Intervalo de Datas":
             cols = st.columns(2)
+        
+            if not st.session_state.df_receipts.empty and 'Data' in st.session_state.df_receipts.columns:
+                data_minima = st.session_state.df_receipts['Data'].min()
+                data_maxima = st.session_state.df_receipts['Data'].max()
+            else:
+                data_minima = datetime.today()
+                data_maxima = datetime.today()
+        
             with cols[0]:
-                inicio = st.date_input("Data inicial",
-                                       value=st.session_state.df_receipts['Data'].min())
+                inicio = st.date_input("Data inicial", value=data_minima)
             with cols[1]:
-                fim = st.date_input("Data final",
-                                    value=st.session_state.df_receipts['Data'].max())
-        else:
+                fim = st.date_input("Data final", value=data_maxima)
+                else:
             meses = sorted(st.session_state.df_receipts['Data'].dt.to_period('M').unique(), reverse=True)
             mes = st.selectbox("Selecione o mês:",
                                options=meses,
