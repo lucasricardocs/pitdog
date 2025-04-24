@@ -474,13 +474,17 @@ with tab2:
 with tab3:
     st.header("💰 Cadastro e Análise de Recebimentos")
     
-    # Seção 1: Formulário para adicionar novos dados
+    # Inicialização independente
+    if 'df_receipts' not in st.session_state:
+        st.session_state.df_receipts = pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
+    
+    # Formulário para adicionar novos registros
     with st.expander("➕ Adicionar Novo Registro", expanded=True):
         with st.form("add_receipt_form"):
             cols = st.columns([1, 1, 1, 1])
             with cols[0]:
                 data = st.date_input("Data*", value=datetime.now())
-            
+
             st.write("**Valores por Forma de Pagamento**")
             cols = st.columns(3)
             with cols[0]:
@@ -492,9 +496,8 @@ with tab3:
             
             total_dia = dinheiro + cartao + pix
             st.metric("Total do Dia", format_currency(total_dia))
-            
+
             submitted = st.form_submit_button("✅ Salvar Registro")
-            
             if submitted:
                 if total_dia <= 0:
                     st.error("O total do dia deve ser maior que zero!")
@@ -510,7 +513,7 @@ with tab3:
                             [st.session_state.df_receipts, new_record], 
                             ignore_index=True
                         )
-                        save_data(st.session_state.df_receipts)
+                        save_receipts(st.session_state.df_receipts)
                         st.success("Registro salvo com sucesso!")
                         st.experimental_rerun()
                     except Exception as e:
