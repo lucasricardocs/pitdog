@@ -1,9 +1,21 @@
+# Adicionando as importações necessárias para PDF e algoritmo genético
 import streamlit as st
 import pandas as pd
 import altair as alt
 from datetime import datetime
 import random
 import os
+import numpy as np
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.units import inch, cm
+from reportlab.pdfgen import canvas
+from io import BytesIO
+import matplotlib.pyplot as plt
+import io
+import base64
 
 # --- CONSTANTES E CONFIGURAÇÕES ---
 CONFIG = {
@@ -104,45 +116,338 @@ def calculate_combination_value(combination, item_prices):
     """Calcula o valor total de uma combinação."""
     return sum(item_prices.get(name, 0) * quantity for name, quantity in combination.items())
 
-def generate_initial_combination(item_prices, combination_size):
-    """Gera uma combinação inicial aleatória."""
+# --- FUNÇÕES PARA ALGORITMO GENÉTICO ---
+def create_individual(item_prices, combination_size):
+    """Cria um indivíduo (combinação) aleatório para o algoritmo genético."""
     if not item_prices:
         return {}
     
     items = list(item_prices.keys())
     size = min(combination_size, len(items))
+    selected_items = random.sample(items, size)
+    
     return {
         name: round_to_50_or_00(random.uniform(1, 10))
-        for name in random.sample(items, size)
+        for name in selected_items 
     }
 
-def optimize_combination(item_prices, target_value, combination_size, max_iterations):
-    """Otimiza combinações de produtos para atingir um valor alvo."""
+def evaluate_fitness(individual, item_prices, target_value):
+    """Avalia a adequação de um indivíduo ao valor alvo."""
+    total = calculate_combination_value(individual, item_prices)
+    # Penalidade maior se exceder o valor alvo
+    if total > target_value:
+        return 1000 + abs(total - target_value)
+    return abs(target_value - total)
+
+def crossover(parent1, parent2):
+    """Realiza o cruzamento entre dois pais para criar um filho."""
+    # Cria um conjunto com todas as chaves dos dois pais
+    all_keys = set(list(parent1.keys()) + list(parent2.keys()))
+    child = {}
+    
+    for key in all_keys:
+        if key in parent1 and key in parent2:
+            # Se a chave existe em ambos os pais, escolhe um valor ou a média
+            if random.random() < 0.5:
+                child[key] = parent1[key]
+            else:
+                child[key] = parent2[key]
+        elif key in parent1:
+            # Se existe apenas no primeiro pai, 50% de chance de incluir
+            if random.random() < 0.5:
+                child[key] = parent1[key]
+        elif key in parent2:
+            # Se existe apenas no segundo pai, 50% de chance de incluir
+            if random.random() < 0.5:
+                child[key] = parent2[key]
+    
+    return child
+
+def mutate(individual, item_prices, mutation_rate=0.2):
+    """Aplica mutação a um indivíduo."""
+    new_individual = individual.copy()
+    
+    # Possivelmente adicionar um novo item
+    if random.random() < mutation_rate and len(individual) < len(item_prices):
+        possible_new_items = [item for item in item_prices.keys() if item not in individual]
+        if possible_new_items:
+            new_item = random.choice(possible_new_items)
+            new_individual[new_item] = round_to_50_or_00(random.uniform(1, 10))
+    
+    # Possivelmente remover um item existente
+    if random.random() < mutation_rate and len(new_individual) > 1:
+        item_to_remove = random.choice(list(new_individual.keys()))
+        del new_individual[item_to_remove]
+    
+    # Modificar quantidades existentes
+    for key in list(new_individual.keys()):
+        if random.random() < mutation_rate:
+            change = random.choice([-1.0, -0.5, 0.5, 1.0])
+            new_value = max(0.5, round_to_50_or_00(new_individual[key] + change))
+            new_individual[key] = new_value
+    
+    return new_individual
+
+def genetic_algorithm(item_prices, target_value, population_size=50, generations=100, 
+                    combination_size=5, elite_size=5, tournament_size=3):
+    """
+    Implementa um algoritmo genético para encontrar combinações de produtos
+    que se aproximem de um valor alvo.
+    
+    Args:
+        item_prices (dict): Dicionário com preços dos itens
+        target_value (float): Valor alvo a ser alcançado
+        population_size (int): Tamanho da população
+        generations (int): Número de gerações
+        combination_size (int): Tamanho máximo da combinação inicial
+        elite_size (int): Número de melhores indivíduos que passam diretamente para próxima geração
+        tournament_size (int): Tamanho do torneio para seleção
+    
+    Returns:
+        dict: Melhor combinação encontrada
+    """
     if not item_prices or target_value <= 0:
         return {}
-
-    best_combination = generate_initial_combination(item_prices, combination_size)
-    best_diff = abs(target_value - calculate_combination_value(best_combination, item_prices))
-    best_diff += 10000 if calculate_combination_value(best_combination, item_prices) > target_value else 0
-
-    for _ in range(max_iterations):
-        if not best_combination:
-            break
-
-        neighbor = best_combination.copy()
-        item = random.choice(list(best_combination.keys()))
-        change = random.choice([-0.50, 0.50, -1.00, 1.00])
+    
+    # Inicializa a população
+    population = [create_individual(item_prices, combination_size) for _ in range(population_size)]
+    
+    best_individual = {}
+    best_fitness = float('inf')
+    
+    for generation in range(generations):
+        # Avalia a população
+        fitness_scores = [(individual, evaluate_fitness(individual, item_prices, target_value)) 
+                         for individual in population]
         
-        neighbor[item] = max(0.50, round_to_50_or_00(neighbor[item] + change))
-        neighbor_value = calculate_combination_value(neighbor, item_prices)
-        neighbor_diff = abs(target_value - neighbor_value)
-        neighbor_diff += 10000 if neighbor_value > target_value else 0
+        # Ordena por fitness (menor é melhor)
+        fitness_scores.sort(key=lambda x: x[1])
+        
+        # Atualiza o melhor indivíduo se encontrarmos um melhor
+        if fitness_scores[0][1] < best_fitness:
+            best_individual = fitness_scores[0][0].copy()
+            best_fitness = fitness_scores[0][1]
+        
+        # Se encontramos uma combinação perfeita ou muito próxima, terminamos
+        if best_fitness < 0.01:
+            break
+        
+        # Seleciona a elite para a próxima geração
+        next_generation = [ind[0].copy() for ind in fitness_scores[:elite_size]]
+        
+        # Completa a próxima geração com novos indivíduos
+        while len(next_generation) < population_size:
+            # Seleção de torneio
+            tournament = random.sample(fitness_scores, tournament_size)
+            tournament.sort(key=lambda x: x[1])
+            parent1 = tournament[0][0]
+            
+            tournament = random.sample(fitness_scores, tournament_size)
+            tournament.sort(key=lambda x: x[1])
+            parent2 = tournament[0][0]
+            
+            # Cruzamento
+            child = crossover(parent1, parent2)
+            
+            # Mutação
+            child = mutate(child, item_prices)
+            
+            next_generation.append(child)
+        
+        # Atualiza a população
+        population = next_generation
+    
+    # Retorna combinação com valores arredondados
+    return {k: round(v) for k, v in best_individual.items() if round(v) > 0}
 
-        if neighbor_diff < best_diff:
-            best_diff = neighbor_diff
-            best_combination = neighbor
+# --- FUNÇÕES PARA GERAR PDF ---
+def create_watermark(canvas, logo_path, width=400, height=400, opacity=0.1):
+    """Adiciona a logo como marca d'água no PDF."""
+    try:
+        if os.path.exists(logo_path):
+            canvas.saveState()
+            canvas.setFillColorRGB(255, 255, 255, alpha=opacity)
+            canvas.drawImage(logo_path, 
+                         (A4[0] - width) / 2, 
+                         (A4[1] - height) / 2, 
+                         width=width, 
+                         height=height,
+                         mask='auto',
+                         preserveAspectRatio=True)
+            canvas.restoreState()
+    except Exception as e:
+        print(f"Erro ao adicionar marca d'água: {e}")
 
-    return best_combination
+def fig_to_buffer(fig):
+    """Converte uma figura matplotlib para buffer de bytes."""
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=300, bbox_inches='tight')
+    buf.seek(0)
+    return buf
+
+def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionario, 
+                    custo_contadora, total_custos, lucro_estimado, logo_path):
+    """
+    Cria um relatório em PDF com os dados financeiros.
+    
+    Args:
+        df: DataFrame com os dados de transações
+        vendas: DataFrame com o resumo de vendas por forma de pagamento
+        total_vendas: Valor total das vendas
+        imposto_simples: Valor do imposto simples
+        custo_funcionario: Custo total com funcionário
+        custo_contadora: Custo com contadora
+        total_custos: Total de custos
+        lucro_estimado: Lucro estimado
+        logo_path: Caminho para o arquivo da logo
+    
+    Returns:
+        BytesIO: Buffer com o PDF gerado
+    """
+    buffer = BytesIO()
+    
+    # Configuração do documento
+    doc = SimpleDocTemplate(
+        buffer, 
+        pagesize=A4,
+        rightMargin=72, 
+        leftMargin=72,
+        topMargin=72, 
+        bottomMargin=72
+    )
+    
+    # Estilos
+    styles = getSampleStyleSheet()
+    title_style = styles['Title']
+    heading_style = styles['Heading1']
+    subheading_style = styles['Heading2']
+    normal_style = styles['Normal']
+    
+    # Lista de elementos do PDF
+    elements = []
+    
+    # Logo no topo
+    try:
+        if os.path.exists(logo_path):
+            img = Image(logo_path, width=2*inch, height=1.5*inch)
+            img.hAlign = 'CENTER'
+            elements.append(img)
+            elements.append(Spacer(1, 0.5*inch))
+    except Exception as e:
+        print(f"Erro ao adicionar logo: {e}")
+    
+    # Título
+    elements.append(Paragraph("Relatório Financeiro - Clips Burger", title_style))
+    elements.append(Spacer(1, 0.5*inch))
+    
+    # Data do relatório
+    elements.append(Paragraph(f"Data do relatório: {datetime.now().strftime('%d/%m/%Y')}", normal_style))
+    elements.append(Spacer(1, 0.25*inch))
+    
+    # Resumo financeiro
+    elements.append(Paragraph("Resumo Financeiro", heading_style))
+    elements.append(Spacer(1, 0.1*inch))
+    
+    data = [
+        ["Métrica", "Valor"],
+        ["Faturamento Bruto", format_currency(total_vendas)],
+        ["Imposto Simples (6%)", format_currency(imposto_simples)],
+        ["Custo Funcionário CLT", format_currency(custo_funcionario)],
+        ["Custo Contadora", format_currency(custo_contadora)],
+        ["Total de Custos", format_currency(total_custos)],
+        ["Lucro Estimado", format_currency(lucro_estimado)]
+    ]
+    
+    table = Table(data, colWidths=[doc.width/2.5, doc.width/2.5])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (1, 0), 'CENTER'),
+        ('FONTNAME', (0, 0), (1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (1, 0), 12),
+        ('BACKGROUND', (0, -1), (1, -1), colors.lightgrey),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+    ]))
+    elements.append(table)
+    elements.append(Spacer(1, 0.5*inch))
+    
+    # Gráficos
+    elements.append(Paragraph("Análise de Vendas", heading_style))
+    elements.append(Spacer(1, 0.1*inch))
+    
+    # Gráfico de barras - Vendas por Forma de Pagamento
+    try:
+        fig, ax = plt.subplots(figsize=(8, 5))
+        vendas.plot(kind='bar', x='Forma', y='Valor', ax=ax, color='steelblue')
+        ax.set_title('Vendas por Forma de Pagamento')
+        ax.set_ylabel('Valor (R$)')
+        ax.set_xlabel('')
+        plt.tight_layout()
+        
+        img_buf = fig_to_buffer(fig)
+        img = Image(img_buf, width=doc.width, height=4*inch)
+        elements.append(img)
+        elements.append(Spacer(1, 0.25*inch))
+        plt.close(fig)
+    except Exception as e:
+        elements.append(Paragraph(f"Erro ao gerar gráfico de vendas: {e}", normal_style))
+    
+    # Gráfico de pizza - Composição dos Custos
+    try:
+        custos_df = pd.DataFrame({
+            'Item': ['Impostos', 'Funcionário', 'Contadora'],
+            'Valor': [imposto_simples, custo_funcionario, custo_contadora]
+        })
+        
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.pie(custos_df['Valor'], labels=custos_df['Item'], autopct='%1.1f%%', 
+              startangle=90, shadow=True)
+        ax.set_title('Composição dos Custos')
+        plt.tight_layout()
+        
+        img_buf = fig_to_buffer(fig)
+        img = Image(img_buf, width=doc.width, height=4*inch)
+        elements.append(img)
+        plt.close(fig)
+    except Exception as e:
+        elements.append(Paragraph(f"Erro ao gerar gráfico de custos: {e}", normal_style))
+    
+    # Tabela de vendas por forma de pagamento
+    elements.append(Spacer(1, 0.5*inch))
+    elements.append(Paragraph("Detalhamento por Forma de Pagamento", subheading_style))
+    elements.append(Spacer(1, 0.1*inch))
+    
+    data = [["Forma de Pagamento", "Valor"]]
+    for _, row in vendas.iterrows():
+        data.append([row['Forma'], format_currency(row['Valor'])])
+    
+    table = Table(data, colWidths=[doc.width/2, doc.width/4])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+    ]))
+    elements.append(table)
+    
+    # Rodapé
+    elements.append(Spacer(1, inch))
+    footer_text = "Este relatório foi gerado automaticamente pelo Sistema de Gestão da Clips Burger."
+    elements.append(Paragraph(footer_text, normal_style))
+    
+    # Build do PDF com marca d'água
+    def add_watermark(canvas, doc):
+        create_watermark(canvas, logo_path, width=300, height=300, opacity=0.1)
+    
+    # Constrói o PDF
+    doc.build(elements, onFirstPage=add_watermark, onLaterPages=add_watermark)
+    
+    buffer.seek(0)
+    return buffer
 
 def create_altair_chart(data, chart_type, x_col, y_col, color_col=None, title=None, interactive=True):
     """Cria gráficos Altair com configuração padronizada."""
@@ -194,7 +499,7 @@ if 'vendas_data' not in st.session_state:
 col_title1, col_title2 = st.columns([0.30, 0.70])
 with col_title1:
     try:
-        st.image(CONFIG["logo_path"], width=1000)
+        st.image(CONFIG["logo_path"], width=150)
     except FileNotFoundError:
         st.warning("Logo não encontrada")
 with col_title2:
@@ -211,6 +516,9 @@ st.divider()
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("⚙️ Configurações")
+    
+    # Configurações do algoritmo
+    st.subheader("Configurações de Análise")
     drink_percentage = st.slider(
         "Percentual para Bebidas (%) 🍹",
         min_value=0, max_value=100, value=20, step=5
@@ -221,11 +529,28 @@ with st.sidebar:
         "Número de tipos de Bebidas", 1, 10, 5, 1)
     tamanho_combinacao_sanduiches = st.slider(
         "Número de tipos de Sanduíches", 1, 10, 5, 1)
-    max_iterations = st.select_slider(
-        "Qualidade da Otimização ✨",
-        options=[1000, 5000, 10000, 20000, 50000],
-        value=10000
+    
+    # Seleção do algoritmo
+    algoritmo = st.radio(
+        "Algoritmo para Combinações",
+        ["Busca Local", "Algoritmo Genético"]
     )
+    
+    if algoritmo == "Busca Local":
+        max_iterations = st.select_slider(
+            "Qualidade da Otimização ✨",
+            options=[1000, 5000, 10000, 20000, 50000],
+            value=10000
+        )
+    else:  # Algoritmo Genético
+        population_size = st.slider(
+            "Tamanho da População", 20, 200, 50, 10
+        )
+        generations = st.slider(
+            "Número de Gerações", 10, 500, 100, 10
+        )
+        st.info("Algoritmo genético pode gerar combinações mais precisas.")
+    
     st.info("Lembre-se: As combinações são aproximações heurísticas.")
 
 # --- ABAS PRINCIPAIS ---
@@ -389,121 +714,215 @@ with tab1:
     else:
         st.info("Por favor, envie um arquivo de transações para análise.")
 
-with tab2:
-    st.header("🧩 Detalhes das Combinações Geradas")
-    
-    if st.session_state.vendas_data is None:
-        st.warning("Por favor, carregue os dados de vendas na aba 'Resumo das Vendas' primeiro.")
-        st.stop()
-    
-    vendas = st.session_state.vendas_data
-    sandwich_percentage = 100 - drink_percentage
-    st.caption(f"Alocação: {drink_percentage}% bebidas | {sandwich_percentage}% sanduíches")
-
-    bebidas_precos = CARDAPIOS['bebidas']
-    sanduiches_precos = CARDAPIOS['sanduiches']
-    
-    ordem_formas = [
-        'Débito Visa', 'Débito MasterCard', 'Débito Elo',
-        'Crédito Visa', 'Crédito MasterCard', 'Crédito Elo',
-        'Crédito Amex', 'PIX'
-    ]
-    
-    for forma in ordem_formas:
-        if forma not in vendas['Forma'].values:
-            continue
             
-        total_pagamento = vendas.loc[vendas['Forma'] == forma, 'Valor'].values[0]
-        if total_pagamento <= 0:
-            continue
+            # Botão para gerar relatório PDF
+            st.header("📑 Relatório")
+            if st.button("Gerar Relatório PDF"):
+                with st.spinner("Gerando relatório..."):
+                    pdf_buffer = create_pdf_report(
+                        df, vendas, total_vendas, imposto_simples, custo_funcionario, 
+                        custo_contadora, total_custos, lucro_estimado, CONFIG["logo_path"]
+                    )
+                    
+                    # Criando um link para download
+                    b64_pdf = base64.b64encode(pdf_buffer.getvalue()).decode()
+                    pdf_display = f'<a href="data:application/pdf;base64,{b64_pdf}" download="relatorio_clips_burger.pdf">📥 Clique aqui para baixar o Relatório PDF</a>'
+                    st.markdown(pdf_display, unsafe_allow_html=True)
+                    
+                    st.success("Relatório gerado com sucesso!")
+            
+        except Exception as e:
+            st.error(f"Ocorreu um erro ao processar o arquivo: {str(e)}")
+            st.exception(e)
+    else:
+        st.info("Aguardando upload do arquivo de transações.")
 
-        with st.expander(f"**{forma}** (Total: {format_currency(total_pagamento)})", expanded=False):
-            target_bebidas = round_to_50_or_00(total_pagamento * (drink_percentage / 100.0))
-            target_sanduiches = round_to_50_or_00(total_pagamento - target_bebidas)
-
-            comb_bebidas = optimize_combination(
-                bebidas_precos, target_bebidas, tamanho_combinacao_bebidas, max_iterations
-            )
-            comb_sanduiches = optimize_combination(
-                sanduiches_precos, target_sanduiches, tamanho_combinacao_sanduiches, max_iterations
-            )
-
-            comb_bebidas_rounded = {k: round(v) for k, v in comb_bebidas.items() if round(v) > 0}
-            comb_sanduiches_rounded = {k: round(v) for k, v in comb_sanduiches.items() if round(v) > 0}
-
-            total_bebidas = calculate_combination_value(comb_bebidas_rounded, bebidas_precos)
-            total_sanduiches = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
-            total_geral = total_bebidas + total_sanduiches
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.subheader(f"🍹 Bebidas: {format_currency(target_bebidas)}")
-                if comb_bebidas_rounded:
-                    for nome, qtd in comb_bebidas_rounded.items():
-                        val = bebidas_precos[nome] * qtd
-                        st.markdown(f"- **{qtd}** {nome}: {format_currency(val)}")
-                    st.divider()
-                    st.metric("Total Bebidas", format_currency(total_bebidas))
-                else:
-                    st.info("Nenhuma bebida na combinação")
-
-            with col2:
-                st.subheader(f"🍔 Sanduíches: {format_currency(target_sanduiches)}")
-                if comb_sanduiches_rounded:
-                    for nome, qtd in comb_sanduiches_rounded.items():
-                        val = sanduiches_precos[nome] * qtd
-                        st.markdown(f"- **{qtd}** {nome}: {format_currency(val)}")
-                    st.divider()
-                    st.metric("Total Sanduíches", format_currency(total_sanduiches))
-                else:
-                    st.info("Nenhum sanduíche na combinação")
-
-            st.divider()
-            diff = total_geral - total_pagamento
-            st.metric(
-                "💰 TOTAL GERAL",
-                format_currency(total_geral),
-                delta=f"{format_currency(abs(diff))} {'a menos' if diff < 0 else 'a mais'} que o total",
-                delta_color="normal" if diff <= 0 else "inverse"
-            )
+with tab2:
+    st.header("🧩 Análise de Combinações")
+    
+    if st.session_state.vendas_data is not None:
+        vendas = st.session_state.vendas_data
+        total_vendas = st.session_state.total_vendas
+        
+        # Seleção da forma de pagamento para análise
+        forma_selecionada = st.selectbox(
+            "Selecione a forma de pagamento",
+            options=vendas['Forma'].tolist(),
+            format_func=lambda x: f"{x} ({format_currency(vendas.loc[vendas['Forma'] == x, 'Valor'].iloc[0])})"
+        )
+        
+        valor_selecionado = vendas.loc[vendas['Forma'] == forma_selecionada, 'Valor'].iloc[0]
+        st.subheader(f"Valor total: {format_currency(valor_selecionado)}")
+        
+        # Distribuição entre sanduíches e bebidas
+        valor_sanduiches = valor_selecionado * (1 - drink_percentage/100)
+        valor_bebidas = valor_selecionado * (drink_percentage/100)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.info(f"Valor para Sanduíches: {format_currency(valor_sanduiches)} ({100-drink_percentage}%)")
+        with col2:
+            st.info(f"Valor para Bebidas: {format_currency(valor_bebidas)} ({drink_percentage}%)")
+        
+        # Encontrar combinações
+        with st.spinner("Calculando possíveis combinações..."):
+            if algoritmo == "Algoritmo Genético":
+                combinacao_sanduiches = genetic_algorithm(
+                    CARDAPIOS["sanduiches"], 
+                    valor_sanduiches,
+                    population_size=population_size,
+                    generations=generations,
+                    combination_size=tamanho_combinacao_sanduiches
+                )
+                
+                combinacao_bebidas = genetic_algorithm(
+                    CARDAPIOS["bebidas"], 
+                    valor_bebidas,
+                    population_size=population_size,
+                    generations=generations,
+                    combination_size=tamanho_combinacao_bebidas
+                )
+            else:  # Busca Local
+                # Implementação da busca local para sanduíches
+                best_sanduiches = {}
+                best_diff_sanduiches = float('inf')
+                
+                for _ in range(max_iterations):
+                    candidate = create_individual(CARDAPIOS["sanduiches"], tamanho_combinacao_sanduiches)
+                    candidate = mutate(candidate, CARDAPIOS["sanduiches"], mutation_rate=0.3)
+                    
+                    diff = evaluate_fitness(candidate, CARDAPIOS["sanduiches"], valor_sanduiches)
+                    if diff < best_diff_sanduiches:
+                        best_sanduiches = candidate
+                        best_diff_sanduiches = diff
+                
+                combinacao_sanduiches = {k: round(v) for k, v in best_sanduiches.items() if round(v) > 0}
+                
+                # Implementação da busca local para bebidas
+                best_bebidas = {}
+                best_diff_bebidas = float('inf')
+                
+                for _ in range(max_iterations):
+                    candidate = create_individual(CARDAPIOS["bebidas"], tamanho_combinacao_bebidas)
+                    candidate = mutate(candidate, CARDAPIOS["bebidas"], mutation_rate=0.3)
+                    
+                    diff = evaluate_fitness(candidate, CARDAPIOS["bebidas"], valor_bebidas)
+                    if diff < best_diff_bebidas:
+                        best_bebidas = candidate
+                        best_diff_bebidas = diff
+                
+                combinacao_bebidas = {k: round(v) for k, v in best_bebidas.items() if round(v) > 0}
+        
+        # Calcular valores reais
+        valor_real_sanduiches = calculate_combination_value(combinacao_sanduiches, CARDAPIOS["sanduiches"])
+        valor_real_bebidas = calculate_combination_value(combinacao_bebidas, CARDAPIOS["bebidas"])
+        valor_real_total = valor_real_sanduiches + valor_real_bebidas
+        
+        # Exibir combinações
+        st.subheader("Combinação Sugerida")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("### 🍔 Sanduíches")
+            if combinacao_sanduiches:
+                df_sanduiches = pd.DataFrame({
+                    'Produto': list(combinacao_sanduiches.keys()),
+                    'Quantidade': list(combinacao_sanduiches.values()),
+                    'Preço Unitário': [CARDAPIOS["sanduiches"][item] for item in combinacao_sanduiches.keys()],
+                    'Subtotal': [CARDAPIOS["sanduiches"][item] * qtd for item, qtd in combinacao_sanduiches.items()]
+                })
+                df_sanduiches = df_sanduiches.sort_values('Subtotal', ascending=False)
+                
+                st.dataframe(
+                    df_sanduiches.style.format({
+                        'Preço Unitário': 'R$ {:.2f}',
+                        'Subtotal': 'R$ {:.2f}'
+                    }),
+                    hide_index=True,
+                    use_container_width=True
+                )
+                
+                st.metric(
+                    "Total Sanduíches", 
+                    format_currency(valor_real_sanduiches),
+                    delta=format_currency(valor_real_sanduiches - valor_sanduiches)
+                )
+            else:
+                st.info("Não foi possível encontrar uma combinação para sanduíches.")
+        
+        with col2:
+            st.markdown("### 🍹 Bebidas")
+            if combinacao_bebidas:
+                df_bebidas = pd.DataFrame({
+                    'Produto': list(combinacao_bebidas.keys()),
+                    'Quantidade': list(combinacao_bebidas.values()),
+                    'Preço Unitário': [CARDAPIOS["bebidas"][item] for item in combinacao_bebidas.keys()],
+                    'Subtotal': [CARDAPIOS["bebidas"][item] * qtd for item, qtd in combinacao_bebidas.items()]
+                })
+                df_bebidas = df_bebidas.sort_values('Subtotal', ascending=False)
+                
+                st.dataframe(
+                    df_bebidas.style.format({
+                        'Preço Unitário': 'R$ {:.2f}',
+                        'Subtotal': 'R$ {:.2f}'
+                    }),
+                    hide_index=True,
+                    use_container_width=True
+                )
+                
+                st.metric(
+                    "Total Bebidas", 
+                    format_currency(valor_real_bebidas),
+                    delta=format_currency(valor_real_bebidas - valor_bebidas)
+                )
+            else:
+                st.info("Não foi possível encontrar uma combinação para bebidas.")
+        
+        # Total geral
+        st.markdown("### 💰 Total")
+        st.metric(
+            "Valor Total da Combinação", 
+            format_currency(valor_real_total),
+            delta=format_currency(valor_real_total - valor_selecionado)
+        )
+        
+        # Disclaimer
+        st.warning("""
+        **Atenção:** Esta é apenas uma combinação hipotética que corresponde aproximadamente 
+        ao valor vendido. O número real de produtos pode variar. Use essa informação apenas 
+        como um indicativo para análise de vendas.
+        """)
+        
+    else:
+        st.info("Faça o upload de dados na aba 'Resumo das Vendas' para visualizar possíveis combinações.")
 
 with tab3:
-    st.header("💰 Cadastro e Análise de Recebimentos Diários")
+    st.header("💰 Cadastro e Análise de Recebimentos")
     
-    # Seção 1: Formulário de cadastro manual
-    with st.expander("➕ Adicionar Novo Registro de Caixa", expanded=True):
-        with st.form("novo_recebimento_form"):
+    # Seção 1: Formulário para adicionar novos dados
+    with st.expander("➕ Adicionar Novo Registro", expanded=True):
+        with st.form("add_receipt_form"):
             cols = st.columns([1, 1, 1, 1])
             with cols[0]:
-                data = st.date_input("Data da Operação*", value=datetime.now())
+                data = st.date_input("Data*", value=datetime.now())
             
-            st.markdown("**Valores Recebidos por Forma de Pagamento**")
+            st.write("**Valores por Forma de Pagamento**")
             cols = st.columns(3)
             with cols[0]:
-                dinheiro = st.number_input("Dinheiro (R$)*", 
-                                        min_value=0.0, 
-                                        step=50.0,
-                                        help="Valores recebidos em espécie")
+                dinheiro = st.number_input("Dinheiro (R$)*", min_value=0.0, step=10.0)
             with cols[1]:
-                cartao = st.number_input("Cartão (R$)*", 
-                                       min_value=0.0, 
-                                       step=50.0,
-                                       help="Somatório de todas as transações com cartão")
+                cartao = st.number_input("Cartão (R$)*", min_value=0.0, step=10.0)
             with cols[2]:
-                pix = st.number_input("PIX (R$)*", 
-                                     min_value=0.0, 
-                                     step=50.0,
-                                     help="Transações realizadas via PIX")
+                pix = st.number_input("PIX (R$)*", min_value=0.0, step=10.0)
             
             total_dia = dinheiro + cartao + pix
-            st.markdown(f"**Total do Dia:** {format_currency(total_dia)}")
+            st.metric("Total do Dia", format_currency(total_dia))
             
-            submitted = st.form_submit_button("💾 Salvar Registro")
+            submitted = st.form_submit_button("✅ Salvar Registro")
             
             if submitted:
                 if total_dia <= 0:
-                    st.error("❌ O total do dia deve ser maior que zero!")
+                    st.error("O total do dia deve ser maior que zero!")
                 else:
                     try:
                         new_record = pd.DataFrame({
@@ -512,194 +931,193 @@ with tab3:
                             'Cartao': [cartao],
                             'Pix': [pix]
                         })
-                        
                         st.session_state.df_receipts = pd.concat(
                             [st.session_state.df_receipts, new_record], 
                             ignore_index=True
                         )
-                        
                         save_data(st.session_state.df_receipts)
-                        st.success("✅ Registro salvo com sucesso!")
-                        st.rerun()
+                        st.success("Registro salvo com sucesso!")
+                        st.experimental_rerun()
                     except Exception as e:
-                        st.error(f"⚠️ Erro crítico: {str(e)}")
+                        st.error(f"Erro ao salvar: {str(e)}")
 
-    # Seção 2: Visualização de dados históricos
+    # Seção 2: Visualização dos dados e gráficos
     if not st.session_state.df_receipts.empty:
-        st.divider()
+        # Filtros de data
+        st.subheader("📅 Filtros de Período")
         
-        # Filtros temporais
-        st.subheader("🔍 Filtros de Período")
-        filtro_tipo = st.radio("Selecione o tipo de filtro:", 
-                             ["Intervalo Livre", "Análise Mensal"], 
-                             horizontal=True,
-                             index=0)
+        # Opções de filtro
+        filtro_tipo = st.radio("Tipo de Filtro:", 
+                             ["Intervalo de Datas", "Mês Específico"], 
+                             horizontal=True)
         
-        df = st.session_state.df_receipts.copy()
-        df['Data'] = pd.to_datetime(df['Data'])
-        df['Mês/Ano'] = df['Data'].dt.strftime('%Y-%m')
-        
-        if filtro_tipo == "Intervalo Livre":
+        if filtro_tipo == "Intervalo de Datas":
             cols = st.columns(2)
             with cols[0]:
-                start_date = st.date_input("Data inicial", 
-                                         value=df['Data'].min(),
-                                         min_value=df['Data'].min(),
-                                         max_value=df['Data'].max())
+                inicio = st.date_input("Data inicial", 
+                                     value=st.session_state.df_receipts['Data'].min())
             with cols[1]:
-                end_date = st.date_input("Data final", 
-                                      value=df['Data'].max(),
-                                      min_value=df['Data'].min(),
-                                      max_value=df['Data'].max())
+                fim = st.date_input("Data final", 
+                                  value=st.session_state.df_receipts['Data'].max())
         else:
-            meses = df['Mês/Ano'].unique()
+            # Filtro por mês
+            meses_disponiveis = sorted(st.session_state.df_receipts['Data'].dt.to_period('M').unique(), reverse=True)
             mes_selecionado = st.selectbox("Selecione o mês:", 
-                                         sorted(meses, reverse=True),
-                                         format_func=lambda x: pd.to_datetime(x).strftime('%B/%Y'))
-            start_date = pd.to_datetime(mes_selecionado)
-            end_date = start_date + pd.offsets.MonthEnd(1)
-        
-        # Aplicar filtros
-        mask = (df['Data'] >= pd.to_datetime(start_date)) & (df['Data'] <= pd.to_datetime(end_date))
-        df_filtrado = df.loc[mask]
-        df_filtrado['Total'] = df_filtrado['Dinheiro'] + df_filtrado['Cartao'] + df_filtrado['Pix']
-        
-        if not df_filtrado.empty:
-            # Métricas-chave
-            st.subheader("📊 Indicadores Financeiros")
+                                         options=meses_disponiveis,
+                                         format_func=lambda x: x.strftime('%B/%Y'))
             
-            cols = st.columns(4)
-            metric_style = """
+            inicio = pd.to_datetime(mes_selecionado.start_time)
+            fim = pd.to_datetime(mes_selecionado.end_time)
+        
+        # Aplica filtros
+        df_filtered = st.session_state.df_receipts[
+            (st.session_state.df_receipts['Data'] >= pd.to_datetime(inicio)) & 
+            (st.session_state.df_receipts['Data'] <= pd.to_datetime(fim))
+        ].copy()
+        
+        if not df_filtered.empty:
+            # Adiciona coluna de Total
+            df_filtered['Total'] = df_filtered['Dinheiro'] + df_filtered['Cartao'] + df_filtered['Pix']
+            
+            # Calcula totais por forma de pagamento
+            totais = {
+                'Dinheiro': df_filtered['Dinheiro'].sum(),
+                'Cartão': df_filtered['Cartao'].sum(),
+                'PIX': df_filtered['Pix'].sum()
+            }
+            total_periodo = sum(totais.values())
+            
+            # Seção 3: Métricas Resumo
+            st.subheader("📊 Resumo do Período")
+            
+            # CSS para ajustar o tamanho das métricas
+            st.markdown("""
             <style>
                 div[data-testid="stMetric"] {
-                    background-color: #f8f9fa;
-                    border-radius: 8px;
-                    padding: 15px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    padding: 5px 10px;
                 }
-                div[data-testid="stMetricLabel"] {
-                    color: #6c757d;
-                    font-size: 0.9rem !important;
+                div[data-testid="stMetric"] > div {
+                    gap: 2px;
                 }
-                div[data-testid="stMetricValue"] {
-                    color: #2c3e50;
-                    font-size: 1.4rem !important;
-                    font-weight: 700 !important;
+                div[data-testid="stMetric"] label {
+                    font-size: 14px !important;
+                    font-weight: 500 !important;
+                    color: #6b7280 !important;
+                }
+                div[data-testid="stMetric"] > div > div {
+                    font-size: 18px !important;
+                    font-weight: 600 !important;
                 }
             </style>
-            """
-            st.markdown(metric_style, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
             
-            with cols[0]:
-                st.metric("Total em Dinheiro", format_currency(df_filtrado['Dinheiro'].sum()))
-            with cols[1]:
-                st.metric("Total em Cartão", format_currency(df_filtrado['Cartao'].sum()))
-            with cols[2]:
-                st.metric("Total em PIX", format_currency(df_filtrado['Pix'].sum()))
-            with cols[3]:
-                st.metric("Receita Total", 
-                        format_currency(df_filtrado['Total'].sum()),
-                        delta=format_currency(df_filtrado['Total'].sum() - df_filtrado['Total'].mean()),
-                        delta_color="normal")
-
-            # Visualizações gráficas
-            st.subheader("📈 Análise Visual")
+            # Layout compacto em 2 linhas de 4 colunas
+            cols1 = st.columns(4)
+            cols2 = st.columns(4)
             
-            tab1, tab2, tab3 = st.tabs(["Distribuição", "Evolução Temporal", "Comparativo Mensal"])
+            with cols1[0]:
+                st.metric("Dinheiro", format_currency(totais['Dinheiro']), 
+                         help="Total em recebimentos de dinheiro")
+            with cols1[1]:
+                st.metric("Cartão", format_currency(totais['Cartão']),
+                         help="Total em recebimentos por cartão")
+            with cols1[2]:
+                st.metric("PIX", format_currency(totais['PIX']),
+                         help="Total em recebimentos por PIX")
+            with cols1[3]:
+                st.metric("Total Geral", format_currency(total_periodo),
+                         help="Soma de todas as formas de pagamento")
             
-            with tab1:
-                # Gráfico de pizza interativo
-                source = pd.DataFrame({
-                    'Forma de Pagamento': ['Dinheiro', 'Cartão', 'PIX'],
-                    'Valor': [
-                        df_filtrado['Dinheiro'].sum(),
-                        df_filtrado['Cartao'].sum(),
-                        df_filtrado['Pix'].sum()
-                    ]
+            with cols2[0]:
+                st.metric("Média Diária", format_currency(df_filtered['Total'].mean()),
+                         help="Média de vendas por dia")
+            with cols2[1]:
+                st.metric("Maior Venda", format_currency(df_filtered['Total'].max()),
+                         help=f"Dia: {df_filtered.loc[df_filtered['Total'].idxmax(), 'Data'].strftime('%d/%m')}")
+            with cols2[2]:
+                st.metric("Dias Registrados", len(df_filtered),
+                         help="Total de dias com vendas registradas")
+            with cols2[3]:
+                st.metric("Dias sem Registro", (fim - inicio).days + 1 - len(df_filtered),
+                         help="Dias do período sem vendas registradas")
+            
+            # Seção 4: Gráficos
+            st.subheader("📈 Visualizações Gráficas")
+            
+            tab_graficos1, tab_graficos2, tab_graficos3 = st.tabs(["Distribuição", "Comparação", "Acumulado"])
+            
+            with tab_graficos1:
+                # Gráfico de Pizza
+                df_pie = pd.DataFrame({
+                    'Forma': list(totais.keys()),
+                    'Valor': list(totais.values())
                 })
                 
-                pie = alt.Chart(source).mark_arc().encode(
-                    theta='Valor:Q',
-                    color=alt.Color('Forma de Pagamento:N', legend=alt.Legend(title="Forma de Pagamento")),
-                    tooltip=['Forma de Pagamento', 'Valor']
+                pie_chart = alt.Chart(df_pie).mark_arc().encode(
+                    theta='Valor',
+                    color=alt.Color('Forma', legend=alt.Legend(title="Forma de Pagamento")),
+                    tooltip=['Forma', 'Valor']
                 ).properties(
-                    width=600,
                     height=400,
-                    title='Distribuição Percentual das Formas de Pagamento'
+                    title='Distribuição dos Recebimentos'
                 )
-                
-                st.altair_chart(pie, use_container_width=True)
+                st.altair_chart(pie_chart, use_container_width=True)
             
-            with tab2:
-                # Gráfico de linhas temporal
-                line_chart = alt.Chart(df_filtrado).mark_line(point=True).encode(
-                    x=alt.X('yearmonthdate(Data):T', title='Data'),
-                    y=alt.Y('Total:Q', title='Valor (R$)'),
-                    color=alt.value('#2ecc71'),
-                    tooltip=['Data', 'Dinheiro', 'Cartao', 'Pix', 'Total']
+            with tab_graficos2:
+                # Gráfico de Barras
+                df_bar = df_filtered.melt(id_vars=['Data'], 
+                                        value_vars=['Dinheiro', 'Cartao', 'Pix'],
+                                        var_name='Forma', 
+                                        value_name='Valor')
+                
+                bar_chart = alt.Chart(df_bar).mark_bar().encode(
+                    x='monthdate(Data):O',
+                    y='sum(Valor):Q',
+                    color='Forma',
+                    tooltip=['Forma', 'sum(Valor)']
                 ).properties(
-                    width=800,
                     height=400,
-                    title='Evolução Diária da Receita'
+                    title='Vendas por Forma de Pagamento'
+                )
+                st.altair_chart(bar_chart, use_container_width=True)
+            
+            with tab_graficos3:
+                # Gráfico Acumulado
+                df_acumulado = df_filtered.sort_values('Data').copy()
+                df_acumulado['Acumulado'] = df_acumulado['Total'].cumsum()
+                
+                line_chart = alt.Chart(df_acumulado).mark_line(
+                    point=True,
+                    strokeWidth=3,
+                    color='red'
+                ).encode(
+                    x='Data:T',
+                    y='Acumulado:Q',
+                    tooltip=['Data', 'Acumulado']
+                ).properties(
+                    height=400,
+                    title='Receita Total Acumulada'
                 )
                 
                 st.altair_chart(line_chart, use_container_width=True)
             
-            with tab3:
-                # Gráfico de barras comparativo mensal
-                if filtro_tipo == "Intervalo Livre":
-                    df_mensal = df_filtrado.resample('M', on='Data').sum().reset_index()
-                    bar_chart = alt.Chart(df_mensal).mark_bar().encode(
-                        x=alt.X('yearmonth(Data):O', title='Mês'),
-                        y=alt.Y('Total:Q', title='Receita Total'),
-                        color=alt.Color('Total:Q', scale=alt.Scale(scheme='greens')),
-                        tooltip=['yearmonth(Data)', 'Total']
-                    ).properties(
-                        width=800,
-                        height=400,
-                        title='Comparativo Mensal de Receitas'
-                    )
-                    st.altair_chart(bar_chart, use_container_width=True)
-                else:
-                    st.info("Selecione 'Intervalo Livre' para comparação entre meses")
-
-            # Tabela detalhada
-            st.subheader("📋 Detalhamento dos Registros")
-            
-            df_exibicao = df_filtrado.sort_values('Data', ascending=False).copy()
-            df_exibicao['Data'] = df_exibicao['Data'].dt.strftime('%d/%m/%Y')
-            
+            # Seção 5: Tabela de Dados
+            st.subheader("📋 Dados Detalhados")
             st.dataframe(
-                df_exibicao.style
-                    .format({
-                        'Dinheiro': lambda x: format_currency(x),
-                        'Cartao': lambda x: format_currency(x),
-                        'Pix': lambda x: format_currency(x),
-                        'Total': lambda x: format_currency(x)
-                    })
-                    .applymap(lambda x: 'color: #27ae60' if isinstance(x, (int, float)) and x > 0 else ''),
-                column_config={
-                    "Dinheiro": "Dinheiro (R$)",
-                    "Cartao": "Cartão (R$)",
-                    "Pix": "PIX (R$)",
-                    "Total": "Total do Dia"
-                },
+                df_filtered.sort_values('Data', ascending=False).style.format({
+                    'Dinheiro': lambda x: format_currency(x),
+                    'Cartao': lambda x: format_currency(x),
+                    'Pix': lambda x: format_currency(x),
+                    'Total': lambda x: format_currency(x)
+                }),
                 use_container_width=True,
                 height=400
             )
             
-            # Opção de exportação
-            st.download_button(
-                label="⬇️ Exportar Dados Filtrados (CSV)",
-                data=df_filtrado.to_csv(index=False).encode('utf-8'),
-                file_name=f'recebimentos_{start_date}_{end_date}.csv',
-                mime='text/csv'
-            )
-            
         else:
-            st.warning("⚠️ Nenhum registro encontrado no período selecionado")
+            st.warning("Nenhum registro encontrado no período selecionado")
     else:
-        st.info("ℹ️ Nenhum dado cadastrado ainda. Utilize o formulário acima para adicionar seu primeiro registro.")
+        st.info("Nenhum dado cadastrado ainda. Adicione seu primeiro registro acima.")
 
 # Adicionar rodapé
 st.divider()
