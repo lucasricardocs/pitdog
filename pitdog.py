@@ -238,268 +238,8 @@ with st.sidebar:
 tab1, tab2, tab3 = st.tabs(["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💰 Cadastro de Recebimentos"])
 
 with tab1:
-    # Seção de upload de arquivo
-    st.header("📤 Upload de Dados")
-    arquivo = st.file_uploader("Envie o arquivo de transações (.csv ou .xlsx)", 
-                             type=["csv", "xlsx"])
-    
-    if arquivo:
-        try:
-            # Processamento do arquivo
-            with st.spinner("Processando arquivo..."):
-                # Verificar o tipo de arquivo
-                if arquivo.name.endswith(".csv"):
-                    try:
-                        df = pd.read_csv(arquivo, sep=';', encoding='utf-8', dtype=str)
-                    except pd.errors.ParserError:
-                        arquivo.seek(0)
-                        try:
-                            df = pd.read_csv(arquivo, sep=',', encoding='utf-8', dtype=str)
-                        except:
-                            arquivo.seek(0)
-                            df = pd.read_csv(arquivo, engine='python', dtype=str)
-                else:
-                    df = pd.read_excel(arquivo, dtype=str)
-                
-                # Verificar colunas obrigatórias
-                required_cols = ['Tipo', 'Bandeira', 'Valor']
-                if not all(col in df.columns for col in required_cols):
-                    st.error(f"Erro: O arquivo precisa conter as colunas: {', '.join(required_cols)}")
-                    st.stop()
 
-                # Processamento dos dados
-                df['Tipo'] = df['Tipo'].str.lower().str.strip().fillna('desconhecido')
-                df['Bandeira'] = df['Bandeira'].str.lower().str.strip().fillna('desconhecida')
-                df['Valor'] = pd.to_numeric(
-                    df['Valor'].str.replace('.', '').str.replace(',', '.'), 
-                    errors='coerce')
-                df = df.dropna(subset=['Valor'])
-                
-                df['Forma'] = (df['Tipo'] + ' ' + df['Bandeira']).map(FORMAS_PAGAMENTO)
-                df = df.dropna(subset=['Forma'])
-                
-                if df.empty:
-                    st.warning("Nenhuma transação válida encontrada.")
-                    st.stop()
-
-                vendas = df.groupby('Forma')['Valor'].sum().reset_index()
-                total_vendas = vendas['Valor'].sum()
-                
-                # Salva os dados no session state
-                st.session_state.uploaded_data = df
-                st.session_state.vendas_data = vendas
-                st.session_state.total_vendas = total_vendas
-            
-            # Seção de Visualização de Dados
-            st.header("📊 Visualização de Dados")
-            
-            # Gráfico de Barras
-            st.subheader("Total de Vendas por Forma de Pagamento")
-            bar_chart = create_altair_chart(
-                vendas, 'bar', 'Forma', 'Valor', 'Forma',
-                title=''
-            ).properties(
-                width=800,
-                height=500
-            )
-            st.altair_chart(bar_chart, use_container_width=True)
-            
-            # Seção de Parâmetros Financeiros
-            st.header("⚙️ Parâmetros Financeiros")
-            col1, col2 = st.columns(2)
-            with col1:
-                salario_minimo = st.number_input("Salário Mínimo (R$)", value=1518.0, step=50.0)
-            with col2:
-                custo_contadora = st.number_input("Custo com Contadora (R$)", value=316.0, step=10.0)
-            
-            # Seção de Resultados
-            st.header("💰 Resultados Financeiros")
-            
-            # Métricas Principais
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Faturamento Bruto", format_currency(total_vendas))
-            with col2:
-                imposto_simples = total_vendas * 0.06
-                st.metric("Imposto Simples (6%)", format_currency(imposto_simples))
-            with col3:
-                fgts = salario_minimo * 0.08
-                ferias = (salario_minimo / 12) * (4/3)
-                decimo_terceiro = salario_minimo / 12
-                custo_funcionario = salario_minimo + fgts + ferias + decimo_terceiro
-                st.metric("Custo Funcionário CLT", format_currency(custo_funcionario))
-            
-            # Cálculo do Total de Custos
-            total_custos = imposto_simples + custo_funcionario + custo_contadora
-            lucro_estimado = total_vendas - total_custos
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Total de Custos", format_currency(total_custos))
-            with col2:
-                st.metric("Lucro Estimado", format_currency(lucro_estimado))
-            
-            # Seção de Detalhamento
-            st.header("🔍 Detalhamento")
-            
-            tab_detalhes1, tab_detalhes2, tab_detalhes3 = st.tabs([
-                "📝 Composição de Custos", 
-                "📚 Explicação dos Cálculos",
-                "🍰 Gráfico de Composição"
-            ])
-            
-            with tab_detalhes1:
-                st.subheader("Composição dos Custos")
-                st.markdown(f"""
-                - **Imposto Simples Nacional (6%)**: {format_currency(imposto_simples)}
-                - **Custo Funcionário CLT**: {format_currency(custo_funcionario)}
-                - **Custo Contadora**: {format_currency(custo_contadora)}
-                """)
-            
-            with tab_detalhes2:
-                st.subheader("Fórmulas Utilizadas")
-                st.markdown("""
-                **1. Imposto Simples Nacional**  
-                `Faturamento Bruto × 6%`  
-                
-                **2. Custo Funcionário CLT**  
-                `Salário + FGTS (8%) + Férias (1 mês + 1/3) + 13º Salário`  
-                
-                **3. Total de Custos**  
-                `Imposto + Funcionário + Contadora`  
-                
-                **4. Lucro Estimado**  
-                `Faturamento Bruto - Total de Custos`
-                """)
-            
-            with tab_detalhes3:
-                st.subheader("Composição dos Custos")
-                custos_df = pd.DataFrame({
-                    'Item': ['Impostos', 'Funcionário', 'Contadora'],
-                    'Valor': [imposto_simples, custo_funcionario, custo_contadora]
-                })
-                
-                graf_composicao = alt.Chart(custos_df).mark_arc().encode(
-                    theta='Valor',
-                    color='Item',
-                    tooltip=['Item', alt.Tooltip('Valor', format='$.2f')]
-                ).properties(
-                    width=600,
-                    height=500
-                )
-                
-                st.altair_chart(graf_composicao, use_container_width=True)
-            
-        except Exception as e:
-            st.error(f"Erro no processamento: {str(e)}")
-    else:
-        st.info("Por favor, envie um arquivo de transações para análise.")
-
-with tab2:
-    st.header("🧩 Detalhes das Combinações Geradas")
-    
-    if st.session_state.vendas_data is None:
-        st.warning("""
-        Nenhum dado de vendas encontrado. Por favor:
-        1. Carregue um arquivo de transações na aba '📈 Resumo das Vendas'
-        2. Aguarde o processamento dos dados
-        """)
-        st.stop()
-    
-    vendas = st.session_state.vendas_data
-    sandwich_percentage = 100 - drink_percentage
-    st.caption(f"Alocação: {drink_percentage}% bebidas | {sandwich_percentage}% sanduíches")
-
-    bebidas_precos = CARDAPIOS['bebidas']
-    sanduiches_precos = CARDAPIOS['sanduiches']
-    
-    ordem_formas = [
-        'Débito Visa', 'Débito MasterCard', 'Débito Elo',
-        'Crédito Visa', 'Crédito MasterCard', 'Crédito Elo',
-        'Crédito Amex', 'PIX'
-    ]
-    
-    for forma in ordem_formas:
-        if forma not in vendas['Forma'].values:
-            continue
-            
-        total_pagamento = vendas.loc[vendas['Forma'] == forma, 'Valor'].values[0]
-        if total_pagamento <= 0:
-            continue
-
-        with st.expander(f"**{forma}** (Total: {format_currency(total_pagamento)})", expanded=False):
-            target_bebidas = round_to_50_or_00(total_pagamento * (drink_percentage / 100.0))
-            target_sanduiches = round_to_50_or_00(total_pagamento - target_bebidas)
-
-            comb_bebidas = optimize_combination(
-                bebidas_precos, target_bebidas, tamanho_combinacao_bebidas, max_iterations
-            )
-            comb_sanduiches = optimize_combination(
-                sanduiches_precos, target_sanduiches, tamanho_combinacao_sanduiches, max_iterations
-            )
-
-            comb_bebidas_rounded = {k: round(v) for k, v in comb_bebidas.items() if round(v) > 0}
-            comb_sanduiches_rounded = {k: round(v) for k, v in comb_sanduiches.items() if round(v) > 0}
-
-            total_bebidas = calculate_combination_value(comb_bebidas_rounded, bebidas_precos)
-            total_sanduiches = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
-            total_geral = total_bebidas + total_sanduiches
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.subheader(f"🍹 Bebidas: {format_currency(target_bebidas)}")
-                if comb_bebidas_rounded:
-                    for nome, qtd in comb_bebidas_rounded.items():
-                        val = bebidas_precos[nome] * qtd
-                        st.markdown(f"- **{qtd}** {nome}: {format_currency(val)}")
-                    st.divider()
-                    st.metric("Total Bebidas", format_currency(total_bebidas))
-                else:
-                    st.info("Nenhuma bebida na combinação")
-
-            with col2:
-                st.subheader(f"🍔 Sanduíches: {format_currency(target_sanduiches)}")
-                if comb_sanduiches_rounded:
-                    for nome, qtd in comb_sanduiches_rounded.items():
-                        val = sanduiches_precos[nome] * qtd
-                        st.markdown(f"- **{qtd}** {nome}: {format_currency(val)}")
-                    st.divider()
-                    st.metric("Total Sanduíches", format_currency(total_sanduiches))
-                else:
-                    st.info("Nenhum sanduíche na combinação")
-
-            st.divider()
-            diff = total_geral - total_pagamento
-            st.metric(
-                "💰 TOTAL GERAL",
-                format_currency(total_geral),
-                delta=f"{format_currency(abs(diff))} {'a menos' if diff < 0 else 'a mais'} que o total",
-                delta_color="normal" if diff <= 0 else "inverse"
-            )
-
-with tab3:
     st.header("💰 Cadastro e Análise de Recebimentos")
-    
-    # Verificação inicial mais explícita
-    if st.session_state.df_receipts.empty:
-        st.warning("""
-        Nenhum dado de recebimento encontrado. Você pode:
-        1. Adicionar manualmente novos registros abaixo
-        2. Carregar um arquivo de dados na aba '📈 Resumo das Vendas'
-        """)
-        
-        if st.button("Carregar dados de exemplo (para teste)"):
-            # Cria dados fictícios para demonstração
-            example_data = {
-                'Data': pd.date_range(end=datetime.today(), periods=30),
-                'Dinheiro': [random.randint(100, 500) for _ in range(30)],
-                'Cartao': [random.randint(200, 800) for _ in range(30)],
-                'Pix': [random.randint(50, 300) for _ in range(30)]
-            }
-            st.session_state.df_receipts = pd.DataFrame(example_data)
-            save_data(st.session_state.df_receipts)
-            st.experimental_rerun()
     
     # Seção 1: Formulário para adicionar novos dados
     with st.expander("➕ Adicionar Novo Registro", expanded=True):
@@ -720,6 +460,249 @@ with tab3:
             st.warning("Nenhum registro encontrado no período selecionado")
     else:
         st.info("Nenhum dado cadastrado ainda. Adicione seu primeiro registro acima.")
+
+    
+with tab2:
+    st.header("🧩 Detalhes das Combinações Geradas")
+    
+    if st.session_state.vendas_data is None:
+        st.warning("""
+        Nenhum dado de vendas encontrado. Por favor:
+        1. Carregue um arquivo de transações na aba '📈 Resumo das Vendas'
+        2. Aguarde o processamento dos dados
+        """)
+        st.stop()
+    
+    vendas = st.session_state.vendas_data
+    sandwich_percentage = 100 - drink_percentage
+    st.caption(f"Alocação: {drink_percentage}% bebidas | {sandwich_percentage}% sanduíches")
+
+    bebidas_precos = CARDAPIOS['bebidas']
+    sanduiches_precos = CARDAPIOS['sanduiches']
+    
+    ordem_formas = [
+        'Débito Visa', 'Débito MasterCard', 'Débito Elo',
+        'Crédito Visa', 'Crédito MasterCard', 'Crédito Elo',
+        'Crédito Amex', 'PIX'
+    ]
+    
+    for forma in ordem_formas:
+        if forma not in vendas['Forma'].values:
+            continue
+            
+        total_pagamento = vendas.loc[vendas['Forma'] == forma, 'Valor'].values[0]
+        if total_pagamento <= 0:
+            continue
+
+        with st.expander(f"**{forma}** (Total: {format_currency(total_pagamento)})", expanded=False):
+            target_bebidas = round_to_50_or_00(total_pagamento * (drink_percentage / 100.0))
+            target_sanduiches = round_to_50_or_00(total_pagamento - target_bebidas)
+
+            comb_bebidas = optimize_combination(
+                bebidas_precos, target_bebidas, tamanho_combinacao_bebidas, max_iterations
+            )
+            comb_sanduiches = optimize_combination(
+                sanduiches_precos, target_sanduiches, tamanho_combinacao_sanduiches, max_iterations
+            )
+
+            comb_bebidas_rounded = {k: round(v) for k, v in comb_bebidas.items() if round(v) > 0}
+            comb_sanduiches_rounded = {k: round(v) for k, v in comb_sanduiches.items() if round(v) > 0}
+
+            total_bebidas = calculate_combination_value(comb_bebidas_rounded, bebidas_precos)
+            total_sanduiches = calculate_combination_value(comb_sanduiches_rounded, sanduiches_precos)
+            total_geral = total_bebidas + total_sanduiches
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.subheader(f"🍹 Bebidas: {format_currency(target_bebidas)}")
+                if comb_bebidas_rounded:
+                    for nome, qtd in comb_bebidas_rounded.items():
+                        val = bebidas_precos[nome] * qtd
+                        st.markdown(f"- **{qtd}** {nome}: {format_currency(val)}")
+                    st.divider()
+                    st.metric("Total Bebidas", format_currency(total_bebidas))
+                else:
+                    st.info("Nenhuma bebida na combinação")
+
+            with col2:
+                st.subheader(f"🍔 Sanduíches: {format_currency(target_sanduiches)}")
+                if comb_sanduiches_rounded:
+                    for nome, qtd in comb_sanduiches_rounded.items():
+                        val = sanduiches_precos[nome] * qtd
+                        st.markdown(f"- **{qtd}** {nome}: {format_currency(val)}")
+                    st.divider()
+                    st.metric("Total Sanduíches", format_currency(total_sanduiches))
+                else:
+                    st.info("Nenhum sanduíche na combinação")
+
+            st.divider()
+            diff = total_geral - total_pagamento
+            st.metric(
+                "💰 TOTAL GERAL",
+                format_currency(total_geral),
+                delta=f"{format_currency(abs(diff))} {'a menos' if diff < 0 else 'a mais'} que o total",
+                delta_color="normal" if diff <= 0 else "inverse"
+            )
+
+with tab3:
+    # Seção de upload de arquivo
+    st.header("📤 Upload de Dados")
+    arquivo = st.file_uploader("Envie o arquivo de transações (.csv ou .xlsx)", 
+                             type=["csv", "xlsx"])
+    
+    if arquivo:
+        try:
+            # Processamento do arquivo
+            with st.spinner("Processando arquivo..."):
+                # Verificar o tipo de arquivo
+                if arquivo.name.endswith(".csv"):
+                    try:
+                        df = pd.read_csv(arquivo, sep=';', encoding='utf-8', dtype=str)
+                    except pd.errors.ParserError:
+                        arquivo.seek(0)
+                        try:
+                            df = pd.read_csv(arquivo, sep=',', encoding='utf-8', dtype=str)
+                        except:
+                            arquivo.seek(0)
+                            df = pd.read_csv(arquivo, engine='python', dtype=str)
+                else:
+                    df = pd.read_excel(arquivo, dtype=str)
+                
+                # Verificar colunas obrigatórias
+                required_cols = ['Tipo', 'Bandeira', 'Valor']
+                if not all(col in df.columns for col in required_cols):
+                    st.error(f"Erro: O arquivo precisa conter as colunas: {', '.join(required_cols)}")
+                    st.stop()
+
+                # Processamento dos dados
+                df['Tipo'] = df['Tipo'].str.lower().str.strip().fillna('desconhecido')
+                df['Bandeira'] = df['Bandeira'].str.lower().str.strip().fillna('desconhecida')
+                df['Valor'] = pd.to_numeric(
+                    df['Valor'].str.replace('.', '').str.replace(',', '.'), 
+                    errors='coerce')
+                df = df.dropna(subset=['Valor'])
+                
+                df['Forma'] = (df['Tipo'] + ' ' + df['Bandeira']).map(FORMAS_PAGAMENTO)
+                df = df.dropna(subset=['Forma'])
+                
+                if df.empty:
+                    st.warning("Nenhuma transação válida encontrada.")
+                    st.stop()
+
+                vendas = df.groupby('Forma')['Valor'].sum().reset_index()
+                total_vendas = vendas['Valor'].sum()
+                
+                # Salva os dados no session state
+                st.session_state.uploaded_data = df
+                st.session_state.vendas_data = vendas
+                st.session_state.total_vendas = total_vendas
+            
+            # Seção de Visualização de Dados
+            st.header("📊 Visualização de Dados")
+            
+            # Gráfico de Barras
+            st.subheader("Total de Vendas por Forma de Pagamento")
+            bar_chart = create_altair_chart(
+                vendas, 'bar', 'Forma', 'Valor', 'Forma',
+                title=''
+            ).properties(
+                width=800,
+                height=500
+            )
+            st.altair_chart(bar_chart, use_container_width=True)
+            
+            # Seção de Parâmetros Financeiros
+            st.header("⚙️ Parâmetros Financeiros")
+            col1, col2 = st.columns(2)
+            with col1:
+                salario_minimo = st.number_input("Salário Mínimo (R$)", value=1518.0, step=50.0)
+            with col2:
+                custo_contadora = st.number_input("Custo com Contadora (R$)", value=316.0, step=10.0)
+            
+            # Seção de Resultados
+            st.header("💰 Resultados Financeiros")
+            
+            # Métricas Principais
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Faturamento Bruto", format_currency(total_vendas))
+            with col2:
+                imposto_simples = total_vendas * 0.06
+                st.metric("Imposto Simples (6%)", format_currency(imposto_simples))
+            with col3:
+                fgts = salario_minimo * 0.08
+                ferias = (salario_minimo / 12) * (4/3)
+                decimo_terceiro = salario_minimo / 12
+                custo_funcionario = salario_minimo + fgts + ferias + decimo_terceiro
+                st.metric("Custo Funcionário CLT", format_currency(custo_funcionario))
+            
+            # Cálculo do Total de Custos
+            total_custos = imposto_simples + custo_funcionario + custo_contadora
+            lucro_estimado = total_vendas - total_custos
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Total de Custos", format_currency(total_custos))
+            with col2:
+                st.metric("Lucro Estimado", format_currency(lucro_estimado))
+            
+            # Seção de Detalhamento
+            st.header("🔍 Detalhamento")
+            
+            tab_detalhes1, tab_detalhes2, tab_detalhes3 = st.tabs([
+                "📝 Composição de Custos", 
+                "📚 Explicação dos Cálculos",
+                "🍰 Gráfico de Composição"
+            ])
+            
+            with tab_detalhes1:
+                st.subheader("Composição dos Custos")
+                st.markdown(f"""
+                - **Imposto Simples Nacional (6%)**: {format_currency(imposto_simples)}
+                - **Custo Funcionário CLT**: {format_currency(custo_funcionario)}
+                - **Custo Contadora**: {format_currency(custo_contadora)}
+                """)
+            
+            with tab_detalhes2:
+                st.subheader("Fórmulas Utilizadas")
+                st.markdown("""
+                **1. Imposto Simples Nacional**  
+                `Faturamento Bruto × 6%`  
+                
+                **2. Custo Funcionário CLT**  
+                `Salário + FGTS (8%) + Férias (1 mês + 1/3) + 13º Salário`  
+                
+                **3. Total de Custos**  
+                `Imposto + Funcionário + Contadora`  
+                
+                **4. Lucro Estimado**  
+                `Faturamento Bruto - Total de Custos`
+                """)
+            
+            with tab_detalhes3:
+                st.subheader("Composição dos Custos")
+                custos_df = pd.DataFrame({
+                    'Item': ['Impostos', 'Funcionário', 'Contadora'],
+                    'Valor': [imposto_simples, custo_funcionario, custo_contadora]
+                })
+                
+                graf_composicao = alt.Chart(custos_df).mark_arc().encode(
+                    theta='Valor',
+                    color='Item',
+                    tooltip=['Item', alt.Tooltip('Valor', format='$.2f')]
+                ).properties(
+                    width=600,
+                    height=500
+                )
+                
+                st.altair_chart(graf_composicao, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"Erro no processamento: {str(e)}")
+    else:
+        st.info("Por favor, envie um arquivo de transações para análise.")
+
 
 # Rodapé
 st.divider()
