@@ -709,13 +709,7 @@ with tab1:
                 
                 st.altair_chart(graf_composicao, use_container_width=True)
             
-        except Exception as e:
-            st.error(f"Erro no processamento: {str(e)}")
-    else:
-        st.info("Por favor, envie um arquivo de transações para análise.")
-
-            
-            # Botão para gerar relatório PDF
+            # Seção de Relatório PDF
             st.header("📑 Relatório")
             if st.button("Gerar Relatório PDF"):
                 with st.spinner("Gerando relatório..."):
