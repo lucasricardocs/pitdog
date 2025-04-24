@@ -112,7 +112,7 @@ def optimize_combination(item_prices, target_value, combination_size, max_iterat
     best_combination = generate_initial_combination(item_prices, combination_size)
     best_diff = abs(target_value - calculate_combination_value(best_combination, item_prices))
     best_diff += 10000 if calculate_combination_value(best_combination, item_prices) > target_value else 0
-    for * in range(max*iterations):
+    for _ in range(max * iterations):
         if not best_combination:
             break
         neighbor = best_combination.copy()
