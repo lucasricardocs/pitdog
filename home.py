@@ -901,17 +901,6 @@ with tab3:
             st.success("Registro salvo com sucesso!")
             st.experimental_rerun()
 
-    # Escolher data para apagar
-    if not df_recebimentos.empty:
-        datas_disponiveis = sorted(df_recebimentos["Data"].dt.date.unique())
-        data_para_apagar = st.selectbox("🗑️ Selecionar data para apagar", options=datas_disponiveis)
-
-        if st.button("Apagar registros dessa data"):
-            df_recebimentos = df_recebimentos[df_recebimentos["Data"].dt.date != data_para_apagar]
-            df_recebimentos.to_excel(caminho_arquivo, index=False)
-            st.success(f"Registros do dia {data_para_apagar.strftime('%d/%m/%Y')} foram apagados!")
-            st.experimental_rerun()
-
     # Exibir tabela e gráfico acumulativo
     if not df_recebimentos.empty:
         st.subheader("📋 Registros Salvos")
@@ -934,6 +923,17 @@ with tab3:
         st.altair_chart(chart, use_container_width=True)
     else:
         st.info("Nenhum dado registrado ainda.")
+
+    # Escolher data para apagar
+    if not df_recebimentos.empty:
+        datas_disponiveis = sorted(df_recebimentos["Data"].dt.date.unique())
+        data_para_apagar = st.selectbox("🗑️ Selecionar data para apagar", options=datas_disponiveis)
+
+        if st.button("Apagar registros dessa data"):
+            df_recebimentos = df_recebimentos[df_recebimentos["Data"].dt.date != data_para_apagar]
+            df_recebimentos.to_excel(caminho_arquivo, index=False)
+            st.success(f"Registros do dia {data_para_apagar.strftime('%d/%m/%Y')} foram apagados!")
+            st.experimental_rerun()
 
 # Rodapé
 st.divider()
