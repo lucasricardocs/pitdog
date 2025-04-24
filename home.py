@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import io
 import base64
 
-# --- CONSTANTES E CONFIGURAÇÕES ---
+# Constantes
 CONFIG = {
     "page_title": "Gestão - Clips Burger",
     "layout": "wide",
@@ -26,6 +26,12 @@ CONFIG = {
     "logo_path": "logo.png"
 }
 
+# 👇 ESSA LINHA TEM QUE VIR AQUI! Antes de QUALQUER COISA do Streamlit!
+st.set_page_config(
+    page_title=CONFIG["page_title"],
+    layout=CONFIG["layout"],
+    initial_sidebar_state=CONFIG["sidebar_state"]
+)
 CARDAPIOS = {
     "sanduiches": {
         "X Salada Simples": 18.00,
