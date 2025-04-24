@@ -469,32 +469,41 @@ with tab2:
             )
 
 with tab3:
-    st.header("💰 Cadastro e Análise de Recebimentos")
+    st.header("💰 Cadastro e Análise de Recebimentos Diários")
     
-    # Seção 1: Formulário para adicionar novos dados
-    with st.expander("➕ Adicionar Novo Registro", expanded=True):
-        with st.form("add_receipt_form"):
+    # Seção 1: Formulário de cadastro manual
+    with st.expander("➕ Adicionar Novo Registro de Caixa", expanded=True):
+        with st.form("novo_recebimento_form"):
             cols = st.columns([1, 1, 1, 1])
             with cols[0]:
-                data = st.date_input("Data*", value=datetime.now())
+                data = st.date_input("Data da Operação*", value=datetime.now())
             
-            st.write("**Valores por Forma de Pagamento**")
+            st.markdown("**Valores Recebidos por Forma de Pagamento**")
             cols = st.columns(3)
             with cols[0]:
-                dinheiro = st.number_input("Dinheiro (R$)*", min_value=0.0, step=10.0)
+                dinheiro = st.number_input("Dinheiro (R$)*", 
+                                        min_value=0.0, 
+                                        step=50.0,
+                                        help="Valores recebidos em espécie")
             with cols[1]:
-                cartao = st.number_input("Cartão (R$)*", min_value=0.0, step=10.0)
+                cartao = st.number_input("Cartão (R$)*", 
+                                       min_value=0.0, 
+                                       step=50.0,
+                                       help="Somatório de todas as transações com cartão")
             with cols[2]:
-                pix = st.number_input("PIX (R$)*", min_value=0.0, step=10.0)
+                pix = st.number_input("PIX (R$)*", 
+                                     min_value=0.0, 
+                                     step=50.0,
+                                     help="Transações realizadas via PIX")
             
             total_dia = dinheiro + cartao + pix
-            st.metric("Total do Dia", format_currency(total_dia))
+            st.markdown(f"**Total do Dia:** {format_currency(total_dia)}")
             
-            submitted = st.form_submit_button("✅ Salvar Registro")
+            submitted = st.form_submit_button("💾 Salvar Registro")
             
             if submitted:
                 if total_dia <= 0:
-                    st.error("O total do dia deve ser maior que zero!")
+                    st.error("❌ O total do dia deve ser maior que zero!")
                 else:
                     try:
                         new_record = pd.DataFrame({
@@ -503,193 +512,194 @@ with tab3:
                             'Cartao': [cartao],
                             'Pix': [pix]
                         })
+                        
                         st.session_state.df_receipts = pd.concat(
                             [st.session_state.df_receipts, new_record], 
                             ignore_index=True
                         )
+                        
                         save_data(st.session_state.df_receipts)
-                        st.success("Registro salvo com sucesso!")
-                        st.experimental_rerun()
+                        st.success("✅ Registro salvo com sucesso!")
+                        st.rerun()
                     except Exception as e:
-                        st.error(f"Erro ao salvar: {str(e)}")
+                        st.error(f"⚠️ Erro crítico: {str(e)}")
 
-    # Seção 2: Visualização dos dados e gráficos
+    # Seção 2: Visualização de dados históricos
     if not st.session_state.df_receipts.empty:
-        # Filtros de data
-        st.subheader("📅 Filtros de Período")
+        st.divider()
         
-        # Opções de filtro
-        filtro_tipo = st.radio("Tipo de Filtro:", 
-                             ["Intervalo de Datas", "Mês Específico"], 
-                             horizontal=True)
+        # Filtros temporais
+        st.subheader("🔍 Filtros de Período")
+        filtro_tipo = st.radio("Selecione o tipo de filtro:", 
+                             ["Intervalo Livre", "Análise Mensal"], 
+                             horizontal=True,
+                             index=0)
         
-        if filtro_tipo == "Intervalo de Datas":
+        df = st.session_state.df_receipts.copy()
+        df['Data'] = pd.to_datetime(df['Data'])
+        df['Mês/Ano'] = df['Data'].dt.strftime('%Y-%m')
+        
+        if filtro_tipo == "Intervalo Livre":
             cols = st.columns(2)
             with cols[0]:
-                inicio = st.date_input("Data inicial", 
-                                     value=st.session_state.df_receipts['Data'].min())
+                start_date = st.date_input("Data inicial", 
+                                         value=df['Data'].min(),
+                                         min_value=df['Data'].min(),
+                                         max_value=df['Data'].max())
             with cols[1]:
-                fim = st.date_input("Data final", 
-                                  value=st.session_state.df_receipts['Data'].max())
+                end_date = st.date_input("Data final", 
+                                      value=df['Data'].max(),
+                                      min_value=df['Data'].min(),
+                                      max_value=df['Data'].max())
         else:
-            # Filtro por mês
-            meses_disponiveis = sorted(st.session_state.df_receipts['Data'].dt.to_period('M').unique(), reverse=True)
+            meses = df['Mês/Ano'].unique()
             mes_selecionado = st.selectbox("Selecione o mês:", 
-                                         options=meses_disponiveis,
-                                         format_func=lambda x: x.strftime('%B/%Y'))
-            
-            inicio = pd.to_datetime(mes_selecionado.start_time)
-            fim = pd.to_datetime(mes_selecionado.end_time)
+                                         sorted(meses, reverse=True),
+                                         format_func=lambda x: pd.to_datetime(x).strftime('%B/%Y'))
+            start_date = pd.to_datetime(mes_selecionado)
+            end_date = start_date + pd.offsets.MonthEnd(1)
         
-        # Aplica filtros
-        df_filtered = st.session_state.df_receipts[
-            (st.session_state.df_receipts['Data'] >= pd.to_datetime(inicio)) & 
-            (st.session_state.df_receipts['Data'] <= pd.to_datetime(fim))
-        ].copy()
+        # Aplicar filtros
+        mask = (df['Data'] >= pd.to_datetime(start_date)) & (df['Data'] <= pd.to_datetime(end_date))
+        df_filtrado = df.loc[mask]
+        df_filtrado['Total'] = df_filtrado['Dinheiro'] + df_filtrado['Cartao'] + df_filtrado['Pix']
         
-        if not df_filtered.empty:
-            # Adiciona coluna de Total
-            df_filtered['Total'] = df_filtered['Dinheiro'] + df_filtered['Cartao'] + df_filtered['Pix']
+        if not df_filtrado.empty:
+            # Métricas-chave
+            st.subheader("📊 Indicadores Financeiros")
             
-            # Calcula totais por forma de pagamento
-            totais = {
-                'Dinheiro': df_filtered['Dinheiro'].sum(),
-                'Cartão': df_filtered['Cartao'].sum(),
-                'PIX': df_filtered['Pix'].sum()
-            }
-            total_periodo = sum(totais.values())
-            
-            # Seção 3: Métricas Resumo
-            st.subheader("📊 Resumo do Período")
-            
-            # CSS para ajustar o tamanho das métricas
-            st.markdown("""
+            cols = st.columns(4)
+            metric_style = """
             <style>
                 div[data-testid="stMetric"] {
-                    padding: 5px 10px;
+                    background-color: #f8f9fa;
+                    border-radius: 8px;
+                    padding: 15px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 }
-                div[data-testid="stMetric"] > div {
-                    gap: 2px;
+                div[data-testid="stMetricLabel"] {
+                    color: #6c757d;
+                    font-size: 0.9rem !important;
                 }
-                div[data-testid="stMetric"] label {
-                    font-size: 14px !important;
-                    font-weight: 500 !important;
-                    color: #6b7280 !important;
-                }
-                div[data-testid="stMetric"] > div > div {
-                    font-size: 18px !important;
-                    font-weight: 600 !important;
+                div[data-testid="stMetricValue"] {
+                    color: #2c3e50;
+                    font-size: 1.4rem !important;
+                    font-weight: 700 !important;
                 }
             </style>
-            """, unsafe_allow_html=True)
+            """
+            st.markdown(metric_style, unsafe_allow_html=True)
             
-            # Layout compacto em 2 linhas de 4 colunas
-            cols1 = st.columns(4)
-            cols2 = st.columns(4)
+            with cols[0]:
+                st.metric("Total em Dinheiro", format_currency(df_filtrado['Dinheiro'].sum()))
+            with cols[1]:
+                st.metric("Total em Cartão", format_currency(df_filtrado['Cartao'].sum()))
+            with cols[2]:
+                st.metric("Total em PIX", format_currency(df_filtrado['Pix'].sum()))
+            with cols[3]:
+                st.metric("Receita Total", 
+                        format_currency(df_filtrado['Total'].sum()),
+                        delta=format_currency(df_filtrado['Total'].sum() - df_filtrado['Total'].mean()),
+                        delta_color="normal")
+
+            # Visualizações gráficas
+            st.subheader("📈 Análise Visual")
             
-            with cols1[0]:
-                st.metric("Dinheiro", format_currency(totais['Dinheiro']), 
-                         help="Total em recebimentos de dinheiro")
-            with cols1[1]:
-                st.metric("Cartão", format_currency(totais['Cartão']),
-                         help="Total em recebimentos por cartão")
-            with cols1[2]:
-                st.metric("PIX", format_currency(totais['PIX']),
-                         help="Total em recebimentos por PIX")
-            with cols1[3]:
-                st.metric("Total Geral", format_currency(total_periodo),
-                         help="Soma de todas as formas de pagamento")
+            tab1, tab2, tab3 = st.tabs(["Distribuição", "Evolução Temporal", "Comparativo Mensal"])
             
-            with cols2[0]:
-                st.metric("Média Diária", format_currency(df_filtered['Total'].mean()),
-                         help="Média de vendas por dia")
-            with cols2[1]:
-                st.metric("Maior Venda", format_currency(df_filtered['Total'].max()),
-                         help=f"Dia: {df_filtered.loc[df_filtered['Total'].idxmax(), 'Data'].strftime('%d/%m')}")
-            with cols2[2]:
-                st.metric("Dias Registrados", len(df_filtered),
-                         help="Total de dias com vendas registradas")
-            with cols2[3]:
-                st.metric("Dias sem Registro", (fim - inicio).days + 1 - len(df_filtered),
-                         help="Dias do período sem vendas registradas")
-            
-            # Seção 4: Gráficos
-            st.subheader("📈 Visualizações Gráficas")
-            
-            tab_graficos1, tab_graficos2, tab_graficos3 = st.tabs(["Distribuição", "Comparação", "Acumulado"])
-            
-            with tab_graficos1:
-                # Gráfico de Pizza
-                df_pie = pd.DataFrame({
-                    'Forma': list(totais.keys()),
-                    'Valor': list(totais.values())
+            with tab1:
+                # Gráfico de pizza interativo
+                source = pd.DataFrame({
+                    'Forma de Pagamento': ['Dinheiro', 'Cartão', 'PIX'],
+                    'Valor': [
+                        df_filtrado['Dinheiro'].sum(),
+                        df_filtrado['Cartao'].sum(),
+                        df_filtrado['Pix'].sum()
+                    ]
                 })
                 
-                pie_chart = alt.Chart(df_pie).mark_arc().encode(
-                    theta='Valor',
-                    color=alt.Color('Forma', legend=alt.Legend(title="Forma de Pagamento")),
-                    tooltip=['Forma', 'Valor']
+                pie = alt.Chart(source).mark_arc().encode(
+                    theta='Valor:Q',
+                    color=alt.Color('Forma de Pagamento:N', legend=alt.Legend(title="Forma de Pagamento")),
+                    tooltip=['Forma de Pagamento', 'Valor']
                 ).properties(
+                    width=600,
                     height=400,
-                    title='Distribuição dos Recebimentos'
+                    title='Distribuição Percentual das Formas de Pagamento'
                 )
-                st.altair_chart(pie_chart, use_container_width=True)
-            
-            with tab_graficos2:
-                # Gráfico de Barras
-                df_bar = df_filtered.melt(id_vars=['Data'], 
-                                        value_vars=['Dinheiro', 'Cartao', 'Pix'],
-                                        var_name='Forma', 
-                                        value_name='Valor')
                 
-                bar_chart = alt.Chart(df_bar).mark_bar().encode(
-                    x='monthdate(Data):O',
-                    y='sum(Valor):Q',
-                    color='Forma',
-                    tooltip=['Forma', 'sum(Valor)']
-                ).properties(
-                    height=400,
-                    title='Vendas por Forma de Pagamento'
-                )
-                st.altair_chart(bar_chart, use_container_width=True)
+                st.altair_chart(pie, use_container_width=True)
             
-            with tab_graficos3:
-                # Gráfico Acumulado
-                df_acumulado = df_filtered.sort_values('Data').copy()
-                df_acumulado['Acumulado'] = df_acumulado['Total'].cumsum()
-                
-                line_chart = alt.Chart(df_acumulado).mark_line(
-                    point=True,
-                    strokeWidth=3,
-                    color='red'
-                ).encode(
-                    x='Data:T',
-                    y='Acumulado:Q',
-                    tooltip=['Data', 'Acumulado']
+            with tab2:
+                # Gráfico de linhas temporal
+                line_chart = alt.Chart(df_filtrado).mark_line(point=True).encode(
+                    x=alt.X('yearmonthdate(Data):T', title='Data'),
+                    y=alt.Y('Total:Q', title='Valor (R$)'),
+                    color=alt.value('#2ecc71'),
+                    tooltip=['Data', 'Dinheiro', 'Cartao', 'Pix', 'Total']
                 ).properties(
+                    width=800,
                     height=400,
-                    title='Receita Total Acumulada'
+                    title='Evolução Diária da Receita'
                 )
                 
                 st.altair_chart(line_chart, use_container_width=True)
             
-            # Seção 5: Tabela de Dados
-            st.subheader("📋 Dados Detalhados")
+            with tab3:
+                # Gráfico de barras comparativo mensal
+                if filtro_tipo == "Intervalo Livre":
+                    df_mensal = df_filtrado.resample('M', on='Data').sum().reset_index()
+                    bar_chart = alt.Chart(df_mensal).mark_bar().encode(
+                        x=alt.X('yearmonth(Data):O', title='Mês'),
+                        y=alt.Y('Total:Q', title='Receita Total'),
+                        color=alt.Color('Total:Q', scale=alt.Scale(scheme='greens')),
+                        tooltip=['yearmonth(Data)', 'Total']
+                    ).properties(
+                        width=800,
+                        height=400,
+                        title='Comparativo Mensal de Receitas'
+                    )
+                    st.altair_chart(bar_chart, use_container_width=True)
+                else:
+                    st.info("Selecione 'Intervalo Livre' para comparação entre meses")
+
+            # Tabela detalhada
+            st.subheader("📋 Detalhamento dos Registros")
+            
+            df_exibicao = df_filtrado.sort_values('Data', ascending=False).copy()
+            df_exibicao['Data'] = df_exibicao['Data'].dt.strftime('%d/%m/%Y')
+            
             st.dataframe(
-                df_filtered.sort_values('Data', ascending=False).style.format({
-                    'Dinheiro': lambda x: format_currency(x),
-                    'Cartao': lambda x: format_currency(x),
-                    'Pix': lambda x: format_currency(x),
-                    'Total': lambda x: format_currency(x)
-                }),
+                df_exibicao.style
+                    .format({
+                        'Dinheiro': lambda x: format_currency(x),
+                        'Cartao': lambda x: format_currency(x),
+                        'Pix': lambda x: format_currency(x),
+                        'Total': lambda x: format_currency(x)
+                    })
+                    .applymap(lambda x: 'color: #27ae60' if isinstance(x, (int, float)) and x > 0 else ''),
+                column_config={
+                    "Dinheiro": "Dinheiro (R$)",
+                    "Cartao": "Cartão (R$)",
+                    "Pix": "PIX (R$)",
+                    "Total": "Total do Dia"
+                },
                 use_container_width=True,
                 height=400
             )
             
+            # Opção de exportação
+            st.download_button(
+                label="⬇️ Exportar Dados Filtrados (CSV)",
+                data=df_filtrado.to_csv(index=False).encode('utf-8'),
+                file_name=f'recebimentos_{start_date}_{end_date}.csv',
+                mime='text/csv'
+            )
+            
         else:
-            st.warning("Nenhum registro encontrado no período selecionado")
+            st.warning("⚠️ Nenhum registro encontrado no período selecionado")
     else:
-        st.info("Nenhum dado cadastrado ainda. Adicione seu primeiro registro acima.")
+        st.info("ℹ️ Nenhum dado cadastrado ainda. Utilize o formulário acima para adicionar seu primeiro registro.")
 
 # Adicionar rodapé
 st.divider()
