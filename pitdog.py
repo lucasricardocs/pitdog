@@ -691,10 +691,13 @@ with tab3:
     else:
         st.info("Nenhum dado cadastrado ainda. Adicione seu primeiro registro acima.")
 
-# Rodapé
+# Adicionar rodapé
 st.divider()
-st.markdown("""
-<div style="text-align: center">
-    <p>Sistema de Gestão Clips Burger v2.0 | © 2023 | Desenvolvido com Streamlit</p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown(
+    """
+    <div style='text-align: center; color: gray; font-size: small;'>
+        © 2025 Clips Burger - Sistema de Gestão | Desenvolvido com ❤️ e Streamlit
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
