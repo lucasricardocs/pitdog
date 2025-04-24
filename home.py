@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import io
 import base64
 
-# Constantes
+# --- CONSTANTES E CONFIGURAÇÕES ---
 CONFIG = {
     "page_title": "Gestão - Clips Burger",
     "layout": "wide",
@@ -26,17 +26,6 @@ CONFIG = {
     "logo_path": "logo.png"
 }
 
-# 👇 ESSA LINHA TEM QUE VIR AQUI! Antes de QUALQUER COISA do Streamlit!
-st.set_page_config(
-    page_title=CONFIG["page_title"],
-    layout=CONFIG["layout"],
-    initial_sidebar_state=CONFIG["sidebar_state"]
-)
-
-# Inicializando a variável de session_state caso não exista
-if 'vendas_data' not in st.session_state:
-    st.session_state.vendas_data = None
-    
 CARDAPIOS = {
     "sanduiches": {
         "X Salada Simples": 18.00,
@@ -85,37 +74,39 @@ FORMAS_PAGAMENTO = {
 }
 
 # --- FUNÇÕES UTILITÁRIAS ---
-# Caminho do arquivo
-caminho_arquivo = "recebimentos.xlsx"
-
-# Função para salvar os dados no arquivo
-def salvar_dados(df):
-    # Usando ExcelWriter para salvar corretamente no arquivo
-    with pd.ExcelWriter(caminho_arquivo, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False)
-
 def format_currency(value):
     """Formata um valor como moeda brasileira."""
     if pd.isna(value) or value is None:
         return "R$ -"
     return f"R$ {float(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
-# Função para carregar os dados do Excel
-@st.cache_data
+def init_data_file():
+    """Inicializa o arquivo de dados se não existir."""
+    if not os.path.exists(CONFIG["excel_file"]):
+        pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix']).to_excel(
+            CONFIG["excel_file"], index=False)
+
 def load_data():
-    if os.path.exists("recebimentos.xlsx"):
-        return pd.read_excel("recebimentos.xlsx", parse_dates=["Data"])
-    else:
-        return pd.DataFrame(columns=["Data", "Dinheiro", "Cartao", "Pix"])
+    """Carrega os dados do arquivo Excel."""
+    try:
+        if os.path.exists(CONFIG["excel_file"]):
+            df = pd.read_excel(CONFIG["excel_file"])
+            if not df.empty:
+                df['Data'] = pd.to_datetime(df['Data'])
+                return df.sort_values('Data', ascending=False)
+        return pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
+    except Exception as e:
+        st.error(f"Erro ao carregar dados: {e}")
+        return pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
 
-# Função para salvar os dados
 def save_data(df):
-    df.to_excel("recebimentos.xlsx", index=False)
-
-# Inicializa o dataframe no session_state
-if "df_receipts" not in st.session_state:
-    st.session_state.df_receipts = load_data()
-
+    """Salva os dados no arquivo Excel."""
+    try:
+        df['Data'] = pd.to_datetime(df['Data'])
+        df.to_excel(CONFIG["excel_file"], index=False)
+        st.success("Dados salvos com sucesso!")
+    except Exception as e:
+        st.error(f"Erro ao salvar dados: {e}")
 
 def round_to_50_or_00(value):
     """Arredonda para o múltiplo de 0.50 mais próximo."""
@@ -468,6 +459,21 @@ def create_altair_chart(data, chart_type, x_col, y_col, color_col=None, title=No
     
     return chart.interactive() if interactive else chart
 
+# --- CONFIGURAÇÃO DA PÁGINA ---
+st.set_page_config(
+    page_title=CONFIG["page_title"],
+    layout=CONFIG["layout"],
+    initial_sidebar_state=CONFIG["sidebar_state"]
+)
+
+# --- INICIALIZAÇÃO ---
+init_data_file()
+if 'df_receipts' not in st.session_state:
+    st.session_state.df_receipts = load_data()
+if 'uploaded_data' not in st.session_state:
+    st.session_state.uploaded_data = None
+if 'vendas_data' not in st.session_state:
+    st.session_state.vendas_data = None
 
 # --- INTERFACE PRINCIPAL ---
 col_title1, col_title2 = st.columns([0.30, 0.70])
@@ -878,143 +884,236 @@ with tab2:
     else:
         st.info("Faça o upload de dados na aba 'Resumo das Vendas' para visualizar possíveis combinações.")
 
-import os
-import pandas as pd
-import streamlit as st
-from datetime import datetime
-
-# Caminho do arquivo
-caminho_arquivo = "recebimentos.xlsx"
-
-# Função para salvar os dados no arquivo
-def salvar_dados(df):
-    # Usando ExcelWriter para salvar corretamente no arquivo
-    with pd.ExcelWriter(caminho_arquivo, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False)
-
-# Início da aba tab3
 with tab3:
     st.header("💰 Cadastro e Análise de Recebimentos")
-
+    
     # Seção 1: Formulário para adicionar novos dados
     with st.expander("➕ Adicionar Novo Registro", expanded=True):
         with st.form("add_receipt_form"):
-            # Colunas para inputs
             cols = st.columns([1, 1, 1, 1])
             with cols[0]:
                 data = st.date_input("Data*", value=datetime.now())
-            with cols[1]:
+            
+            st.write("**Valores por Forma de Pagamento**")
+            cols = st.columns(3)
+            with cols[0]:
                 dinheiro = st.number_input("Dinheiro (R$)*", min_value=0.0, step=10.0)
-            with cols[2]:
+            with cols[1]:
                 cartao = st.number_input("Cartão (R$)*", min_value=0.0, step=10.0)
-            with cols[3]:
+            with cols[2]:
                 pix = st.number_input("PIX (R$)*", min_value=0.0, step=10.0)
-
+            
             total_dia = dinheiro + cartao + pix
-            st.metric("Total do Dia", f"R$ {total_dia:.2f}")
-
-            # Botão para salvar os dados
+            st.metric("Total do Dia", format_currency(total_dia))
+            
             submitted = st.form_submit_button("✅ Salvar Registro")
-
+            
             if submitted:
                 if total_dia <= 0:
                     st.error("O total do dia deve ser maior que zero!")
                 else:
                     try:
-                        novo = pd.DataFrame({
+                        new_record = pd.DataFrame({
                             'Data': [data],
                             'Dinheiro': [dinheiro],
                             'Cartao': [cartao],
                             'Pix': [pix]
                         })
-
-                        # Verificar se o arquivo existe e carregar os dados existentes
-                        if os.path.exists(caminho_arquivo):
-                            df_recebimentos = pd.read_excel(caminho_arquivo)
-                        else:
-                            df_recebimentos = pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
-
-                        # Adicionar o novo registro ao DataFrame
-                        df_recebimentos = pd.concat([df_recebimentos, novo], ignore_index=True)
-
-                        # Salvar no arquivo Excel
-                        salvar_dados(df_recebimentos)
-                        st.success("Registro salvo com sucesso!")
-
-                        # Exibir botão para download do arquivo Excel
-                        st.download_button(
-                            label="Baixar Arquivo Excel",
-                            data=df_recebimentos.to_excel(index=False),
-                            file_name=caminho_arquivo,
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        st.session_state.df_receipts = pd.concat(
+                            [st.session_state.df_receipts, new_record], 
+                            ignore_index=True
                         )
-
+                        save_data(st.session_state.df_receipts)
+                        st.success("Registro salvo com sucesso!")
                         st.experimental_rerun()
-
                     except Exception as e:
                         st.error(f"Erro ao salvar: {str(e)}")
 
-    # Seção 2: Exibição dos dados cadastrados
-    if os.path.exists(caminho_arquivo):
-        df_recebimentos = pd.read_excel(caminho_arquivo)
-
-        if not df_recebimentos.empty:
-            st.subheader("📅 Filtros de Período")
-
-            filtro_tipo = st.radio("Tipo de Filtro:",
-                                   ["Intervalo de Datas", "Mês Específico"],
-                                   horizontal=True)
-
-            if filtro_tipo == "Intervalo de Datas":
-                cols = st.columns(2)
-                with cols[0]:
-                    inicio = st.date_input("Data inicial", value=df_recebimentos['Data'].min())
-                with cols[1]:
-                    fim = st.date_input("Data final", value=df_recebimentos['Data'].max())
-            else:
-                meses = sorted(df_recebimentos['Data'].dt.to_period('M').unique(), reverse=True)
-                mes = st.selectbox("Selecione o mês:",
-                                   options=meses,
-                                   format_func=lambda x: x.strftime('%B/%Y'))
-                inicio = pd.to_datetime(mes.start_time)
-                fim = pd.to_datetime(mes.end_time)
-
-            df_filtered = df_recebimentos[
-                (df_recebimentos['Data'] >= pd.to_datetime(inicio)) &
-                (df_recebimentos['Data'] <= pd.to_datetime(fim))
-            ].copy()
-
-            if not df_filtered.empty:
-                st.subheader("📊 Resumo do Período")
-                st.write(df_filtered)
-
-                st.subheader("📈 Gráfico de Acumulado")
-                df_filtered['Total'] = df_filtered['Dinheiro'] + df_filtered['Cartao'] + df_filtered['Pix']
+    # Seção 2: Visualização dos dados e gráficos
+    if not st.session_state.df_receipts.empty:
+        # Filtros de data
+        st.subheader("📅 Filtros de Período")
+        
+        # Opções de filtro
+        filtro_tipo = st.radio("Tipo de Filtro:", 
+                             ["Intervalo de Datas", "Mês Específico"], 
+                             horizontal=True)
+        
+        if filtro_tipo == "Intervalo de Datas":
+            cols = st.columns(2)
+            with cols[0]:
+                inicio = st.date_input("Data inicial", 
+                                     value=st.session_state.df_receipts['Data'].min())
+            with cols[1]:
+                fim = st.date_input("Data final", 
+                                  value=st.session_state.df_receipts['Data'].max())
+        else:
+            # Filtro por mês
+            meses_disponiveis = sorted(st.session_state.df_receipts['Data'].dt.to_period('M').unique(), reverse=True)
+            mes_selecionado = st.selectbox("Selecione o mês:", 
+                                         options=meses_disponiveis,
+                                         format_func=lambda x: x.strftime('%B/%Y'))
+            
+            inicio = pd.to_datetime(mes_selecionado.start_time)
+            fim = pd.to_datetime(mes_selecionado.end_time)
+        
+        # Aplica filtros
+        df_filtered = st.session_state.df_receipts[
+            (st.session_state.df_receipts['Data'] >= pd.to_datetime(inicio)) & 
+            (st.session_state.df_receipts['Data'] <= pd.to_datetime(fim))
+        ].copy()
+        
+        if not df_filtered.empty:
+            # Adiciona coluna de Total
+            df_filtered['Total'] = df_filtered['Dinheiro'] + df_filtered['Cartao'] + df_filtered['Pix']
+            
+            # Calcula totais por forma de pagamento
+            totais = {
+                'Dinheiro': df_filtered['Dinheiro'].sum(),
+                'Cartão': df_filtered['Cartao'].sum(),
+                'PIX': df_filtered['Pix'].sum()
+            }
+            total_periodo = sum(totais.values())
+            
+            # Seção 3: Métricas Resumo
+            st.subheader("📊 Resumo do Período")
+            
+            # CSS para ajustar o tamanho das métricas
+            st.markdown("""
+            <style>
+                div[data-testid="stMetric"] {
+                    padding: 5px 10px;
+                }
+                div[data-testid="stMetric"] > div {
+                    gap: 2px;
+                }
+                div[data-testid="stMetric"] label {
+                    font-size: 14px !important;
+                    font-weight: 500 !important;
+                    color: #6b7280 !important;
+                }
+                div[data-testid="stMetric"] > div > div {
+                    font-size: 18px !important;
+                    font-weight: 600 !important;
+                }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            # Layout compacto em 2 linhas de 4 colunas
+            cols1 = st.columns(4)
+            cols2 = st.columns(4)
+            
+            with cols1[0]:
+                st.metric("Dinheiro", format_currency(totais['Dinheiro']), 
+                         help="Total em recebimentos de dinheiro")
+            with cols1[1]:
+                st.metric("Cartão", format_currency(totais['Cartão']),
+                         help="Total em recebimentos por cartão")
+            with cols1[2]:
+                st.metric("PIX", format_currency(totais['PIX']),
+                         help="Total em recebimentos por PIX")
+            with cols1[3]:
+                st.metric("Total Geral", format_currency(total_periodo),
+                         help="Soma de todas as formas de pagamento")
+            
+            with cols2[0]:
+                st.metric("Média Diária", format_currency(df_filtered['Total'].mean()),
+                         help="Média de vendas por dia")
+            with cols2[1]:
+                st.metric("Maior Venda", format_currency(df_filtered['Total'].max()),
+                         help=f"Dia: {df_filtered.loc[df_filtered['Total'].idxmax(), 'Data'].strftime('%d/%m')}")
+            with cols2[2]:
+                st.metric("Dias Registrados", len(df_filtered),
+                         help="Total de dias com vendas registradas")
+            with cols2[3]:
+                st.metric("Dias sem Registro", (fim - inicio).days + 1 - len(df_filtered),
+                         help="Dias do período sem vendas registradas")
+            
+            # Seção 4: Gráficos
+            st.subheader("📈 Visualizações Gráficas")
+            
+            tab_graficos1, tab_graficos2, tab_graficos3 = st.tabs(["Distribuição", "Comparação", "Acumulado"])
+            
+            with tab_graficos1:
+                # Gráfico de Pizza
+                df_pie = pd.DataFrame({
+                    'Forma': list(totais.keys()),
+                    'Valor': list(totais.values())
+                })
+                
+                pie_chart = alt.Chart(df_pie).mark_arc().encode(
+                    theta='Valor',
+                    color=alt.Color('Forma', legend=alt.Legend(title="Forma de Pagamento")),
+                    tooltip=['Forma', 'Valor']
+                ).properties(
+                    height=400,
+                    title='Distribuição dos Recebimentos'
+                )
+                st.altair_chart(pie_chart, use_container_width=True)
+            
+            with tab_graficos2:
+                # Gráfico de Barras
+                df_bar = df_filtered.melt(id_vars=['Data'], 
+                                        value_vars=['Dinheiro', 'Cartao', 'Pix'],
+                                        var_name='Forma', 
+                                        value_name='Valor')
+                
+                bar_chart = alt.Chart(df_bar).mark_bar().encode(
+                    x='monthdate(Data):O',
+                    y='sum(Valor):Q',
+                    color='Forma',
+                    tooltip=['Forma', 'sum(Valor)']
+                ).properties(
+                    height=400,
+                    title='Vendas por Forma de Pagamento'
+                )
+                st.altair_chart(bar_chart, use_container_width=True)
+            
+            with tab_graficos3:
+                # Gráfico Acumulado
                 df_acumulado = df_filtered.sort_values('Data').copy()
                 df_acumulado['Acumulado'] = df_acumulado['Total'].cumsum()
-
-                st.line_chart(df_acumulado[['Data', 'Acumulado']].set_index('Data'))
-
-                # Função para excluir uma data
-                excluir_data = st.date_input("Escolha uma data para excluir", value=datetime.now())
-
-                if st.button("Excluir Registro"):
-                    if excluir_data in df_recebimentos['Data'].values:
-                        df_recebimentos = df_recebimentos[df_recebimentos['Data'] != excluir_data]
-                        salvar_dados(df_recebimentos)
-                        st.success("Registro excluído com sucesso!")
-                    else:
-                        st.error("Data não encontrada.")
-
+                
+                line_chart = alt.Chart(df_acumulado).mark_line(
+                    point=True,
+                    strokeWidth=3,
+                    color='red'
+                ).encode(
+                    x='Data:T',
+                    y='Acumulado:Q',
+                    tooltip=['Data', 'Acumulado']
+                ).properties(
+                    height=400,
+                    title='Receita Total Acumulada'
+                )
+                
+                st.altair_chart(line_chart, use_container_width=True)
+            
+            # Seção 5: Tabela de Dados
+            st.subheader("📋 Dados Detalhados")
+            st.dataframe(
+                df_filtered.sort_values('Data', ascending=False).style.format({
+                    'Dinheiro': lambda x: format_currency(x),
+                    'Cartao': lambda x: format_currency(x),
+                    'Pix': lambda x: format_currency(x),
+                    'Total': lambda x: format_currency(x)
+                }),
+                use_container_width=True,
+                height=400
+            )
+            
         else:
-            st.warning("Nenhum registro encontrado.")
+            st.warning("Nenhum registro encontrado no período selecionado")
     else:
         st.info("Nenhum dado cadastrado ainda. Adicione seu primeiro registro acima.")
 
-# Rodapé
+# Adicionar rodapé
 st.divider()
-st.markdown("""
-<div style='text-align: center; color: gray; font-size: small;'>
-    © 2025 Clips Burger - Sistema de Gestão | Desenvolvido com ❤️ e Streamlit
-</div>
-""", unsafe_allow_html=True)
+st.markdown(
+    """
+    <div style='text-align: center; color: gray; font-size: small;'>
+        © 2025 Clips Burger - Sistema de Gestão | Desenvolvido com ❤️ e Streamlit
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
