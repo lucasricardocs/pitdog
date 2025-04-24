@@ -734,6 +734,7 @@ with tab1:
 with tab2:
     st.header("🧩 Análise de Combinações")
     
+    # Verificar se os dados de vendas estão disponíveis
     if st.session_state.vendas_data is not None:
         vendas = st.session_state.vendas_data
         total_vendas = st.session_state.total_vendas
@@ -745,24 +746,22 @@ with tab2:
             format_func=lambda x: f"{x} ({format_currency(vendas.loc[vendas['Forma'] == x, 'Valor'].iloc[0])})"
         )
         
+        # Determinar valor selecionado
         valor_selecionado = vendas.loc[vendas['Forma'] == forma_selecionada, 'Valor'].iloc[0]
         st.subheader(f"💰 Valor Total: {format_currency(valor_selecionado)}")
         
-        # Distribuição entre sanduíches e bebidas
-        valor_sanduiches = valor_selecionado * (1 - drink_percentage/100)
-        valor_bebidas = valor_selecionado * (drink_percentage/100)
+        # Divisão do valor entre sanduíches e bebidas
+        valor_sanduiches = valor_selecionado * (1 - drink_percentage / 100)
+        valor_bebidas = valor_selecionado * (drink_percentage / 100)
         
+        # Exibir os valores esperados
         col1, col2 = st.columns(2)
         with col1:
             st.info(f"**Valor Esperado para Sanduíches:** {format_currency(valor_sanduiches)}")
         with col2:
             st.info(f"**Valor Esperado para Bebidas:** {format_currency(valor_bebidas)}")
         
-        # Implementação do Algoritmo Genético
-        def genetic_algorithm(menu, target, population_size=200, generations=500, combination_size=5):
-            # ... (mesma implementação anterior mantida)
-        
-        # Cálculo das combinações
+        # Realizar o cálculo das combinações
         with st.spinner("🔍 Buscando combinações precisas..."):
             if algoritmo == "Algoritmo Genético":
                 # Combinação para sanduíches
@@ -774,64 +773,43 @@ with tab2:
                     combination_size=tamanho_combinacao_sanduiches
                 )
                 
-                # Combinação para bebidas (IMPLEMENTAÇÃO COMPLETA)
+                # Combinação para bebidas
                 combinacao_bebidas = genetic_algorithm(
-                    CARDAPIOS["bebidas"],  # Usa o cardápio de bebidas
-                    valor_bebidas,         # Valor alvo para bebidas
+                    CARDAPIOS["bebidas"],
+                    valor_bebidas,
                     population_size=population_size,
                     generations=generations,
-                    combination_size=tamanho_combinacao_bebidas  # Número de tipos de bebidas
+                    combination_size=tamanho_combinacao_bebidas
+                )
+            else:  # Busca Local
+                # Busca local para sanduíches
+                combinacao_sanduiches = busca_local(
+                    CARDAPIOS["sanduiches"],
+                    valor_sanduiches,
+                    max_iterations=max_iterations,
+                    combination_size=tamanho_combinacao_sanduiches
                 )
                 
-            else:  # Busca Local
-                # Implementação para sanduíches
-                best_sanduiches = {}
-                best_diff_sanduiches = float('inf')
-                for _ in range(max_iterations):
-                    candidate = {
-                        item: random.randint(1, 15) 
-                        for item in random.sample(
-                            CARDAPIOS["sanduiches"].keys(), 
-                            tamanho_combinacao_sanduiches
-                        )
-                    }
-                    total = sum(CARDAPIOS["sanduiches"][item] * qtd for item, qtd in candidate.items())
-                    diff = abs(total - valor_sanduiches)
-                    if diff < best_diff_sanduiches:
-                        best_sanduiches = candidate
-                        best_diff_sanduiches = diff
-                combinacao_sanduiches = best_sanduiches
-
-                # Implementação COMPLETA para bebidas
-                best_bebidas = {}
-                best_diff_bebidas = float('inf')
-                for _ in range(max_iterations):
-                    candidate = {
-                        item: random.randint(1, 15)
-                        for item in random.sample(
-                            CARDAPIOS["bebidas"].keys(), 
-                            tamanho_combinacao_bebidas
-                        )
-                    }
-                    total = sum(CARDAPIOS["bebidas"][item] * qtd for item, qtd in candidate.items())
-                    diff = abs(total - valor_bebidas)
-                    if diff < best_diff_bebidas:
-                        best_bebidas = candidate
-                        best_diff_bebidas = diff
-                combinacao_bebidas = best_bebidas
-
+                # Busca local para bebidas
+                combinacao_bebidas = busca_local(
+                    CARDAPIOS["bebidas"],
+                    valor_bebidas,
+                    max_iterations=max_iterations,
+                    combination_size=tamanho_combinacao_bebidas
+                )
+        
         # Cálculo dos valores reais
         valor_real_sanduiches = sum(CARDAPIOS["sanduiches"][item] * qtd for item, qtd in combinacao_sanduiches.items())
         valor_real_bebidas = sum(CARDAPIOS["bebidas"][item] * qtd for item, qtd in combinacao_bebidas.items())
         valor_real_total = valor_real_sanduiches + valor_real_bebidas
-
-        # Exibição dos resultados
+        
+        # Exibir os resultados
         st.markdown("---")
         st.subheader("🍟 Combinação Proposta")
         
         col1, col2 = st.columns(2)
         
-        # Seção Sanduíches
+        # Resultados para sanduíches
         with col1:
             st.markdown("### 🍔 Sanduíches")
             if combinacao_sanduiches:
@@ -848,35 +826,35 @@ with tab2:
                 st.metric(
                     "Total Sanduíches", 
                     format_currency(valor_real_sanduiches),
-                    delta=f"{format_currency(diferenca_sand)} ({diferenca_sand/valor_sanduiches:.1%})",
-                    delta_color="normal" if abs(diferenca_sand) < 0.05*valor_sanduiches else "inverse"
+                    delta=f"{format_currency(diferenca_sand)} ({diferenca_sand / valor_sanduiches:.1%})",
+                    delta_color="normal" if abs(diferenca_sand) < 0.05 * valor_sanduiches else "inverse"
                 )
             else:
                 st.warning("Não foi possível encontrar combinação para sanduíches")
-
-        # Seção Bebidas (IMPLEMENTAÇÃO COMPLETA)
+        
+        # Resultados para bebidas
         with col2:
             st.markdown("### 🥤 Bebidas")
             if combinacao_bebidas:
                 itens_ordenados = sorted(
                     combinacao_bebidas.items(),
-                    key=lambda x: x[1] * CARDAPIOS["bebidas"][x[0]],  # Usa preços de bebidas
+                    key=lambda x: x[1] * CARDAPIOS["bebidas"][x[0]],
                     reverse=True
                 )
                 for produto, qtd in itens_ordenados:
-                    total_item = qtd * CARDAPIOS["bebidas"][produto]  # Multiplica pela quantidade
+                    total_item = qtd * CARDAPIOS["bebidas"][produto]
                     st.markdown(f"- **{qtd} X {produto}**  \n`{format_currency(total_item)}`")
                 
                 diferenca_beb = valor_real_bebidas - valor_bebidas
                 st.metric(
                     "Total Bebidas", 
                     format_currency(valor_real_bebidas),
-                    delta=f"{format_currency(diferenca_beb)} ({diferenca_beb/valor_bebidas:.1%})",
-                    delta_color="normal" if abs(diferenca_beb) < 0.05*valor_bebidas else "inverse"
+                    delta=f"{format_currency(diferenca_beb)} ({diferenca_beb / valor_bebidas:.1%})",
+                    delta_color="normal" if abs(diferenca_beb) < 0.05 * valor_bebidas else "inverse"
                 )
             else:
                 st.warning("Não foi possível encontrar combinação para bebidas")
-
+        
         # Validação final
         st.markdown("---")
         st.subheader("📊 Total Geral")
@@ -884,15 +862,14 @@ with tab2:
         st.metric(
             "Valor Total Combinado",
             format_currency(valor_real_total),
-            delta=f"{format_currency(diferenca_total)} ({diferenca_total/valor_selecionado:.1%})",
-            delta_color="normal" if abs(diferenca_total) < 0.1*valor_selecionado else "inverse"
+            delta=f"{format_currency(diferenca_total)} ({diferenca_total / valor_selecionado:.1%})",
+            delta_color="normal" if abs(diferenca_total) < 0.1 * valor_selecionado else "inverse"
         )
         
-        if abs(diferenca_total) > 0.1*valor_selecionado:
+        if abs(diferenca_total) > 0.1 * valor_selecionado:
             st.error("⚠️ Discrepância significativa! Ajuste os parâmetros ou algoritmos.")
         else:
             st.success("✅ Combinação válida dentro dos limites aceitáveis!")
-
     else:
         st.info("📤 Faça upload dos dados na aba 'Resumo das Vendas' para gerar combinações.")
             
