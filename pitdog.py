@@ -842,7 +842,7 @@ with tab2:
                 )
                 for produto, qtd in itens_ordenados:
                     total_item = qtd * CARDAPIOS["sanduiches"][produto]
-                    st.markdown(f"- **{qtd} {produto}**  \n`{format_currency(total_item)}`")
+                    st.markdown(f"- **{qtd} X {produto}**  \n`{format_currency(total_item)}`")
                 
                 diferenca_sand = valor_real_sanduíches - valor_sanduiches
                 st.metric(
@@ -865,7 +865,7 @@ with tab2:
                 )
                 for produto, qtd in itens_ordenados:
                     total_item = qtd * CARDAPIOS["bebidas"][produto]  # Multiplica pela quantidade
-                    st.markdown(f"- **{qtd}  {produto}**  \n`{format_currency(total_item)}`")
+                    st.markdown(f"- **{qtd} X {produto}**  \n`{format_currency(total_item)}`")
                 
                 diferenca_beb = valor_real_bebidas - valor_bebidas
                 st.metric(
