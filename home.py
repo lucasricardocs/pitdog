@@ -870,71 +870,122 @@ with tab2:
         st.info("Faça o upload de dados na aba 'Resumo das Vendas' para visualizar possíveis combinações.")
 
 with tab3:
-    st.header("💰 Registro de Recebimentos")
+    st.header("💰 Cadastro e Análise de Recebimentos")
 
-    caminho_arquivo = "recebimentos.xlsx"
+    # Seção 1: Formulário para adicionar novos dados
+    with st.expander("➕ Adicionar Novo Registro", expanded=True):
+        with st.form("add_receipt_form"):
+            # Colunas para inputs
+            cols = st.columns([1, 1, 1, 1])
+            with cols[0]:
+                data = st.date_input("Data*", value=datetime.now())
+            with cols[1]:
+                dinheiro = st.number_input("Dinheiro (R$)*", min_value=0.0, step=10.0)
+            with cols[2]:
+                cartao = st.number_input("Cartão (R$)*", min_value=0.0, step=10.0)
+            with cols[3]:
+                pix = st.number_input("PIX (R$)*", min_value=0.0, step=10.0)
 
-    # Carregar dados existentes
+            total_dia = dinheiro + cartao + pix
+            st.metric("Total do Dia", f"R$ {total_dia:.2f}")
+
+            # Botão para salvar os dados
+            submitted = st.form_submit_button("✅ Salvar Registro")
+
+            if submitted:
+                if total_dia <= 0:
+                    st.error("O total do dia deve ser maior que zero!")
+                else:
+                    try:
+                        novo = pd.DataFrame({
+                            'Data': [data],
+                            'Dinheiro': [dinheiro],
+                            'Cartao': [cartao],
+                            'Pix': [pix]
+                        })
+
+                        # Verificar se o arquivo existe e carregar os dados existentes
+                        if os.path.exists(caminho_arquivo):
+                            df_recebimentos = pd.read_excel(caminho_arquivo)
+                        else:
+                            df_recebimentos = pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
+
+                        # Adicionar o novo registro ao DataFrame
+                        df_recebimentos = pd.concat([df_recebimentos, novo], ignore_index=True)
+
+                        # Salvar no arquivo Excel
+                        salvar_dados(df_recebimentos)
+                        st.success("Registro salvo com sucesso!")
+
+                        # Exibir botão para download do arquivo Excel
+                        st.download_button(
+                            label="Baixar Arquivo Excel",
+                            data=df_recebimentos.to_excel(index=False),
+                            file_name=caminho_arquivo,
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+
+                        st.experimental_rerun()
+
+                    except Exception as e:
+                        st.error(f"Erro ao salvar: {str(e)}")
+
+    # Seção 2: Exibição dos dados cadastrados
     if os.path.exists(caminho_arquivo):
-        df_recebimentos = pd.read_excel(caminho_arquivo, parse_dates=["Data"])
+        df_recebimentos = pd.read_excel(caminho_arquivo)
+
+        if not df_recebimentos.empty:
+            st.subheader("📅 Filtros de Período")
+
+            filtro_tipo = st.radio("Tipo de Filtro:",
+                                   ["Intervalo de Datas", "Mês Específico"],
+                                   horizontal=True)
+
+            if filtro_tipo == "Intervalo de Datas":
+                cols = st.columns(2)
+                with cols[0]:
+                    inicio = st.date_input("Data inicial", value=df_recebimentos['Data'].min())
+                with cols[1]:
+                    fim = st.date_input("Data final", value=df_recebimentos['Data'].max())
+            else:
+                meses = sorted(df_recebimentos['Data'].dt.to_period('M').unique(), reverse=True)
+                mes = st.selectbox("Selecione o mês:",
+                                   options=meses,
+                                   format_func=lambda x: x.strftime('%B/%Y'))
+                inicio = pd.to_datetime(mes.start_time)
+                fim = pd.to_datetime(mes.end_time)
+
+            df_filtered = df_recebimentos[
+                (df_recebimentos['Data'] >= pd.to_datetime(inicio)) &
+                (df_recebimentos['Data'] <= pd.to_datetime(fim))
+            ].copy()
+
+            if not df_filtered.empty:
+                st.subheader("📊 Resumo do Período")
+                st.write(df_filtered)
+
+                st.subheader("📈 Gráfico de Acumulado")
+                df_filtered['Total'] = df_filtered['Dinheiro'] + df_filtered['Cartao'] + df_filtered['Pix']
+                df_acumulado = df_filtered.sort_values('Data').copy()
+                df_acumulado['Acumulado'] = df_acumulado['Total'].cumsum()
+
+                st.line_chart(df_acumulado[['Data', 'Acumulado']].set_index('Data'))
+
+                # Função para excluir uma data
+                excluir_data = st.date_input("Escolha uma data para excluir", value=datetime.now())
+
+                if st.button("Excluir Registro"):
+                    if excluir_data in df_recebimentos['Data'].values:
+                        df_recebimentos = df_recebimentos[df_recebimentos['Data'] != excluir_data]
+                        salvar_dados(df_recebimentos)
+                        st.success("Registro excluído com sucesso!")
+                    else:
+                        st.error("Data não encontrada.")
+
+        else:
+            st.warning("Nenhum registro encontrado.")
     else:
-        df_recebimentos = pd.DataFrame(columns=["Data", "Dinheiro", "Cartao", "Pix"])
-
-    # Formulário de entrada
-    with st.form("form_recebimento"):
-        data = st.date_input("Data", value=datetime.today())
-        dinheiro = st.number_input("Dinheiro (R$)", min_value=0.0, step=10.0)
-        cartao = st.number_input("Cartão (R$)", min_value=0.0, step=10.0)
-        pix = st.number_input("PIX (R$)", min_value=0.0, step=10.0)
-
-        enviado = st.form_submit_button("Salvar")
-
-        if enviado:
-            novo = pd.DataFrame([{
-                "Data": data,
-                "Dinheiro": dinheiro,
-                "Cartao": cartao,
-                "Pix": pix
-            }])
-            df_recebimentos = pd.concat([df_recebimentos, novo], ignore_index=True)
-            df_recebimentos.to_excel(caminho_arquivo, index=False)
-            st.success("Registro salvo com sucesso!")
-            st.experimental_rerun()
-
-    # Exibir tabela e gráfico acumulativo
-    if not df_recebimentos.empty:
-        st.subheader("📋 Registros Salvos")
-        st.dataframe(df_recebimentos.sort_values("Data"))
-
-        df_recebimentos["Total"] = (
-            df_recebimentos["Dinheiro"] +
-            df_recebimentos["Cartao"] +
-            df_recebimentos["Pix"]
-        )
-        df_acumulado = df_recebimentos.sort_values("Data").copy()
-        df_acumulado["Acumulado"] = df_acumulado["Total"].cumsum()
-
-        st.subheader("📈 Receita Total Acumulada")
-        chart = alt.Chart(df_acumulado).mark_line(point=True).encode(
-            x="Data:T",
-            y="Acumulado:Q",
-            tooltip=["Data", "Acumulado"]
-        ).properties(height=400)
-        st.altair_chart(chart, use_container_width=True)
-    else:
-        st.info("Nenhum dado registrado ainda.")
-
-    # Escolher data para apagar
-    if not df_recebimentos.empty:
-        datas_disponiveis = sorted(df_recebimentos["Data"].dt.date.unique())
-        data_para_apagar = st.selectbox("🗑️ Selecionar data para apagar", options=datas_disponiveis)
-
-        if st.button("Apagar registros dessa data"):
-            df_recebimentos = df_recebimentos[df_recebimentos["Data"].dt.date != data_para_apagar]
-            df_recebimentos.to_excel(caminho_arquivo, index=False)
-            st.success(f"Registros do dia {data_para_apagar.strftime('%d/%m/%Y')} foram apagados!")
-            st.experimental_rerun()
-
+        st.info("Nenhum dado cadastrado ainda. Adicione seu primeiro registro acima.")
 # Rodapé
 st.divider()
 st.markdown("""
