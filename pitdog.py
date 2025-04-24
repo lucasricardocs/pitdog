@@ -81,13 +81,7 @@ def load_data():
             df = pd.read_excel(CONFIG["excel_file"])
             if not df.empty:
                 df['Data'] = pd.to_datetime(df['Data'])
-                # Garante que todas as colunas necessárias existam
-                for col in ['Dinheiro', 'Cartao', 'Pix']:
-                    if col not in df.columns:
-                        df[col] = 0.0
                 return df.sort_values('Data', ascending=False)
-        
-        # Retorna um DataFrame vazio com a estrutura correta
         return pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
     except Exception as e:
         st.error(f"Erro ao carregar dados: {e}")
