@@ -503,22 +503,29 @@ st.markdown("""
         box-shadow: none !important;
         cursor: pointer;
         transition: all 0.3s ease;
+        border-right: 2px solid #bbb !important; /* Barra vertical entre itens */
+        border-radius: 0 !important;
     }
 
-    /* Esconder o "botãozinho" (círculo do radio) 
-       O seletor abaixo pega o primeiro div dentro do label, que é onde o Streamlit desenha o círculo */
+    /* Remove a barra do último item */
+    div[role="radiogroup"] label:last-child {
+        border-right: none !important;
+    }
+
+    /* Esconder o "botãozinho" (círculo do radio) */
     div[role="radiogroup"] label > div:first-child {
         display: none !important;
     }
 
-    /* Estilo do Texto da Tab */
+    /* Estilo do Texto da Tab (Fonte 16px para não quebrar) */
     div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {
-        font-size: 20px !important; /* Tamanho da letra maior */
+        font-size: 16px !important; 
+        white-space: nowrap !important; /* Impede quebra de linha */
         font-weight: 500;
         margin: 0;
-        padding-bottom: 5px;
+        padding-bottom: 2px;
         color: #333;
-        border-bottom: 2px solid transparent; /* Borda invisível para não pular layout no hover */
+        border-bottom: 2px solid transparent; 
     }
 
     /* Efeito Hover: Linha Vermelha embaixo do texto */
@@ -527,14 +534,14 @@ st.markdown("""
         border-bottom: 2px solid #d93025 !important;
     }
 
-    /* Item Selecionado (Manter a linha vermelha se quiser indicar que está ativo) */
+    /* Item Selecionado */
     div[role="radiogroup"] label[data-checked="true"] div[data-testid="stMarkdownContainer"] p {
         color: #d93025 !important;
         border-bottom: 2px solid #d93025 !important;
         font-weight: bold;
     }
 
-    /* 5. FAÍSCAS (Surge da base, sobe apagando) */
+    /* 5. FAÍSCAS ATRÁS DA LOGO (Z-INDEX MENOR) E SUBINDO ALTO */
     .logo-container {
         position: relative;
         width: 300px;
@@ -548,58 +555,49 @@ st.markdown("""
     .logo-animada {
         width: 300px;
         height: auto;
-        animation: float 3s ease-in-out infinite;
+        /* Sem animação de flutuar na logo, conforme pedido */
         position: relative;
-        z-index: 5; 
-    }
-
-    @keyframes float {
-        0% { transform: translateY(0px); }
-        50% { transform: translateY(-10px); }
-        100% { transform: translateY(0px); }
+        z-index: 20; /* Fica na FRENTE das faíscas */
     }
 
     .sparkle {
         position: absolute;
-        width: 5px;
-        height: 5px;
+        width: 7px;
+        height: 7px;
         background-color: #FF4500; /* Laranja avermelhado */
         border-radius: 50%;
-        bottom: 10px; /* Nascem bem na base */
-        left: 50%;
-        z-index: 10;
+        bottom: 10px; /* Nascem na base */
+        /* left definido por faísca */
+        z-index: 1; /* Fica ATRÁS da logo */
         opacity: 0;
         box-shadow: 0 0 5px #FFD700, 0 0 10px #FF8C00;
         pointer-events: none;
     }
 
-    /* Animação: Sobe (translateY negativo), varia lateralmente (translateX) e apaga (opacity) */
-    @keyframes rise-fade-1 {
-        0% { opacity: 1; transform: translate(0, 0) scale(1); }
-        100% { opacity: 0; transform: translate(-20px, -150px) scale(0.1); }
-    }
-    @keyframes rise-fade-2 {
-        0% { opacity: 1; transform: translate(0, 0) scale(1); }
-        100% { opacity: 0; transform: translate(15px, -120px) scale(0.1); }
-    }
-    @keyframes rise-fade-3 {
-        0% { opacity: 1; transform: translate(0, 0) scale(1); }
-        100% { opacity: 0; transform: translate(-10px, -180px) scale(0.1); }
-    }
-    @keyframes rise-fade-4 {
-        0% { opacity: 1; transform: translate(0, 0) scale(1); }
-        100% { opacity: 0; transform: translate(25px, -140px) scale(0.1); }
-    }
-    @keyframes rise-fade-5 {
-        0% { opacity: 1; transform: translate(0, 0) scale(1); }
-        100% { opacity: 0; transform: translate(-30px, -160px) scale(0.1); }
+    /* Animação: Sobe MUITO ALTO (translateY negativo grande) e apaga só no final */
+    @keyframes steady-rise-high {
+        0% {
+            opacity: 0;
+            transform: translateY(0) scale(0.5);
+        }
+        10% {
+             opacity: 0.8; 
+        }
+        80% {
+            opacity: 0.6; /* Mantém visível por bastante tempo */
+        }
+        100% {
+            opacity: 0; 
+            transform: translateY(-400px) scale(0.1); /* Sobe bem acima da logo (300px) */
+        }
     }
 
-    .s1 { animation: rise-fade-1 2.0s ease-out infinite; animation-delay: 0s; }
-    .s2 { animation: rise-fade-2 2.5s ease-out infinite; animation-delay: 0.5s; }
-    .s3 { animation: rise-fade-3 1.8s ease-out infinite; animation-delay: 1.0s; }
-    .s4 { animation: rise-fade-4 2.2s ease-out infinite; animation-delay: 1.5s; }
-    .s5 { animation: rise-fade-5 2.7s ease-out infinite; animation-delay: 0.2s; }
+    /* Configuração individual */
+    .s1 { bottom: 20px; left: 40%; animation: steady-rise-high 5s linear infinite; animation-delay: 0s; }
+    .s2 { bottom: 10px; left: 60%; animation: steady-rise-high 6s linear infinite; animation-delay: 1.5s; }
+    .s3 { bottom: 25px; left: 50%; animation: steady-rise-high 5.5s linear infinite; animation-delay: 3.0s; }
+    .s4 { bottom: 15px; left: 30%; animation: steady-rise-high 4.5s linear infinite; animation-delay: 0.5s; }
+    .s5 { bottom: 5px;  left: 70%; animation: steady-rise-high 5.2s linear infinite; animation-delay: 2.2s; }
 
 </style>
 """, unsafe_allow_html=True)
