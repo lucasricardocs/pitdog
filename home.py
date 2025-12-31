@@ -572,7 +572,7 @@ def get_img_as_base64(file_path):
         data = f.read()
     return base64.b64encode(data).decode()
 
-# --- CSS PARA LOGO MAIOR, FLUTUAÇÃO E FAÍSCAS ---
+# --- CSS E HTML PARA LOGO, FLUTUAÇÃO E FAÍSCAS (AGORA COMPLETO) ---
 st.markdown("""
 <style>
     /* Container principal para centralizar e organizar */
