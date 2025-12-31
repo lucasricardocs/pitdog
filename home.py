@@ -106,16 +106,20 @@ def save_data(df):
         st.error(f"Erro ao salvar dados: {e}")
 
 def round_to_50_or_00(value):
-    """Arredonda para o múltiplo de 0.50 mais próximo."""
-    return round(value * 2) / 2
+    """
+    ATUALIZADO: Agora força estritamente para INTEIRO.
+    Mantive o nome da função para compatibilidade com partes antigas, 
+    mas ela retorna int.
+    """
+    return int(round(value))
 
 def calculate_combination_value(combination, item_prices):
     """Calcula o valor total de uma combinação."""
     return sum(item_prices.get(name, 0) * quantity for name, quantity in combination.items())
 
-# --- FUNÇÕES PARA ALGORITMO GENÉTICO (ATUALIZADAS) ---
+# --- FUNÇÕES PARA ALGORITMO GENÉTICO (VERSÃO INTEIROS E RIGOROSA) ---
 def create_individual(item_prices, combination_size):
-    """Cria um indivíduo (combinação) aleatório para o algoritmo genético."""
+    """Cria um indivíduo com quantidades INTEIRAS."""
     if not item_prices:
         return {}
     
@@ -124,47 +128,37 @@ def create_individual(item_prices, combination_size):
     selected_items = random.sample(items, size)
     
     return {
-        name: round_to_50_or_00(random.uniform(1, 100))
+        name: int(random.randint(1, 100)) # Garante inteiro na criação
         for name in selected_items 
     }
 
 def evaluate_fitness(individual, item_prices, target_value):
     """
-    Avalia a adequação de um indivíduo ao valor alvo.
-    MODIFICADO: Penalidade extrema se ultrapassar o valor alvo.
+    Avalia a adequação:
+    1. Se passar do valor: Penalidade gigante.
+    2. Se for menor ou igual: A diferença é o erro.
     """
     total = calculate_combination_value(individual, item_prices)
-    
-    # Se passar do valor alvo: Penalidade MASSIVA.
-    # Isso força o algoritmo a preferir valores abaixo do alvo.
     if total > target_value:
         return 1_000_000 + (total - target_value)
-        
-    # Se for menor ou igual, quanto menor a diferença, melhor.
     return target_value - total
 
 def crossover(parent1, parent2):
-    """Realiza o cruzamento entre dois pais para criar um filho."""
     all_keys = set(list(parent1.keys()) + list(parent2.keys()))
     child = {}
     
     for key in all_keys:
         if key in parent1 and key in parent2:
-            if random.random() < 0.5:
-                child[key] = parent1[key]
-            else:
-                child[key] = parent2[key]
+            child[key] = parent1[key] if random.random() < 0.5 else parent2[key]
         elif key in parent1:
-            if random.random() < 0.5:
-                child[key] = parent1[key]
+            if random.random() < 0.5: child[key] = parent1[key]
         elif key in parent2:
-            if random.random() < 0.5:
-                child[key] = parent2[key]
+            if random.random() < 0.5: child[key] = parent2[key]
     
     return child
 
 def mutate(individual, item_prices, mutation_rate=0.2, max_items=5):
-    """Aplica mutação a um indivíduo."""
+    """Aplica mutação mantendo quantidades INTEIRAS."""
     new_individual = individual.copy()
     
     # Adicionar item
@@ -175,18 +169,18 @@ def mutate(individual, item_prices, mutation_rate=0.2, max_items=5):
         possible_new_items = [item for item in item_prices.keys() if item not in new_individual]
         if possible_new_items:
             new_item = random.choice(possible_new_items)
-            new_individual[new_item] = round_to_50_or_00(random.uniform(1, 100))
+            new_individual[new_item] = 1 # Começa com 1 unidade inteira
     
     # Remover item
     if random.random() < mutation_rate and len(new_individual) > 1:
         item_to_remove = random.choice(list(new_individual.keys()))
         del new_individual[item_to_remove]
     
-    # Modificar quantidades
+    # Modificar quantidades (Apenas números inteiros)
     for key in list(new_individual.keys()):
         if random.random() < mutation_rate:
-            change = random.choice([-1.0, -0.5, 0.5, 1.0])
-            new_value = max(0.5, round_to_50_or_00(new_individual[key] + change))
+            change = random.choice([-1, 1]) # Apenas soma ou subtrai 1 inteiro
+            new_value = max(1, int(new_individual[key] + change))
             new_individual[key] = new_value
     
     return new_individual
@@ -194,8 +188,7 @@ def mutate(individual, item_prices, mutation_rate=0.2, max_items=5):
 def genetic_algorithm(item_prices, target_value, population_size=50, generations=100, 
                     combination_size=5, elite_size=5, tournament_size=3):
     """
-    Algoritmo genético com PODA DE SEGURANÇA.
-    Garante que o resultado final nunca seja maior que o target_value.
+    Algoritmo genético adaptado para inteiros com PODA DE SEGURANÇA.
     """
     if not item_prices or target_value <= 0:
         return {}
@@ -211,7 +204,6 @@ def genetic_algorithm(item_prices, target_value, population_size=50, generations
         
         fitness_scores.sort(key=lambda x: x[1])
         
-        # Atualiza o melhor global
         if fitness_scores[0][1] < best_fitness:
             best_individual = fitness_scores[0][0].copy()
             best_fitness = fitness_scores[0][1]
@@ -226,31 +218,28 @@ def genetic_algorithm(item_prices, target_value, population_size=50, generations
             tournament = random.sample(fitness_scores, tournament_size)
             tournament.sort(key=lambda x: x[1])
             parent1 = tournament[0][0]
-            
-            tournament = random.sample(fitness_scores, tournament_size)
-            tournament.sort(key=lambda x: x[1])
-            parent2 = tournament[0][0]
+            # Pequena otimização: escolhe o segundo pai aleatoriamente entre os 10 melhores
+            parent2 = random.choice(fitness_scores[:10])[0] 
             
             child = crossover(parent1, parent2)
             child = mutate(child, item_prices, max_items=combination_size)
-            
             next_generation.append(child)
         
         population = next_generation
     
-    # --- PODA DE SEGURANÇA ---
-    # Garante matematicamente que Total <= Alvo
-    final_combination = {k: round_to_50_or_00(v) for k, v in best_individual.items() if round_to_50_or_00(v) > 0}
+    # --- PODA DE SEGURANÇA (VERSÃO INTEIROS) ---
+    final_combination = {k: int(v) for k, v in best_individual.items() if v > 0}
     final_total = calculate_combination_value(final_combination, item_prices)
 
-    # Enquanto passar do valor, reduz itens
+    # Enquanto passar do valor, reduz itens unitariamente
     while final_total > target_value and len(final_combination) > 0:
         item_to_reduce = random.choice(list(final_combination.keys()))
         
-        if final_combination[item_to_reduce] <= 0.5:
+        # Se tiver apenas 1, deleta. Se tiver mais, subtrai 1.
+        if final_combination[item_to_reduce] <= 1:
             del final_combination[item_to_reduce]
         else:
-            final_combination[item_to_reduce] -= 0.5
+            final_combination[item_to_reduce] -= 1
             
         final_total = calculate_combination_value(final_combination, item_prices)
 
@@ -860,19 +849,19 @@ with tab2:
                 df_sanduiches = df_sanduiches.sort_values('Subtotal', ascending=False)
                 
                 st.dataframe(
-                df_sanduiches.style.format({
-                    'Qnt': '{:g}',
-                    'Preço Unitário': 'R$ {:.2f}',
-                    'Subtotal': 'R$ {:.2f}'
-                })
-                .set_properties(**{'text-align': 'center'})
-                .set_table_styles([
-                    {'selector': 'th', 'props': [('text-align', 'center')]},
-                    {'selector': 'td', 'props': [('text-align', 'center')]}
-                ]),
-                hide_index=True,
-                use_container_width=True
-            )
+                    df_sanduiches.style.format({
+                        'Qnt': '{:.0f}',       # <--- FORÇA INTEIRO VISUAL
+                        'Preço Unitário': 'R$ {:.2f}',
+                        'Subtotal': 'R$ {:.2f}'
+                    })
+                    .set_properties(**{'text-align': 'center'})
+                    .set_table_styles([
+                        {'selector': 'th', 'props': [('text-align', 'center')]},
+                        {'selector': 'td', 'props': [('text-align', 'center')]}
+                    ]),
+                    hide_index=True,
+                    use_container_width=True
+                )
                 
                 st.metric(
                     "Total Sanduíches", 
@@ -894,19 +883,19 @@ with tab2:
                 df_bebidas = df_bebidas.sort_values('Subtotal', ascending=False)
                 
                 st.dataframe(
-                df_bebidas.style.format({
-                    'Qnt': '{:g}',
-                    'Preço Unitário': 'R$ {:.2f}',
-                    'Subtotal': 'R$ {:.2f}'
-                })
-                .set_properties(**{'text-align': 'center'})
-                .set_table_styles([
-                    {'selector': 'th', 'props': [('text-align', 'center')]},
-                    {'selector': 'td', 'props': [('text-align', 'center')]}
-                ]),
-                hide_index=True,
-                use_container_width=True
-            )
+                    df_bebidas.style.format({
+                        'Qnt': '{:.0f}',       # <--- FORÇA INTEIRO VISUAL
+                        'Preço Unitário': 'R$ {:.2f}',
+                        'Subtotal': 'R$ {:.2f}'
+                    })
+                    .set_properties(**{'text-align': 'center'})
+                    .set_table_styles([
+                        {'selector': 'th', 'props': [('text-align', 'center')]},
+                        {'selector': 'td', 'props': [('text-align', 'center')]}
+                    ]),
+                    hide_index=True,
+                    use_container_width=True
+                )
                 
                 st.metric(
                     "Total Bebidas", 
