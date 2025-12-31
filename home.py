@@ -541,11 +541,11 @@ st.markdown("""
         font-weight: bold;
     }
 
-    /* 5. FAÍSCAS ATRÁS DA LOGO (Z-INDEX MENOR) E SUBINDO ALTO */
+    /* 5. FAÍSCAS */
     .logo-container {
         position: relative;
-        width: 300px;
-        height: 300px;
+        width: 400px; /* Aumentado para 400px */
+        height: 400px;
         margin: 0 auto 20px auto;
         display: flex;
         justify-content: center;
@@ -553,28 +553,26 @@ st.markdown("""
     }
 
     .logo-animada {
-        width: 300px;
+        width: 400px; /* Aumentado para 400px */
         height: auto;
-        /* Sem animação de flutuar na logo, conforme pedido */
         position: relative;
         z-index: 20; /* Fica na FRENTE das faíscas */
     }
 
     .sparkle {
         position: absolute;
-        width: 7px;
-        height: 7px;
+        width: 8px; /* Maiores (8px) */
+        height: 8px;
         background-color: #FF4500; /* Laranja avermelhado */
         border-radius: 50%;
         bottom: 10px; /* Nascem na base */
-        /* left definido por faísca */
         z-index: 1; /* Fica ATRÁS da logo */
         opacity: 0;
         box-shadow: 0 0 5px #FFD700, 0 0 10px #FF8C00;
         pointer-events: none;
     }
 
-    /* Animação: Sobe MUITO ALTO (translateY negativo grande) e apaga só no final */
+    /* Animação: Sobe MUITO ALTO (translateY -550px) para cobrir a logo de 400px */
     @keyframes steady-rise-high {
         0% {
             opacity: 0;
@@ -588,16 +586,19 @@ st.markdown("""
         }
         100% {
             opacity: 0; 
-            transform: translateY(-400px) scale(0.1); /* Sobe bem acima da logo (300px) */
+            transform: translateY(-550px) scale(0.1); /* Sobe bem acima da logo */
         }
     }
 
-    /* Configuração individual */
-    .s1 { bottom: 20px; left: 40%; animation: steady-rise-high 5s linear infinite; animation-delay: 0s; }
-    .s2 { bottom: 10px; left: 60%; animation: steady-rise-high 6s linear infinite; animation-delay: 1.5s; }
+    /* Configuração individual (8 faíscas) */
+    .s1 { bottom: 20px; left: 45%; animation: steady-rise-high 5s linear infinite; animation-delay: 0s; }
+    .s2 { bottom: 10px; left: 55%; animation: steady-rise-high 6s linear infinite; animation-delay: 1.5s; }
     .s3 { bottom: 25px; left: 50%; animation: steady-rise-high 5.5s linear infinite; animation-delay: 3.0s; }
-    .s4 { bottom: 15px; left: 30%; animation: steady-rise-high 4.5s linear infinite; animation-delay: 0.5s; }
-    .s5 { bottom: 5px;  left: 70%; animation: steady-rise-high 5.2s linear infinite; animation-delay: 2.2s; }
+    .s4 { bottom: 15px; left: 40%; animation: steady-rise-high 4.5s linear infinite; animation-delay: 0.5s; }
+    .s5 { bottom: 5px;  left: 60%; animation: steady-rise-high 5.2s linear infinite; animation-delay: 2.2s; }
+    .s6 { bottom: 12px; left: 48%; animation: steady-rise-high 4.8s linear infinite; animation-delay: 1.2s; }
+    .s7 { bottom: 18px; left: 52%; animation: steady-rise-high 5.8s linear infinite; animation-delay: 2.8s; }
+    .s8 { bottom: 8px;  left: 42%; animation: steady-rise-high 5.0s linear infinite; animation-delay: 0.8s; }
 
 </style>
 """, unsafe_allow_html=True)
@@ -634,6 +635,9 @@ try:
                 <div class="sparkle s3"></div>
                 <div class="sparkle s4"></div>
                 <div class="sparkle s5"></div>
+                <div class="sparkle s6"></div>
+                <div class="sparkle s7"></div>
+                <div class="sparkle s8"></div>
                 <img src="data:image/png;base64,{img_base64}" class="logo-animada">
             </div>
             """,
@@ -648,7 +652,9 @@ st.markdown("""
 Bem-vindo(a)! Esta ferramenta ajuda a visualizar suas vendas por forma de pagamento
 e tenta encontrar combinações *hipotéticas* de produtos que poderiam corresponder a esses totais.
 """)
-st.divider()
+
+# SUBSTITUIÇÃO DE DIVISORES POR HTML CUSTOMIZADO (TRANSPARENTE E PRÓXIMO)
+st.markdown('<div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 10px; margin-bottom: 5px;"></div>', unsafe_allow_html=True)
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -681,7 +687,8 @@ with st.sidebar:
 # --- MENU DE NAVEGAÇÃO ESTILIZADO (SEM "RECEBIMENTOS") ---
 menu_opcoes = ["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💸 Calculadora PIX"]
 escolha_menu = st.radio("Navegação", menu_opcoes, horizontal=True, label_visibility="collapsed", key="nav_menu")
-st.divider()
+
+st.markdown('<div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 5px; margin-bottom: 20px;"></div>', unsafe_allow_html=True)
 
 # --- CONTEÚDO DAS ABAS ---
 
