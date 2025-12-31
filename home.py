@@ -461,7 +461,7 @@ st.set_page_config(
     initial_sidebar_state=CONFIG["sidebar_state"]
 )
 
-# --- CSS GLOBAL: FUNDO, MENU ESTILIZADO, FAÍSCAS E TABELAS ---
+# --- CSS GLOBAL ---
 st.markdown("""
 <style>
     /* 1. Fundo da página em Azul Acinzentado Claro */
@@ -469,7 +469,7 @@ st.markdown("""
         background-color: #e8ecf1;
     }
 
-    /* 2. Centralização de tabelas e textos */
+    /* 2. Centralização de tabelas */
     th, td {
         text-align: center !important;
         vertical-align: middle !important;
@@ -479,48 +479,62 @@ st.markdown("""
         margin-right: auto;
     }
     
-    /* 3. Inputs mais bonitos */
+    /* 3. Inputs */
     .stTextInput input, .stNumberInput input, .stSelectbox, .stDateInput {
         background-color: white;
     }
 
-    /* 4. MENU ESTILIZADO COM PIPES (Barras verticais) */
+    /* 4. MENU ESTILIZADO (SEM BOLINHA, LINHA VERMELHA HOVER, MESMA LINHA) */
     div[role="radiogroup"] {
         display: flex;
-        justify-content: center;
+        flex-direction: row;
+        justify-content: center; /* Centraliza as tabs */
         width: 100%;
         background-color: transparent;
+        gap: 15px; /* Espaço entre as tabs */
     }
     
-    div[role="radiogroup"] > label {
+    /* O container de cada item do radio */
+    div[role="radiogroup"] label {
         background-color: transparent !important;
         border: none !important;
-        margin-right: 0px !important;
-        padding-right: 15px !important;
-        padding-left: 15px !important;
-        border-right: 2px solid #bbb !important; /* A barra vertical */
-        border-radius: 0px !important;
+        padding: 5px 15px !important;
+        margin: 0 !important;
         box-shadow: none !important;
+        cursor: pointer;
+        transition: all 0.3s ease;
     }
 
-    /* Remove a barra do último item */
-    div[role="radiogroup"] > label:last-child {
-        border-right: none !important;
+    /* Esconder o "botãozinho" (círculo do radio) 
+       O seletor abaixo pega o primeiro div dentro do label, que é onde o Streamlit desenha o círculo */
+    div[role="radiogroup"] label > div:first-child {
+        display: none !important;
     }
 
-    /* Esconde a bolinha do radio button padrão */
-    div[role="radiogroup"] div[data-testid="stMarkdownContainer"] p {
-        font-size: 18px;
-        font-weight: 600;
-        color: #444;
-    }
-    
-    /* Hover state */
-    div[role="radiogroup"] > label:hover {
-        color: #000 !important;
+    /* Estilo do Texto da Tab */
+    div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {
+        font-size: 20px !important; /* Tamanho da letra maior */
+        font-weight: 500;
+        margin: 0;
+        padding-bottom: 5px;
+        color: #333;
+        border-bottom: 2px solid transparent; /* Borda invisível para não pular layout no hover */
     }
 
-    /* 5. FAÍSCAS MELHORADAS (Surgindo da base, subindo e sumindo) */
+    /* Efeito Hover: Linha Vermelha embaixo do texto */
+    div[role="radiogroup"] label:hover div[data-testid="stMarkdownContainer"] p {
+        color: #d93025 !important;
+        border-bottom: 2px solid #d93025 !important;
+    }
+
+    /* Item Selecionado (Manter a linha vermelha se quiser indicar que está ativo) */
+    div[role="radiogroup"] label[data-checked="true"] div[data-testid="stMarkdownContainer"] p {
+        color: #d93025 !important;
+        border-bottom: 2px solid #d93025 !important;
+        font-weight: bold;
+    }
+
+    /* 5. FAÍSCAS (Surge da base, sobe apagando) */
     .logo-container {
         position: relative;
         width: 300px;
@@ -536,7 +550,7 @@ st.markdown("""
         height: auto;
         animation: float 3s ease-in-out infinite;
         position: relative;
-        z-index: 5; /* Logo atrás das faíscas */
+        z-index: 5; 
     }
 
     @keyframes float {
@@ -547,45 +561,45 @@ st.markdown("""
 
     .sparkle {
         position: absolute;
-        width: 6px; /* Menores, mais parecidas com brasas */
-        height: 6px;
-        background-color: #FF8C00; /* Laranja fogo */
+        width: 5px;
+        height: 5px;
+        background-color: #FF4500; /* Laranja avermelhado */
         border-radius: 50%;
-        bottom: 20px; /* Nascem na base da logo */
+        bottom: 10px; /* Nascem bem na base */
         left: 50%;
-        z-index: 10; /* Frente da logo */
+        z-index: 10;
         opacity: 0;
-        box-shadow: 0 0 5px #FFD700, 0 0 10px #FF4500;
+        box-shadow: 0 0 5px #FFD700, 0 0 10px #FF8C00;
         pointer-events: none;
     }
 
-    /* Animação: Sobe, balança para os lados e desaparece */
-    @keyframes rise-1 {
+    /* Animação: Sobe (translateY negativo), varia lateralmente (translateX) e apaga (opacity) */
+    @keyframes rise-fade-1 {
         0% { opacity: 1; transform: translate(0, 0) scale(1); }
-        100% { opacity: 0; transform: translate(-30px, -200px) scale(0.2); }
+        100% { opacity: 0; transform: translate(-20px, -150px) scale(0.1); }
     }
-    @keyframes rise-2 {
+    @keyframes rise-fade-2 {
         0% { opacity: 1; transform: translate(0, 0) scale(1); }
-        100% { opacity: 0; transform: translate(40px, -180px) scale(0.2); }
+        100% { opacity: 0; transform: translate(15px, -120px) scale(0.1); }
     }
-    @keyframes rise-3 {
+    @keyframes rise-fade-3 {
         0% { opacity: 1; transform: translate(0, 0) scale(1); }
-        100% { opacity: 0; transform: translate(-10px, -220px) scale(0.2); }
+        100% { opacity: 0; transform: translate(-10px, -180px) scale(0.1); }
     }
-    @keyframes rise-4 {
+    @keyframes rise-fade-4 {
         0% { opacity: 1; transform: translate(0, 0) scale(1); }
-        100% { opacity: 0; transform: translate(25px, -160px) scale(0.2); }
+        100% { opacity: 0; transform: translate(25px, -140px) scale(0.1); }
     }
-    @keyframes rise-5 {
+    @keyframes rise-fade-5 {
         0% { opacity: 1; transform: translate(0, 0) scale(1); }
-        100% { opacity: 0; transform: translate(-50px, -190px) scale(0.2); }
+        100% { opacity: 0; transform: translate(-30px, -160px) scale(0.1); }
     }
 
-    .s1 { animation: rise-1 2.5s linear infinite; animation-delay: 0s; }
-    .s2 { animation: rise-2 2.8s linear infinite; animation-delay: 0.5s; }
-    .s3 { animation: rise-3 3.0s linear infinite; animation-delay: 1.0s; }
-    .s4 { animation: rise-4 2.2s linear infinite; animation-delay: 1.5s; }
-    .s5 { animation: rise-5 2.7s linear infinite; animation-delay: 2.0s; }
+    .s1 { animation: rise-fade-1 2.0s ease-out infinite; animation-delay: 0s; }
+    .s2 { animation: rise-fade-2 2.5s ease-out infinite; animation-delay: 0.5s; }
+    .s3 { animation: rise-fade-3 1.8s ease-out infinite; animation-delay: 1.0s; }
+    .s4 { animation: rise-fade-4 2.2s ease-out infinite; animation-delay: 1.5s; }
+    .s5 { animation: rise-fade-5 2.7s ease-out infinite; animation-delay: 0.2s; }
 
 </style>
 """, unsafe_allow_html=True)
@@ -599,7 +613,6 @@ if 'uploaded_data' not in st.session_state:
 if 'vendas_data' not in st.session_state:
     st.session_state.vendas_data = None
 
-# ESTADOS PARA PERSISTÊNCIA DOS CÁLCULOS GENÉTICOS
 if 'resultado_arquivo' not in st.session_state:
     st.session_state.resultado_arquivo = None
 if 'resultado_pix' not in st.session_state:
@@ -607,13 +620,11 @@ if 'resultado_pix' not in st.session_state:
 
 # --- INTERFACE PRINCIPAL ---
 
-# Função para converter imagem em Base64
 def get_img_as_base64(file_path):
     with open(file_path, "rb") as f:
         data = f.read()
     return base64.b64encode(data).decode()
 
-# Renderiza Logo
 try:
     if os.path.exists(CONFIG["logo_path"]):
         img_base64 = get_img_as_base64(CONFIG["logo_path"])
@@ -844,7 +855,6 @@ elif escolha_menu == "🧩 Detalhes das Combinações":
         # Botão para calcular
         if st.button("🔎 Analisar Combinação (Arquivo)", use_container_width=True):
             with st.spinner("Calculando a melhor combinação..."):
-                # Salva o resultado no estado para não perder
                 dados = gerar_dados_geneticos(
                     valor_selecionado, 
                     drink_percentage, 
@@ -855,7 +865,7 @@ elif escolha_menu == "🧩 Detalhes das Combinações":
                 )
                 st.session_state.resultado_arquivo = dados
         
-        # Exibe o resultado se existir no estado
+        # Exibe o resultado
         if st.session_state.resultado_arquivo:
             st.divider()
             renderizar_resultados(st.session_state.resultado_arquivo)
@@ -885,7 +895,6 @@ elif escolha_menu == "💸 Calculadora PIX":
         if st.button("🚀 Calcular Combinação PIX", type="primary", use_container_width=True):
             if valor_pix_input > 0:
                 with st.spinner("Calculando a melhor combinação..."):
-                    # Salva o resultado no estado para não perder
                     dados = gerar_dados_geneticos(
                         valor_pix_input, 
                         drink_percentage, 
@@ -898,7 +907,7 @@ elif escolha_menu == "💸 Calculadora PIX":
             else:
                 st.error("Por favor, insira um valor maior que zero.")
 
-    # EXIBE O RESULTADO QUE ESTÁ NA MEMÓRIA (PERSISTENTE)
+    # EXIBE O RESULTADO QUE ESTÁ NA MEMÓRIA
     if st.session_state.resultado_pix:
         st.divider()
         renderizar_resultados(st.session_state.resultado_pix)
