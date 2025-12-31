@@ -691,7 +691,7 @@ menu_opcoes = ["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "�
 escolha_menu = st.radio("Navegação", menu_opcoes, horizontal=True, label_visibility="collapsed", key="nav_menu")
 
 # LINHA HORIZONTAL 2 (DIVISOR INFERIOR) - SIMÉTRICO
-st.markdown('<div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 20px; margin-bottom: 20px;"></div>', unsafe_allow_html=True)
+#st.markdown('<div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 20px; margin-bottom: 20px;"></div>', unsafe_allow_html=True)
 
 # --- CONTEÚDO DAS ABAS ---
 
