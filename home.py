@@ -334,7 +334,6 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
         ('BOTTOMPADDING', (0, 0), (1, 0), 12),
         ('BACKGROUND', (0, -1), (1, -1), colors.lightgrey),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        # Centraliza tudo (antes estava RIGHT para valores)
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
     ]))
     elements.append(table)
@@ -391,7 +390,6 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        # Centraliza tudo (antes estava RIGHT para valores)
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
     ]))
     elements.append(table)
@@ -435,83 +433,81 @@ def create_altair_chart(data, chart_type, x_col, y_col, color_col=None, title=No
     )
     return chart.interactive() if interactive else chart
 
-# --- FUNÇÃO CENTRAL DE ANÁLISE GENÉTICA E EXIBIÇÃO ---
-def processar_analise_genetica(valor_alvo_total, drink_pct, pop_size, n_gens, tam_sand, tam_beb):
+# --- LÓGICA DE PROCESSAMENTO GENÉTICO (SEPARADA) ---
+def gerar_dados_geneticos(valor_alvo_total, drink_pct, pop_size, n_gens, tam_sand, tam_beb):
     """
-    Função reutilizável para rodar a análise e exibir os resultados.
+    Roda o processamento pesado e RETORNA os dados, não exibe nada.
+    Isso permite salvar o resultado no session_state.
     """
-    st.subheader(f"Valor Alvo: {format_currency(valor_alvo_total)}")
     target_sanduiches_inicial = valor_alvo_total * (1 - drink_pct/100)
     
-    combinacao_sanduiches = {}
-    combinacao_bebidas = {}
-    
-    # 1. PROCESSAMENTO (Apenas Genético)
-    with st.spinner("🤖 O Algoritmo Genético está trabalhando..."):
-        progress_text = "Calculando Sanduíches..."
-        my_bar = st.progress(0, text=progress_text)
-
-        # A. Sanduíches
-        combinacao_sanduiches, t_sand = buscar_combinacao_exata(
-            CARDAPIOS["sanduiches"], target_sanduiches_inicial, max_time_seconds=5, 
-            population_size=pop_size, generations=n_gens, combination_size=tam_sand
-        )
-        
-        valor_real_sanduiches = calculate_combination_value(combinacao_sanduiches, CARDAPIOS["sanduiches"])
-        
-        # B. Compensação
-        target_bebidas_corrigido = valor_alvo_total - valor_real_sanduiches
-        my_bar.progress(50, text=f"Sanduíches: {format_currency(valor_real_sanduiches)}. Calculando Bebidas (Compensação)...")
-        
-        # C. Bebidas
-        combinacao_bebidas, t_beb = buscar_combinacao_exata(
-            CARDAPIOS["bebidas"], target_bebidas_corrigido, max_time_seconds=5, 
-            population_size=pop_size, generations=n_gens, combination_size=tam_beb
-        )
-        
-        my_bar.progress(100, text="Pronto!")
-        time.sleep(0.3)
-        my_bar.empty()
-        
-        st.caption(f"🤖 O algoritmo realizou {t_sand + t_beb} ciclos completos de evolução.")
-
-    # 2. CÁLCULOS FINAIS
+    # A. Sanduíches
+    combinacao_sanduiches, t_sand = buscar_combinacao_exata(
+        CARDAPIOS["sanduiches"], target_sanduiches_inicial, max_time_seconds=5, 
+        population_size=pop_size, generations=n_gens, combination_size=tam_sand
+    )
     valor_real_sanduiches = calculate_combination_value(combinacao_sanduiches, CARDAPIOS["sanduiches"])
+    
+    # B. Compensação
+    target_bebidas_corrigido = valor_alvo_total - valor_real_sanduiches
+    
+    # C. Bebidas
+    combinacao_bebidas, t_beb = buscar_combinacao_exata(
+        CARDAPIOS["bebidas"], target_bebidas_corrigido, max_time_seconds=5, 
+        population_size=pop_size, generations=n_gens, combination_size=tam_beb
+    )
+    
     valor_real_bebidas = calculate_combination_value(combinacao_bebidas, CARDAPIOS["bebidas"])
     valor_real_total = valor_real_sanduiches + valor_real_bebidas
     
-    # 3. EXIBIÇÃO COM TABELAS CENTRALIZADAS
+    # Retorna dicionário com tudo que precisamos exibir
+    return {
+        'sanduiches': combinacao_sanduiches,
+        'bebidas': combinacao_bebidas,
+        'val_sand': valor_real_sanduiches,
+        'val_beb': valor_real_bebidas,
+        'val_total': valor_real_total,
+        'alvo': valor_alvo_total,
+        'ciclos': t_sand + t_beb
+    }
+
+def renderizar_resultados(dados):
+    """
+    Recebe os dados já calculados e apenas EXIBE na tela.
+    """
+    st.subheader(f"Valor Alvo: {format_currency(dados['alvo'])}")
+    st.caption(f"🤖 O algoritmo realizou {dados['ciclos']} ciclos completos de evolução.")
+    
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("### 🍔 Sanduíches")
-        if combinacao_sanduiches:
-            df_s = pd.DataFrame({'Qnt': list(combinacao_sanduiches.values()), 'Produto': list(combinacao_sanduiches.keys()),
-                                 'Preço Unitário': [CARDAPIOS["sanduiches"][k] for k in combinacao_sanduiches],
-                                 'Subtotal': [CARDAPIOS["sanduiches"][k]*v for k,v in combinacao_sanduiches.items()]})
+        if dados['sanduiches']:
+            df_s = pd.DataFrame({'Qnt': list(dados['sanduiches'].values()), 'Produto': list(dados['sanduiches'].keys()),
+                                 'Preço Unitário': [CARDAPIOS["sanduiches"][k] for k in dados['sanduiches']],
+                                 'Subtotal': [CARDAPIOS["sanduiches"][k]*v for k,v in dados['sanduiches'].items()]})
             df_s = df_s.sort_values('Subtotal', ascending=False)
             html_s = df_s.style.format({'Qnt':'{:.0f}', 'Preço Unitário':'R$ {:.2f}', 'Subtotal':'R$ {:.2f}'})\
                 .set_table_styles(get_global_centered_styles()).hide(axis='index').to_html()
             st.markdown(html_s, unsafe_allow_html=True)
             st.write("")
-            st.metric("Total Sanduíches", format_currency(valor_real_sanduiches))
+            st.metric("Total Sanduíches", format_currency(dados['val_sand']))
         else: st.warning("Sem itens")
 
     with col2:
         st.markdown("### 🍹 Bebidas")
-        if combinacao_bebidas:
-            df_b = pd.DataFrame({'Qnt': list(combinacao_bebidas.values()), 'Produto': list(combinacao_bebidas.keys()),
-                                 'Preço Unitário': [CARDAPIOS["bebidas"][k] for k in combinacao_bebidas],
-                                 'Subtotal': [CARDAPIOS["bebidas"][k]*v for k,v in combinacao_bebidas.items()]})
+        if dados['bebidas']:
+            df_b = pd.DataFrame({'Qnt': list(dados['bebidas'].values()), 'Produto': list(dados['bebidas'].keys()),
+                                 'Preço Unitário': [CARDAPIOS["bebidas"][k] for k in dados['bebidas']],
+                                 'Subtotal': [CARDAPIOS["bebidas"][k]*v for k,v in dados['bebidas'].items()]})
             df_b = df_b.sort_values('Subtotal', ascending=False)
             html_b = df_b.style.format({'Qnt':'{:.0f}', 'Preço Unitário':'R$ {:.2f}', 'Subtotal':'R$ {:.2f}'})\
                 .set_table_styles(get_global_centered_styles()).hide(axis='index').to_html()
             st.markdown(html_b, unsafe_allow_html=True)
             st.write("")
-            st.metric("Total Bebidas", format_currency(valor_real_bebidas))
+            st.metric("Total Bebidas", format_currency(dados['val_beb']))
         else: st.warning("Sem itens")
 
-    # 4. DESTAQUE TOTAL
-    diff = valor_alvo_total - valor_real_total
+    diff = dados['alvo'] - dados['val_total']
     cor_box = "#ecfdf5" if diff == 0 else "#fff7ed" 
     cor_border = "#10b981" if diff == 0 else "#f97316"
     cor_text = "#047857" if diff == 0 else "#c2410c"
@@ -521,18 +517,13 @@ def processar_analise_genetica(valor_alvo_total, drink_pct, pop_size, n_gens, ta
     <div style="background-color: {cor_box}; border: 2px solid {cor_border}; border-radius: 10px; padding: 20px; text-align: center; margin-top: 10px; margin-bottom: 20px;">
         <h3 style="margin:0; color: {cor_text}; font-family: sans-serif;">💰 VALOR TOTAL DA COMBINAÇÃO</h3>
         <p style="font-size: 45px; font-weight: 800; margin: 10px 0; color: {cor_text};">
-            {format_currency(valor_real_total)}
+            {format_currency(dados['val_total'])}
         </p>
         <p style="font-size: 16px; margin: 0; color: #555;">
-            Meta: <b>{format_currency(valor_alvo_total)}</b> | Diferença: <b style="color: {'red' if diff != 0 else 'green'}">{format_currency(diff)}</b>
+            Meta: <b>{format_currency(dados['alvo'])}</b> | Diferença: <b style="color: {'red' if diff != 0 else 'green'}">{format_currency(diff)}</b>
         </p>
     </div>
     """, unsafe_allow_html=True)
-    
-    st.warning("""
-    **Atenção:** Esta é apenas uma combinação hipotética que corresponde aproximadamente 
-    ao valor vendido. O número real de produtos pode variar.
-    """)
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -541,9 +532,15 @@ st.set_page_config(
     initial_sidebar_state=CONFIG["sidebar_state"]
 )
 
-# CSS GLOBAL PARA FORÇAR CENTRALIZAÇÃO DE TABELAS
+# --- CSS GLOBAL: FUNDO AZUL ACINZENTADO CLARO E TABELAS CENTRALIZADAS ---
 st.markdown("""
 <style>
+    /* Fundo da página em Azul Acinzentado Claro */
+    .stApp {
+        background-color: #e8ecf1;
+    }
+
+    /* Centralização de tabelas e textos */
     th, td {
         text-align: center !important;
         vertical-align: middle !important;
@@ -552,10 +549,15 @@ st.markdown("""
         margin-left: auto;
         margin-right: auto;
     }
+    
+    /* Ajuste para inputs ficarem bonitos no fundo novo */
+    .stTextInput input, .stNumberInput input, .stSelectbox, .stDateInput {
+        background-color: white;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- INICIALIZAÇÃO ---
+# --- INICIALIZAÇÃO SESSION STATE ---
 init_data_file()
 if 'df_receipts' not in st.session_state:
     st.session_state.df_receipts = load_data()
@@ -564,35 +566,42 @@ if 'uploaded_data' not in st.session_state:
 if 'vendas_data' not in st.session_state:
     st.session_state.vendas_data = None
 
+# ESTADOS PARA PERSISTÊNCIA DOS CÁLCULOS GENÉTICOS
+# Isso impede que o resultado suma ao clicar em outros botões
+if 'resultado_arquivo' not in st.session_state:
+    st.session_state.resultado_arquivo = None
+if 'resultado_pix' not in st.session_state:
+    st.session_state.resultado_pix = None
+
 # --- INTERFACE PRINCIPAL ---
 
-# Função para converter imagem em Base64 (Necessário para HTML)
+# Função para converter imagem em Base64
 def get_img_as_base64(file_path):
     with open(file_path, "rb") as f:
         data = f.read()
     return base64.b64encode(data).decode()
 
-# --- CSS E HTML PARA LOGO, FLUTUAÇÃO E FAÍSCAS (AGORA COMPLETO) ---
+# --- CSS E HTML PARA LOGO, FLUTUAÇÃO E FAÍSCAS (CORRIGIDO) ---
 st.markdown("""
 <style>
-    /* Container principal para centralizar e organizar */
+    /* Container principal */
     .logo-container {
         position: relative;
-        width: 300px; /* Largura aumentada do container */
+        width: 300px;
         height: 300px;
-        margin: 0 auto 20px auto; /* Centraliza horizontalmente e dá margem inferior */
+        margin: 0 auto 20px auto;
         display: flex;
         justify-content: center;
         align-items: center;
     }
 
-    /* A imagem da logo em si */
+    /* A imagem da logo */
     .logo-animada {
-        width: 300px; /* Tamanho aumentado da logo */
+        width: 300px;
         height: auto;
         animation: float 3s ease-in-out infinite;
         position: relative;
-        z-index: 2; /* Garante que a logo fique na frente das faíscas */
+        z-index: 5; /* Logo fica atrás das faíscas agora */
     }
 
     /* Animação de flutuação */
@@ -605,49 +614,50 @@ st.markdown("""
     /* --- Efeito de Faíscas --- */
     .sparkle {
         position: absolute;
-        width: 8px;
-        height: 8px;
-        background-color: #FFD700; /* Cor Dourada */
+        width: 12px;
+        height: 12px;
+        background-color: #FFD700;
         border-radius: 50%;
         top: 50%;
-        left: 50%;
-        z-index: 1; /* Atrás da logo */
+        left: 50%; /* Nascem no centro */
+        z-index: 10; /* AGORA ESTÃO NA FRENTE DA LOGO */
         opacity: 0;
-        box-shadow: 0 0 8px #FFD700, 0 0 15px orange; /* Brilho */
+        box-shadow: 0 0 10px #FFD700, 0 0 20px orange;
         pointer-events: none;
     }
 
-    /* Definição dos movimentos das faíscas para 4 direções */
+    /* Movimentos mais amplos */
     @keyframes sparkle-move-1 {
-        0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
-        100% { transform: translate(-150px, -120px) scale(0); opacity: 0; }
+        0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+        50% { opacity: 1; }
+        100% { transform: translate(-180px, -180px) scale(1); opacity: 0; }
     }
     @keyframes sparkle-move-2 {
-        0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
-        100% { transform: translate(150px, -100px) scale(0); opacity: 0; }
+        0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+        50% { opacity: 1; }
+        100% { transform: translate(180px, -150px) scale(1); opacity: 0; }
     }
     @keyframes sparkle-move-3 {
-        0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
-        100% { transform: translate(-120px, 150px) scale(0); opacity: 0; }
+        0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+        50% { opacity: 1; }
+        100% { transform: translate(-150px, 180px) scale(1); opacity: 0; }
     }
     @keyframes sparkle-move-4 {
-        0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
-        100% { transform: translate(130px, 130px) scale(0); opacity: 0; }
+        0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+        50% { opacity: 1; }
+        100% { transform: translate(160px, 160px) scale(1); opacity: 0; }
     }
 
-    /* Aplicando as animações com atrasos diferentes */
-    .s1 { animation: sparkle-move-1 1.8s ease-out infinite; }
-    .s2 { animation: sparkle-move-2 1.8s ease-out 0.5s infinite; }
-    .s3 { animation: sparkle-move-3 1.8s ease-out 1.0s infinite; }
-    .s4 { animation: sparkle-move-4 1.8s ease-out 1.5s infinite; }
+    .s1 { animation: sparkle-move-1 2s ease-out infinite; }
+    .s2 { animation: sparkle-move-2 2s ease-out 0.5s infinite; }
+    .s3 { animation: sparkle-move-3 2s ease-out 1.0s infinite; }
+    .s4 { animation: sparkle-move-4 2s ease-out 1.5s infinite; }
 </style>
 """, unsafe_allow_html=True)
 
 try:
-    # Verifica se o arquivo existe e renderiza com HTML/CSS
     if os.path.exists(CONFIG["logo_path"]):
         img_base64 = get_img_as_base64(CONFIG["logo_path"])
-        # Estrutura HTML com container, faíscas e a imagem
         st.markdown(
             f"""
             <div class="logo-container">
@@ -699,10 +709,17 @@ with st.sidebar:
     
     st.info("Lembre-se: As combinações são aproximações heurísticas.")
 
-# --- ABAS PRINCIPAIS ---
-tab1, tab2, tab3, tab4 = st.tabs(["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💰 Cadastro de Recebimentos", "💸 Calculadora PIX"])
+# --- MENU DE NAVEGAÇÃO (SUBSTITUINDO ST.TABS PARA MANTER O ESTADO) ---
+# Usamos st.radio horizontal para garantir que a aba não mude ao clicar em botões
 
-with tab1:
+menu_opcoes = ["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💰 Cadastro de Recebimentos", "💸 Calculadora PIX"]
+# key='nav_menu' ajuda a manter o estado
+escolha_menu = st.radio("Navegação", menu_opcoes, horizontal=True, label_visibility="collapsed", key="nav_menu")
+st.divider()
+
+# --- CONTEÚDO DAS ABAS ---
+
+if escolha_menu == "📈 Resumo das Vendas":
     st.header("📤 Upload de Dados")
     arquivo = st.file_uploader("Envie o arquivo de transações (.csv ou .xlsx)", 
                              type=["csv", "xlsx"])
@@ -852,7 +869,7 @@ with tab1:
     else:
         st.info("Aguardando upload do arquivo de transações.")
 
-with tab2:
+elif escolha_menu == "🧩 Detalhes das Combinações":
     st.header("🧩 Análise de Combinações")
     
     if st.session_state.vendas_data is not None:
@@ -867,20 +884,29 @@ with tab2:
         
         valor_selecionado = vendas.loc[vendas['Forma'] == forma_selecionada, 'Valor'].iloc[0]
         
+        # Botão para calcular
         if st.button("🔎 Analisar Combinação (Arquivo)", use_container_width=True):
-            processar_analise_genetica(
-                valor_selecionado, 
-                drink_percentage, 
-                population_size, 
-                generations, 
-                tamanho_combinacao_sanduiches, 
-                tamanho_combinacao_bebidas
-            )
+            with st.spinner("Calculando a melhor combinação..."):
+                # Salva o resultado no estado para não perder
+                dados = gerar_dados_geneticos(
+                    valor_selecionado, 
+                    drink_percentage, 
+                    population_size, 
+                    generations, 
+                    tamanho_combinacao_sanduiches, 
+                    tamanho_combinacao_bebidas
+                )
+                st.session_state.resultado_arquivo = dados
+        
+        # Exibe o resultado se existir no estado
+        if st.session_state.resultado_arquivo:
+            st.divider()
+            renderizar_resultados(st.session_state.resultado_arquivo)
         
     else:
         st.info("Faça o upload de dados na aba 'Resumo das Vendas' para visualizar possíveis combinações.")
 
-with tab3:
+elif escolha_menu == "💰 Cadastro de Recebimentos":
     st.header("💰 Cadastro e Análise de Recebimentos")
     
     with st.expander("➕ Adicionar Novo Registro", expanded=True):
@@ -1017,7 +1043,7 @@ with tab3:
     else:
         st.info("Nenhum dado cadastrado ainda. Adicione seu primeiro registro acima.")
 
-with tab4:
+elif escolha_menu == "💸 Calculadora PIX":
     st.header("💸 Calculadora Rápida (PIX/Manual)")
     st.markdown("Use esta aba para analisar um valor específico de PIX recebido, sem precisar subir planilha.")
     
@@ -1035,23 +1061,27 @@ with tab4:
     with col_action:
         st.write("") # Espaço para alinhar
         st.write("")
-        analisar_btn = st.button("🚀 Calcular Combinação PIX", type="primary", use_container_width=True)
-    
-    st.divider()
-    
-    if analisar_btn and valor_pix_input > 0:
-        processar_analise_genetica(
-            valor_pix_input, 
-            drink_percentage, 
-            population_size, 
-            generations, 
-            tamanho_combinacao_sanduiches, 
-            tamanho_combinacao_bebidas
-        )
-    elif analisar_btn and valor_pix_input <= 0:
-        st.error("Por favor, insira um valor maior que zero.")
-    else:
-        st.info("Insira um valor e clique no botão para ver a mágica acontecer! ✨")
+        # Botão para calcular
+        if st.button("🚀 Calcular Combinação PIX", type="primary", use_container_width=True):
+            if valor_pix_input > 0:
+                with st.spinner("Calculando a melhor combinação..."):
+                    # Salva o resultado no estado para não perder
+                    dados = gerar_dados_geneticos(
+                        valor_pix_input, 
+                        drink_percentage, 
+                        population_size, 
+                        generations, 
+                        tamanho_combinacao_sanduiches, 
+                        tamanho_combinacao_bebidas
+                    )
+                    st.session_state.resultado_pix = dados
+            else:
+                st.error("Por favor, insira um valor maior que zero.")
+
+    # EXIBE O RESULTADO QUE ESTÁ NA MEMÓRIA (PERSISTENTE)
+    if st.session_state.resultado_pix:
+        st.divider()
+        renderizar_resultados(st.session_state.resultado_pix)
 
 # Adicionar rodapé
 st.divider()
