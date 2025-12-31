@@ -861,6 +861,7 @@ with tab2:
                 
                 st.dataframe(
                     df_sanduiches.style.format({
+                        'Qnt': '{:g}',  # <--- REMOVE OS ZEROS EXTRAS
                         'Preço Unitário': 'R$ {:.2f}',
                         'Subtotal': 'R$ {:.2f}'
                     }),
@@ -889,6 +890,7 @@ with tab2:
                 
                 st.dataframe(
                     df_bebidas.style.format({
+                        'Qnt': '{:g}',  # <--- REMOVE OS ZEROS EXTRAS
                         'Preço Unitário': 'R$ {:.2f}',
                         'Subtotal': 'R$ {:.2f}'
                     }),
