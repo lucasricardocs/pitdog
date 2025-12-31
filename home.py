@@ -30,7 +30,6 @@ CARDAPIOS = {
     "sanduiches": {
         "X Salada Simples": 18.00,
         "X Salada Especial": 20.00,
-        "X Bacon Simples": 22.00,
         "X Bacon Especial": 24.00,
         "X Hamburgão": 35.00,
         "X Mata-Fome": 39.00,
