@@ -239,7 +239,7 @@ def genetic_algorithm(item_prices, target_value, population_size=50, generations
     return final_combination
 
 def buscar_combinacao_exata(item_prices, target_value, max_time_seconds=5, 
-                           population_size=100, generations=200, combination_size=10):
+                            population_size=100, generations=200, combination_size=10):
     start_time = time.time()
     best_global_individual = {}
     best_global_diff = float('inf') 
@@ -546,12 +546,43 @@ if 'vendas_data' not in st.session_state:
     st.session_state.vendas_data = None
 
 # --- INTERFACE PRINCIPAL ---
+# Função para converter imagem em Base64
+def get_img_as_base64(file_path):
+    with open(file_path, "rb") as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
 col_title1, col_title2 = st.columns([0.30, 0.70])
 with col_title1:
     try:
-        st.image(CONFIG["logo_path"], width=150)
-    except FileNotFoundError:
-        st.warning("Logo não encontrada")
+        # Verifica se o arquivo existe e renderiza com HTML/CSS
+        if os.path.exists(CONFIG["logo_path"]):
+            img_base64 = get_img_as_base64(CONFIG["logo_path"])
+            st.markdown(
+                f"""
+                <style>
+                @keyframes float {{
+                    0% {{ transform: translateY(0px); }}
+                    50% {{ transform: translateY(-10px); }}
+                    100% {{ transform: translateY(0px); }}
+                }}
+                .logo-animada {{
+                    width: 150px;
+                    animation: float 3s ease-in-out infinite;
+                    display: block;
+                    margin-left: auto;
+                    margin-right: auto;
+                }}
+                </style>
+                <img src="data:image/png;base64,{img_base64}" class="logo-animada">
+                """,
+                unsafe_allow_html=True
+            )
+        else:
+            st.warning("Logo não encontrada")
+    except Exception as e:
+        st.error(f"Erro na logo: {e}")
+
 with col_title2:
     st.title("Sistema de Gestão")
     st.markdown("<p style='font-weight:bold; font-size:30px; margin-top:-15px'>Clip's Burger</p>", 
@@ -893,12 +924,6 @@ with tab3:
                 st.altair_chart(line_chart, use_container_width=True)
             
             st.subheader("📋 Dados Detalhados")
-            def get_centered_table_styles_tab3():
-                return [
-                    {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#f0f2f6'), ('color', 'black'), ('padding', '8px')]},
-                    {'selector': 'td', 'props': [('text-align', 'center'), ('padding', '8px')]},
-                    {'selector': 'table', 'props': [('width', '100%')]}
-                ]
             
             html_tabela_dados = df_filtered.sort_values('Data', ascending=False).style.format({
                 'Dinheiro': lambda x: format_currency(x),
@@ -906,7 +931,7 @@ with tab3:
                 'Pix': lambda x: format_currency(x),
                 'Total': lambda x: format_currency(x),
                 'Data': lambda x: x.strftime('%d/%m/%Y')
-            }).set_table_styles(get_centered_table_styles_tab3()).hide(axis='index').to_html()
+            }).set_table_styles(get_centered_table_styles()).hide(axis='index').to_html()
             st.markdown(html_tabela_dados, unsafe_allow_html=True)
             
         else:
