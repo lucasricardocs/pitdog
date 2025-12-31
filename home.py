@@ -683,6 +683,11 @@ with st.sidebar:
         ["Busca Local", "Algoritmo Genético"]
     )
     
+    # INICIALIZAÇÃO SEGURA DAS VARIÁVEIS PARA EVITAR NameError
+    max_iterations = 0
+    population_size = 0
+    generations = 0
+
     if algoritmo == "Busca Local":
         max_iterations = st.select_slider(
             "Qualidade da Otimização ✨",
@@ -895,7 +900,7 @@ with tab2:
                 valor_selecionado, 
                 drink_percentage, 
                 algoritmo, 
-                max_iterations if algoritmo == "Busca Local" else 0, 
+                max_iterations, 
                 population_size, 
                 generations, 
                 tamanho_combinacao_sanduiches, 
@@ -1165,7 +1170,7 @@ with tab4:
             valor_pix_input, 
             drink_percentage, 
             algoritmo, 
-            max_iterations if algoritmo == "Busca Local" else 0, 
+            max_iterations, 
             population_size, 
             generations, 
             tamanho_combinacao_sanduiches, 
@@ -1176,6 +1181,13 @@ with tab4:
     else:
         st.info("Insira um valor e clique no botão para ver a mágica acontecer! ✨")
 
-# --- FOOTER ---
+# Adicionar rodapé
 st.divider()
-st.markdown("<div style='text-align: center; color: gray;'>© 2025 Clips Burger - Sistema Integrado | Desenvolvido com ❤️ e Streamlit</div>", unsafe_allow_html=True)
+st.markdown(
+    """
+    <div style='text-align: center; color: gray; font-size: small;'>
+        © 2025 Clips Burger - Sistema de Gestão | Desenvolvido com ❤️ e Streamlit
+    </div>
+    """, 
+    unsafe_allow_html=True
+)
