@@ -72,13 +72,11 @@ FORMAS_PAGAMENTO = {
 
 # --- FUNÇÕES UTILITÁRIAS ---
 def format_currency(value):
-    """Formata um valor como moeda brasileira."""
     if pd.isna(value) or value is None:
         return "R$ -"
     return f"R$ {float(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def get_global_centered_styles():
-    """Retorna estilos CSS para centralizar tabelas Pandas/HTML."""
     return [
         {'selector': 'th', 'props': [('text-align', 'center'), ('vertical-align', 'middle'), ('background-color', '#262730'), ('color', 'white'), ('padding', '8px')]},
         {'selector': 'td', 'props': [('text-align', 'center'), ('vertical-align', 'middle'), ('padding', '8px')]},
@@ -86,13 +84,11 @@ def get_global_centered_styles():
     ]
 
 def init_data_file():
-    """Inicializa o arquivo de dados se não existir."""
     if not os.path.exists(CONFIG["excel_file"]):
         pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix']).to_excel(
             CONFIG["excel_file"], index=False)
 
 def load_data():
-    """Carrega os dados do arquivo Excel."""
     try:
         if os.path.exists(CONFIG["excel_file"]):
             df = pd.read_excel(CONFIG["excel_file"])
@@ -105,7 +101,6 @@ def load_data():
         return pd.DataFrame(columns=['Data', 'Dinheiro', 'Cartao', 'Pix'])
 
 def save_data(df):
-    """Salva os dados no arquivo Excel."""
     try:
         df['Data'] = pd.to_datetime(df['Data'])
         df.to_excel(CONFIG["excel_file"], index=False)
@@ -114,51 +109,29 @@ def save_data(df):
         st.error(f"Erro ao salvar dados: {e}")
 
 def round_to_50_or_00(value):
-    """Força estritamente para INTEIRO."""
     return int(round(value))
 
 def calculate_combination_value(combination, item_prices):
-    """Calcula o valor total de uma combinação."""
     return sum(item_prices.get(name, 0) * quantity for name, quantity in combination.items())
 
 # --- FUNÇÕES PARA ALGORITMO GENÉTICO ---
 def create_individual(item_prices, combination_size):
-    """Cria um indivíduo (combinação) aleatório com inteiros."""
-    if not item_prices:
-        return {}
-    
+    if not item_prices: return {}
     items = list(item_prices.keys())
     size = min(combination_size, len(items))
     selected_items = random.sample(items, size)
-    
-    return {
-        name: int(random.randint(1, 100)) 
-        for name in selected_items 
-    }
+    return {name: int(random.randint(1, 100)) for name in selected_items}
 
 def evaluate_fitness(individual, item_prices, target_value):
-    """
-    Avalia a adequação com REGRAS DE NEGÓCIO:
-    1. Penalidade Extrema: Se passar do valor alvo.
-    2. Penalidade Média: Se um único item representar > 50% do valor total.
-    3. Score Base: Diferença para o alvo.
-    """
     total = calculate_combination_value(individual, item_prices)
-    
-    # 1. Penalidade de Estouro (O mais grave)
-    if total > target_value:
-        return 1_000_000 + (total - target_value)
-    
+    if total > target_value: return 1_000_000 + (total - target_value)
     score = target_value - total
-    
-    # 2. Penalidade de Diversidade (>50% do valor em um item)
     if total > 0:
         limite_concentracao = total * 0.50
         for item, qty in individual.items():
             valor_item = item_prices.get(item, 0) * qty
             if valor_item > limite_concentracao:
                 score += 5000 + (valor_item - limite_concentracao)
-                
     return score
 
 def crossover(parent1, parent2):
@@ -175,51 +148,34 @@ def crossover(parent1, parent2):
 
 def mutate(individual, item_prices, mutation_rate=0.2, max_items=5):
     new_individual = individual.copy()
-    
-    # Adicionar item
-    if (random.random() < mutation_rate and 
-        len(new_individual) < max_items and 
-        len(new_individual) < len(item_prices)):
-        
+    if (random.random() < mutation_rate and len(new_individual) < max_items and len(new_individual) < len(item_prices)):
         possible_new_items = [item for item in item_prices.keys() if item not in new_individual]
         if possible_new_items:
             new_item = random.choice(possible_new_items)
             new_individual[new_item] = 1
-    
-    # Remover item
     if random.random() < mutation_rate and len(new_individual) > 1:
         item_to_remove = random.choice(list(new_individual.keys()))
         del new_individual[item_to_remove]
-    
-    # Modificar quantidades
     for key in list(new_individual.keys()):
         if random.random() < mutation_rate:
             change = random.choice([-1, 1]) 
             new_value = max(1, int(new_individual[key] + change))
             new_individual[key] = new_value
-    
     return new_individual
 
-def genetic_algorithm(item_prices, target_value, population_size=50, generations=100, 
-                    combination_size=5, elite_size=5, tournament_size=3):
-    if not item_prices or target_value <= 0:
-        return {}
-    
+def genetic_algorithm(item_prices, target_value, population_size=50, generations=100, combination_size=5, elite_size=5, tournament_size=3):
+    if not item_prices or target_value <= 0: return {}
     population = [create_individual(item_prices, combination_size) for _ in range(population_size)]
     best_individual = {}
     best_fitness = float('inf')
     
     for generation in range(generations):
-        fitness_scores = [(individual, evaluate_fitness(individual, item_prices, target_value)) 
-                         for individual in population]
+        fitness_scores = [(individual, evaluate_fitness(individual, item_prices, target_value)) for individual in population]
         fitness_scores.sort(key=lambda x: x[1])
-        
         if fitness_scores[0][1] < best_fitness:
             best_individual = fitness_scores[0][0].copy()
             best_fitness = fitness_scores[0][1]
-        
-        if best_fitness == 0:
-            break
+        if best_fitness == 0: break
         
         next_generation = [ind[0].copy() for ind in fitness_scores[:elite_size]]
         while len(next_generation) < population_size:
@@ -232,41 +188,28 @@ def genetic_algorithm(item_prices, target_value, population_size=50, generations
             next_generation.append(child)
         population = next_generation
     
-    # Poda de Segurança
     final_combination = {k: int(v) for k, v in best_individual.items() if v > 0}
     final_total = calculate_combination_value(final_combination, item_prices)
-
     while final_total > target_value and len(final_combination) > 0:
         item_to_reduce = random.choice(list(final_combination.keys()))
-        if final_combination[item_to_reduce] <= 1:
-            del final_combination[item_to_reduce]
-        else:
-            final_combination[item_to_reduce] -= 1
+        if final_combination[item_to_reduce] <= 1: del final_combination[item_to_reduce]
+        else: final_combination[item_to_reduce] -= 1
         final_total = calculate_combination_value(final_combination, item_prices)
-
     return final_combination
 
-def buscar_combinacao_exata(item_prices, target_value, max_time_seconds=5, 
-                            population_size=100, generations=200, combination_size=10):
+def buscar_combinacao_exata(item_prices, target_value, max_time_seconds=5, population_size=100, generations=200, combination_size=10):
     start_time = time.time()
     best_global_individual = {}
     best_global_diff = float('inf') 
     attempts = 0
-
     while (time.time() - start_time) < max_time_seconds:
         attempts += 1
-        current_result = genetic_algorithm(
-            item_prices, target_value, population_size, generations, combination_size
-        )
+        current_result = genetic_algorithm(item_prices, target_value, population_size, generations, combination_size)
         current_fitness = evaluate_fitness(current_result, item_prices, target_value)
-
-        if current_fitness == 0:
-            return current_result, attempts
-        
+        if current_fitness == 0: return current_result, attempts
         if current_fitness < best_global_diff:
             best_global_diff = current_fitness
             best_global_individual = current_result
-            
     return best_global_individual, attempts
 
 # --- FUNÇÕES PARA GERAR PDF ---
@@ -325,7 +268,6 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
     ]
     
     table = Table(data, colWidths=[doc.width/2.5, doc.width/2.5])
-    # ESTILO DO PDF CENTRALIZADO
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (1, 0), colors.grey),
         ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
@@ -382,7 +324,6 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
         data.append([row['Forma'], format_currency(row['Valor'])])
     
     table = Table(data, colWidths=[doc.width/2, doc.width/4])
-    # ESTILO DO PDF CENTRALIZADO
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -405,7 +346,6 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
     return buffer
 
 def create_altair_chart(data, chart_type, x_col, y_col, color_col=None, title=None, interactive=True):
-    """Cria gráficos Altair com configuração padronizada."""
     if chart_type == 'line':
         chart = alt.Chart(data).mark_line(point=True).encode(
             x=alt.X(f'{x_col}:T', title=x_col),
@@ -435,23 +375,16 @@ def create_altair_chart(data, chart_type, x_col, y_col, color_col=None, title=No
 
 # --- LÓGICA DE PROCESSAMENTO GENÉTICO (SEPARADA) ---
 def gerar_dados_geneticos(valor_alvo_total, drink_pct, pop_size, n_gens, tam_sand, tam_beb):
-    """
-    Roda o processamento pesado e RETORNA os dados, não exibe nada.
-    Isso permite salvar o resultado no session_state.
-    """
     target_sanduiches_inicial = valor_alvo_total * (1 - drink_pct/100)
     
-    # A. Sanduíches
     combinacao_sanduiches, t_sand = buscar_combinacao_exata(
         CARDAPIOS["sanduiches"], target_sanduiches_inicial, max_time_seconds=5, 
         population_size=pop_size, generations=n_gens, combination_size=tam_sand
     )
     valor_real_sanduiches = calculate_combination_value(combinacao_sanduiches, CARDAPIOS["sanduiches"])
     
-    # B. Compensação
     target_bebidas_corrigido = valor_alvo_total - valor_real_sanduiches
     
-    # C. Bebidas
     combinacao_bebidas, t_beb = buscar_combinacao_exata(
         CARDAPIOS["bebidas"], target_bebidas_corrigido, max_time_seconds=5, 
         population_size=pop_size, generations=n_gens, combination_size=tam_beb
@@ -460,7 +393,6 @@ def gerar_dados_geneticos(valor_alvo_total, drink_pct, pop_size, n_gens, tam_san
     valor_real_bebidas = calculate_combination_value(combinacao_bebidas, CARDAPIOS["bebidas"])
     valor_real_total = valor_real_sanduiches + valor_real_bebidas
     
-    # Retorna dicionário com tudo que precisamos exibir
     return {
         'sanduiches': combinacao_sanduiches,
         'bebidas': combinacao_bebidas,
@@ -472,9 +404,6 @@ def gerar_dados_geneticos(valor_alvo_total, drink_pct, pop_size, n_gens, tam_san
     }
 
 def renderizar_resultados(dados):
-    """
-    Recebe os dados já calculados e apenas EXIBE na tela.
-    """
     st.subheader(f"Valor Alvo: {format_currency(dados['alvo'])}")
     st.caption(f"🤖 O algoritmo realizou {dados['ciclos']} ciclos completos de evolução.")
     
@@ -532,15 +461,15 @@ st.set_page_config(
     initial_sidebar_state=CONFIG["sidebar_state"]
 )
 
-# --- CSS GLOBAL: FUNDO AZUL ACINZENTADO CLARO E TABELAS CENTRALIZADAS ---
+# --- CSS GLOBAL: FUNDO, MENU ESTILIZADO, FAÍSCAS E TABELAS ---
 st.markdown("""
 <style>
-    /* Fundo da página em Azul Acinzentado Claro */
+    /* 1. Fundo da página em Azul Acinzentado Claro */
     .stApp {
         background-color: #e8ecf1;
     }
 
-    /* Centralização de tabelas e textos */
+    /* 2. Centralização de tabelas e textos */
     th, td {
         text-align: center !important;
         vertical-align: middle !important;
@@ -550,10 +479,114 @@ st.markdown("""
         margin-right: auto;
     }
     
-    /* Ajuste para inputs ficarem bonitos no fundo novo */
+    /* 3. Inputs mais bonitos */
     .stTextInput input, .stNumberInput input, .stSelectbox, .stDateInput {
         background-color: white;
     }
+
+    /* 4. MENU ESTILIZADO COM PIPES (Barras verticais) */
+    div[role="radiogroup"] {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        background-color: transparent;
+    }
+    
+    div[role="radiogroup"] > label {
+        background-color: transparent !important;
+        border: none !important;
+        margin-right: 0px !important;
+        padding-right: 15px !important;
+        padding-left: 15px !important;
+        border-right: 2px solid #bbb !important; /* A barra vertical */
+        border-radius: 0px !important;
+        box-shadow: none !important;
+    }
+
+    /* Remove a barra do último item */
+    div[role="radiogroup"] > label:last-child {
+        border-right: none !important;
+    }
+
+    /* Esconde a bolinha do radio button padrão */
+    div[role="radiogroup"] div[data-testid="stMarkdownContainer"] p {
+        font-size: 18px;
+        font-weight: 600;
+        color: #444;
+    }
+    
+    /* Hover state */
+    div[role="radiogroup"] > label:hover {
+        color: #000 !important;
+    }
+
+    /* 5. FAÍSCAS MELHORADAS (Surgindo da base, subindo e sumindo) */
+    .logo-container {
+        position: relative;
+        width: 300px;
+        height: 300px;
+        margin: 0 auto 20px auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .logo-animada {
+        width: 300px;
+        height: auto;
+        animation: float 3s ease-in-out infinite;
+        position: relative;
+        z-index: 5; /* Logo atrás das faíscas */
+    }
+
+    @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
+    }
+
+    .sparkle {
+        position: absolute;
+        width: 6px; /* Menores, mais parecidas com brasas */
+        height: 6px;
+        background-color: #FF8C00; /* Laranja fogo */
+        border-radius: 50%;
+        bottom: 20px; /* Nascem na base da logo */
+        left: 50%;
+        z-index: 10; /* Frente da logo */
+        opacity: 0;
+        box-shadow: 0 0 5px #FFD700, 0 0 10px #FF4500;
+        pointer-events: none;
+    }
+
+    /* Animação: Sobe, balança para os lados e desaparece */
+    @keyframes rise-1 {
+        0% { opacity: 1; transform: translate(0, 0) scale(1); }
+        100% { opacity: 0; transform: translate(-30px, -200px) scale(0.2); }
+    }
+    @keyframes rise-2 {
+        0% { opacity: 1; transform: translate(0, 0) scale(1); }
+        100% { opacity: 0; transform: translate(40px, -180px) scale(0.2); }
+    }
+    @keyframes rise-3 {
+        0% { opacity: 1; transform: translate(0, 0) scale(1); }
+        100% { opacity: 0; transform: translate(-10px, -220px) scale(0.2); }
+    }
+    @keyframes rise-4 {
+        0% { opacity: 1; transform: translate(0, 0) scale(1); }
+        100% { opacity: 0; transform: translate(25px, -160px) scale(0.2); }
+    }
+    @keyframes rise-5 {
+        0% { opacity: 1; transform: translate(0, 0) scale(1); }
+        100% { opacity: 0; transform: translate(-50px, -190px) scale(0.2); }
+    }
+
+    .s1 { animation: rise-1 2.5s linear infinite; animation-delay: 0s; }
+    .s2 { animation: rise-2 2.8s linear infinite; animation-delay: 0.5s; }
+    .s3 { animation: rise-3 3.0s linear infinite; animation-delay: 1.0s; }
+    .s4 { animation: rise-4 2.2s linear infinite; animation-delay: 1.5s; }
+    .s5 { animation: rise-5 2.7s linear infinite; animation-delay: 2.0s; }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -567,7 +600,6 @@ if 'vendas_data' not in st.session_state:
     st.session_state.vendas_data = None
 
 # ESTADOS PARA PERSISTÊNCIA DOS CÁLCULOS GENÉTICOS
-# Isso impede que o resultado suma ao clicar em outros botões
 if 'resultado_arquivo' not in st.session_state:
     st.session_state.resultado_arquivo = None
 if 'resultado_pix' not in st.session_state:
@@ -581,80 +613,7 @@ def get_img_as_base64(file_path):
         data = f.read()
     return base64.b64encode(data).decode()
 
-# --- CSS E HTML PARA LOGO, FLUTUAÇÃO E FAÍSCAS (CORRIGIDO) ---
-st.markdown("""
-<style>
-    /* Container principal */
-    .logo-container {
-        position: relative;
-        width: 300px;
-        height: 300px;
-        margin: 0 auto 20px auto;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    /* A imagem da logo */
-    .logo-animada {
-        width: 300px;
-        height: auto;
-        animation: float 3s ease-in-out infinite;
-        position: relative;
-        z-index: 5; /* Logo fica atrás das faíscas agora */
-    }
-
-    /* Animação de flutuação */
-    @keyframes float {
-        0% { transform: translateY(0px); }
-        50% { transform: translateY(-15px); }
-        100% { transform: translateY(0px); }
-    }
-
-    /* --- Efeito de Faíscas --- */
-    .sparkle {
-        position: absolute;
-        width: 12px;
-        height: 12px;
-        background-color: #FFD700;
-        border-radius: 50%;
-        top: 50%;
-        left: 50%; /* Nascem no centro */
-        z-index: 10; /* AGORA ESTÃO NA FRENTE DA LOGO */
-        opacity: 0;
-        box-shadow: 0 0 10px #FFD700, 0 0 20px orange;
-        pointer-events: none;
-    }
-
-    /* Movimentos mais amplos */
-    @keyframes sparkle-move-1 {
-        0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-        50% { opacity: 1; }
-        100% { transform: translate(-180px, -180px) scale(1); opacity: 0; }
-    }
-    @keyframes sparkle-move-2 {
-        0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-        50% { opacity: 1; }
-        100% { transform: translate(180px, -150px) scale(1); opacity: 0; }
-    }
-    @keyframes sparkle-move-3 {
-        0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-        50% { opacity: 1; }
-        100% { transform: translate(-150px, 180px) scale(1); opacity: 0; }
-    }
-    @keyframes sparkle-move-4 {
-        0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-        50% { opacity: 1; }
-        100% { transform: translate(160px, 160px) scale(1); opacity: 0; }
-    }
-
-    .s1 { animation: sparkle-move-1 2s ease-out infinite; }
-    .s2 { animation: sparkle-move-2 2s ease-out 0.5s infinite; }
-    .s3 { animation: sparkle-move-3 2s ease-out 1.0s infinite; }
-    .s4 { animation: sparkle-move-4 2s ease-out 1.5s infinite; }
-</style>
-""", unsafe_allow_html=True)
-
+# Renderiza Logo
 try:
     if os.path.exists(CONFIG["logo_path"]):
         img_base64 = get_img_as_base64(CONFIG["logo_path"])
@@ -665,6 +624,7 @@ try:
                 <div class="sparkle s2"></div>
                 <div class="sparkle s3"></div>
                 <div class="sparkle s4"></div>
+                <div class="sparkle s5"></div>
                 <img src="data:image/png;base64,{img_base64}" class="logo-animada">
             </div>
             """,
@@ -709,11 +669,8 @@ with st.sidebar:
     
     st.info("Lembre-se: As combinações são aproximações heurísticas.")
 
-# --- MENU DE NAVEGAÇÃO (SUBSTITUINDO ST.TABS PARA MANTER O ESTADO) ---
-# Usamos st.radio horizontal para garantir que a aba não mude ao clicar em botões
-
-menu_opcoes = ["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💰 Cadastro de Recebimentos", "💸 Calculadora PIX"]
-# key='nav_menu' ajuda a manter o estado
+# --- MENU DE NAVEGAÇÃO ESTILIZADO (SEM "RECEBIMENTOS") ---
+menu_opcoes = ["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💸 Calculadora PIX"]
 escolha_menu = st.radio("Navegação", menu_opcoes, horizontal=True, label_visibility="collapsed", key="nav_menu")
 st.divider()
 
@@ -905,143 +862,6 @@ elif escolha_menu == "🧩 Detalhes das Combinações":
         
     else:
         st.info("Faça o upload de dados na aba 'Resumo das Vendas' para visualizar possíveis combinações.")
-
-elif escolha_menu == "💰 Cadastro de Recebimentos":
-    st.header("💰 Cadastro e Análise de Recebimentos")
-    
-    with st.expander("➕ Adicionar Novo Registro", expanded=True):
-        with st.form("add_receipt_form"):
-            cols = st.columns([1, 1, 1, 1])
-            with cols[0]:
-                data = st.date_input("Data*", value=datetime.now())
-            
-            st.write("**Valores por Forma de Pagamento**")
-            cols = st.columns(3)
-            with cols[0]:
-                dinheiro = st.number_input("Dinheiro (R$)*", min_value=0.0, step=10.0)
-            with cols[1]:
-                cartao = st.number_input("Cartão (R$)*", min_value=0.0, step=10.0)
-            with cols[2]:
-                pix = st.number_input("PIX (R$)*", min_value=0.0, step=10.0)
-            
-            total_dia = dinheiro + cartao + pix
-            st.metric("Total do Dia", format_currency(total_dia))
-            
-            submitted = st.form_submit_button("✅ Salvar Registro")
-            
-            if submitted:
-                if total_dia <= 0:
-                    st.error("O total do dia deve ser maior que zero!")
-                else:
-                    try:
-                        new_record = pd.DataFrame({
-                            'Data': [data],
-                            'Dinheiro': [dinheiro],
-                            'Cartao': [cartao],
-                            'Pix': [pix]
-                        })
-                        st.session_state.df_receipts = pd.concat(
-                            [st.session_state.df_receipts, new_record], 
-                            ignore_index=True
-                        )
-                        save_data(st.session_state.df_receipts)
-                        st.success("Registro salvo com sucesso!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao salvar: {str(e)}")
-
-    if not st.session_state.df_receipts.empty:
-        st.subheader("📅 Filtros de Período")
-        filtro_tipo = st.radio("Tipo de Filtro:", ["Intervalo de Datas", "Mês Específico"], horizontal=True)
-        
-        if filtro_tipo == "Intervalo de Datas":
-            cols = st.columns(2)
-            with cols[0]:
-                inicio = st.date_input("Data inicial", value=st.session_state.df_receipts['Data'].min())
-            with cols[1]:
-                fim = st.date_input("Data final", value=st.session_state.df_receipts['Data'].max())
-        else:
-            meses_disponiveis = sorted(st.session_state.df_receipts['Data'].dt.to_period('M').unique(), reverse=True)
-            mes_selecionado = st.selectbox("Selecione o mês:", options=meses_disponiveis, format_func=lambda x: x.strftime('%B/%Y'))
-            inicio = pd.to_datetime(mes_selecionado.start_time)
-            fim = pd.to_datetime(mes_selecionado.end_time)
-        
-        df_filtered = st.session_state.df_receipts[
-            (st.session_state.df_receipts['Data'] >= pd.to_datetime(inicio)) & 
-            (st.session_state.df_receipts['Data'] <= pd.to_datetime(fim))
-        ].copy()
-        
-        if not df_filtered.empty:
-            df_filtered['Total'] = df_filtered['Dinheiro'] + df_filtered['Cartao'] + df_filtered['Pix']
-            totais = {
-                'Dinheiro': df_filtered['Dinheiro'].sum(),
-                'Cartão': df_filtered['Cartao'].sum(),
-                'PIX': df_filtered['Pix'].sum()
-            }
-            total_periodo = sum(totais.values())
-            
-            st.subheader("📊 Resumo do Período")
-            st.markdown("""
-            <style>
-                div[data-testid="stMetric"] {padding: 5px 10px;}
-                div[data-testid="stMetric"] > div {gap: 2px;}
-                div[data-testid="stMetric"] label {font-size: 14px !important; font-weight: 500 !important; color: #6b7280 !important;}
-                div[data-testid="stMetric"] > div > div {font-size: 18px !important; font-weight: 600 !important;}
-            </style>
-            """, unsafe_allow_html=True)
-            
-            cols1 = st.columns(4)
-            cols2 = st.columns(4)
-            with cols1[0]: st.metric("Dinheiro", format_currency(totais['Dinheiro']))
-            with cols1[1]: st.metric("Cartão", format_currency(totais['Cartão']))
-            with cols1[2]: st.metric("PIX", format_currency(totais['PIX']))
-            with cols1[3]: st.metric("Total Geral", format_currency(total_periodo))
-            with cols2[0]: st.metric("Média Diária", format_currency(df_filtered['Total'].mean()))
-            with cols2[1]: st.metric("Maior Venda", format_currency(df_filtered['Total'].max()))
-            with cols2[2]: st.metric("Dias Registrados", len(df_filtered))
-            with cols2[3]: st.metric("Dias sem Registro", (fim - inicio).days + 1 - len(df_filtered))
-            
-            st.subheader("📈 Visualizações Gráficas")
-            tab_graficos1, tab_graficos2, tab_graficos3 = st.tabs(["Distribuição", "Comparação", "Acumulado"])
-            
-            with tab_graficos1:
-                df_pie = pd.DataFrame({'Forma': list(totais.keys()), 'Valor': list(totais.values())})
-                pie_chart = alt.Chart(df_pie).mark_arc().encode(
-                    theta='Valor', color=alt.Color('Forma', legend=alt.Legend(title="Forma de Pagamento")), tooltip=['Forma', 'Valor']
-                ).properties(height=400, title='Distribuição dos Recebimentos')
-                st.altair_chart(pie_chart, use_container_width=True)
-            
-            with tab_graficos2:
-                df_bar = df_filtered.melt(id_vars=['Data'], value_vars=['Dinheiro', 'Cartao', 'Pix'], var_name='Forma', value_name='Valor')
-                bar_chart = alt.Chart(df_bar).mark_bar().encode(
-                    x='monthdate(Data):O', y='sum(Valor):Q', color='Forma', tooltip=['Forma', 'sum(Valor)']
-                ).properties(height=400, title='Vendas por Forma de Pagamento')
-                st.altair_chart(bar_chart, use_container_width=True)
-            
-            with tab_graficos3:
-                df_acumulado = df_filtered.sort_values('Data').copy()
-                df_acumulado['Acumulado'] = df_acumulado['Total'].cumsum()
-                line_chart = alt.Chart(df_acumulado).mark_line(point=True, strokeWidth=3, color='red').encode(
-                    x='Data:T', y='Acumulado:Q', tooltip=['Data', 'Acumulado']
-                ).properties(height=400, title='Receita Total Acumulada')
-                st.altair_chart(line_chart, use_container_width=True)
-            
-            st.subheader("📋 Dados Detalhados")
-            
-            # USO DA FUNÇÃO GLOBAL CENTRALIZADA
-            html_tabela_dados = df_filtered.sort_values('Data', ascending=False).style.format({
-                'Dinheiro': lambda x: format_currency(x),
-                'Cartao': lambda x: format_currency(x),
-                'Pix': lambda x: format_currency(x),
-                'Total': lambda x: format_currency(x),
-                'Data': lambda x: x.strftime('%d/%m/%Y')
-            }).set_table_styles(get_global_centered_styles()).hide(axis='index').to_html()
-            st.markdown(html_tabela_dados, unsafe_allow_html=True)
-            
-        else:
-            st.warning("Nenhum registro encontrado no período selecionado")
-    else:
-        st.info("Nenhum dado cadastrado ainda. Adicione seu primeiro registro acima.")
 
 elif escolha_menu == "💸 Calculadora PIX":
     st.header("💸 Calculadora Rápida (PIX/Manual)")
