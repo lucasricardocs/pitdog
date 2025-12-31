@@ -107,9 +107,7 @@ def save_data(df):
 
 def round_to_50_or_00(value):
     """
-    ATUALIZADO: Agora força estritamente para INTEIRO.
-    Mantive o nome da função para compatibilidade com partes antigas, 
-    mas ela retorna int.
+    Agora força estritamente para INTEIRO.
     """
     return int(round(value))
 
@@ -1136,7 +1134,12 @@ with tab3:
                     'Cartao': lambda x: format_currency(x),
                     'Pix': lambda x: format_currency(x),
                     'Total': lambda x: format_currency(x)
-                }),
+                })
+                .set_properties(**{'text-align': 'center'})
+                .set_table_styles([
+                    {'selector': 'th', 'props': [('text-align', 'center')]},
+                    {'selector': 'td', 'props': [('text-align', 'center')]}
+                ]),
                 use_container_width=True,
                 height=400
             )
