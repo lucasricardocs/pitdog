@@ -106,26 +106,25 @@ def save_data(df):
         st.error(f"Erro ao salvar dados: {e}")
 
 def round_to_50_or_00(value):
-    """Força estritamente para INTEIRO (Atualizado)."""
+    """Força estritamente para INTEIRO."""
     return int(round(value))
 
 def calculate_combination_value(combination, item_prices):
     """Calcula o valor total de uma combinação."""
     return sum(item_prices.get(name, 0) * quantity for name, quantity in combination.items())
 
-# --- FUNÇÕES PARA ALGORITMO GENÉTICO (INTEIROS + REGRA 50% + VALOR EXATO) ---
+# --- FUNÇÕES PARA ALGORITMO GENÉTICO ---
 def create_individual(item_prices, combination_size):
     """Cria um indivíduo (combinação) aleatório com inteiros."""
     if not item_prices:
         return {}
     
     items = list(item_prices.keys())
-    # Garante que não tentaremos selecionar mais itens do que existem
     size = min(combination_size, len(items))
     selected_items = random.sample(items, size)
     
     return {
-        name: int(random.randint(1, 100)) # Garante inteiro na criação
+        name: int(random.randint(1, 100)) 
         for name in selected_items 
     }
 
@@ -133,8 +132,8 @@ def evaluate_fitness(individual, item_prices, target_value):
     """
     Avalia a adequação com REGRAS DE NEGÓCIO:
     1. Penalidade Extrema: Se passar do valor alvo.
-    2. Penalidade Média: Se um único item representar > 50% do valor total da combinação.
-    3. Score Base: Diferença para o alvo (quanto menor, melhor).
+    2. Penalidade Média: Se um único item representar > 50% do valor total.
+    3. Score Base: Diferença para o alvo.
     """
     total = calculate_combination_value(individual, item_prices)
     
@@ -150,16 +149,13 @@ def evaluate_fitness(individual, item_prices, target_value):
         for item, qty in individual.items():
             valor_item = item_prices.get(item, 0) * qty
             if valor_item > limite_concentracao:
-                # Aplica penalidade para evitar concentração em um único produto
                 score += 5000 + (valor_item - limite_concentracao)
                 
     return score
 
 def crossover(parent1, parent2):
-    """Realiza o cruzamento entre dois pais para criar um filho."""
     all_keys = set(list(parent1.keys()) + list(parent2.keys()))
     child = {}
-    
     for key in all_keys:
         if key in parent1 and key in parent2:
             child[key] = parent1[key] if random.random() < 0.5 else parent2[key]
@@ -167,14 +163,12 @@ def crossover(parent1, parent2):
             if random.random() < 0.5: child[key] = parent1[key]
         elif key in parent2:
             if random.random() < 0.5: child[key] = parent2[key]
-    
     return child
 
 def mutate(individual, item_prices, mutation_rate=0.2, max_items=5):
-    """Aplica mutação a um indivíduo (apenas inteiros)."""
     new_individual = individual.copy()
     
-    # Possivelmente adicionar um novo item
+    # Adicionar item
     if (random.random() < mutation_rate and 
         len(new_individual) < max_items and 
         len(new_individual) < len(item_prices)):
@@ -182,17 +176,17 @@ def mutate(individual, item_prices, mutation_rate=0.2, max_items=5):
         possible_new_items = [item for item in item_prices.keys() if item not in new_individual]
         if possible_new_items:
             new_item = random.choice(possible_new_items)
-            new_individual[new_item] = 1 # Começa com 1 unidade inteira
+            new_individual[new_item] = 1
     
-    # Possivelmente remover um item existente
+    # Remover item
     if random.random() < mutation_rate and len(new_individual) > 1:
         item_to_remove = random.choice(list(new_individual.keys()))
         del new_individual[item_to_remove]
     
-    # Modificar quantidades existentes (Apenas inteiros)
+    # Modificar quantidades
     for key in list(new_individual.keys()):
         if random.random() < mutation_rate:
-            change = random.choice([-1, 1]) # Soma ou subtrai 1
+            change = random.choice([-1, 1]) 
             new_value = max(1, int(new_individual[key] + change))
             new_individual[key] = new_value
     
@@ -200,100 +194,64 @@ def mutate(individual, item_prices, mutation_rate=0.2, max_items=5):
 
 def genetic_algorithm(item_prices, target_value, population_size=50, generations=100, 
                     combination_size=5, elite_size=5, tournament_size=3):
-    """
-    Implementa um algoritmo genético com Inteiros e Poda de Segurança.
-    """
     if not item_prices or target_value <= 0:
         return {}
     
-    # Inicializa a população
     population = [create_individual(item_prices, combination_size) for _ in range(population_size)]
-    
     best_individual = {}
     best_fitness = float('inf')
     
     for generation in range(generations):
-        # Avalia a população
         fitness_scores = [(individual, evaluate_fitness(individual, item_prices, target_value)) 
                          for individual in population]
-        
-        # Ordena por fitness (menor é melhor)
         fitness_scores.sort(key=lambda x: x[1])
         
-        # Atualiza o melhor indivíduo se encontrarmos um melhor
         if fitness_scores[0][1] < best_fitness:
             best_individual = fitness_scores[0][0].copy()
             best_fitness = fitness_scores[0][1]
         
-        # Se encontramos uma combinação perfeita E diversificada (fitness 0), terminamos
         if best_fitness == 0:
             break
         
-        # Seleciona a elite para a próxima geração
         next_generation = [ind[0].copy() for ind in fitness_scores[:elite_size]]
-        
-        # Completa a próxima geração
         while len(next_generation) < population_size:
-            # Seleção de torneio
             tournament = random.sample(fitness_scores, tournament_size)
             tournament.sort(key=lambda x: x[1])
             parent1 = tournament[0][0]
-            
-            # Otimização: segundo pai escolhido aleatoriamente entre os melhores
             parent2 = random.choice(fitness_scores[:10])[0]
-            
-            # Cruzamento e Mutação
             child = crossover(parent1, parent2)
             child = mutate(child, item_prices, max_items=combination_size)
-            
             next_generation.append(child)
-        
         population = next_generation
     
-    # --- PODA DE SEGURANÇA ---
+    # Poda de Segurança
     final_combination = {k: int(v) for k, v in best_individual.items() if v > 0}
     final_total = calculate_combination_value(final_combination, item_prices)
 
-    # Garante que não ultrapasse o valor alvo removendo unidades
     while final_total > target_value and len(final_combination) > 0:
         item_to_reduce = random.choice(list(final_combination.keys()))
-        
         if final_combination[item_to_reduce] <= 1:
             del final_combination[item_to_reduce]
         else:
             final_combination[item_to_reduce] -= 1
-            
         final_total = calculate_combination_value(final_combination, item_prices)
 
     return final_combination
 
 def buscar_combinacao_exata(item_prices, target_value, max_time_seconds=5, 
                            population_size=100, generations=200, combination_size=10):
-    """
-    Tenta encontrar uma combinação que resulte EXATAMENTE no valor alvo.
-    Roda o algoritmo genético repetidamente até conseguir ou o tempo acabar.
-    """
     start_time = time.time()
     best_global_individual = {}
-    best_global_diff = float('inf') # 'diff' aqui considera as penalidades do fitness
+    best_global_diff = float('inf') 
     attempts = 0
 
-    # Loop de insistência
     while (time.time() - start_time) < max_time_seconds:
         attempts += 1
-        
         current_result = genetic_algorithm(
-            item_prices, 
-            target_value, 
-            population_size=population_size, 
-            generations=generations, 
-            combination_size=combination_size
+            item_prices, target_value, population_size, generations, combination_size
         )
-        
-        # Avalia usando a função de fitness (que inclui a regra dos 50%)
         current_fitness = evaluate_fitness(current_result, item_prices, target_value)
 
-        # Se fitness 0, achou exato E respeitando regras
         if current_fitness == 0:
             return current_result, attempts
         
@@ -303,26 +261,19 @@ def buscar_combinacao_exata(item_prices, target_value, max_time_seconds=5,
             
     return best_global_individual, attempts
 
-# --- FUNÇÕES PARA GERAR PDF (COMPLETO) ---
+# --- FUNÇÕES PARA GERAR PDF ---
 def create_watermark(canvas, logo_path, width=400, height=400, opacity=0.1):
-    """Adiciona a logo como marca d'água no PDF."""
     try:
         if os.path.exists(logo_path):
             canvas.saveState()
             canvas.setFillColorRGB(255, 255, 255, alpha=opacity)
-            canvas.drawImage(logo_path, 
-                             (A4[0] - width) / 2, 
-                             (A4[1] - height) / 2, 
-                             width=width, 
-                             height=height,
-                             mask='auto',
-                             preserveAspectRatio=True)
+            canvas.drawImage(logo_path, (A4[0] - width) / 2, (A4[1] - height) / 2, 
+                             width=width, height=height, mask='auto', preserveAspectRatio=True)
             canvas.restoreState()
     except Exception as e:
         print(f"Erro ao adicionar marca d'água: {e}")
 
 def fig_to_buffer(fig):
-    """Converte uma figura matplotlib para buffer de bytes."""
     buf = io.BytesIO()
     fig.savefig(buf, format='png', dpi=300, bbox_inches='tight')
     buf.seek(0)
@@ -330,32 +281,15 @@ def fig_to_buffer(fig):
 
 def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionario, 
                     custo_contadora, total_custos, lucro_estimado, logo_path):
-    """
-    Cria um relatório em PDF com os dados financeiros (Versão Completa).
-    """
     buffer = BytesIO()
-    
-    # Configuração do documento
-    doc = SimpleDocTemplate(
-        buffer, 
-        pagesize=A4,
-        rightMargin=72, 
-        leftMargin=72,
-        topMargin=72, 
-        bottomMargin=72
-    )
-    
-    # Estilos
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=72)
     styles = getSampleStyleSheet()
     title_style = styles['Title']
     heading_style = styles['Heading1']
     subheading_style = styles['Heading2']
     normal_style = styles['Normal']
-    
-    # Lista de elementos do PDF
     elements = []
     
-    # Logo no topo
     try:
         if os.path.exists(logo_path):
             img = Image(logo_path, width=2*inch, height=1.5*inch)
@@ -365,15 +299,10 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
     except Exception as e:
         print(f"Erro ao adicionar logo: {e}")
     
-    # Título
     elements.append(Paragraph("Relatório Financeiro - Clips Burger", title_style))
     elements.append(Spacer(1, 0.5*inch))
-    
-    # Data do relatório
     elements.append(Paragraph(f"Data do relatório: {datetime.now().strftime('%d/%m/%Y')}", normal_style))
     elements.append(Spacer(1, 0.25*inch))
-    
-    # Resumo financeiro
     elements.append(Paragraph("Resumo Financeiro", heading_style))
     elements.append(Spacer(1, 0.1*inch))
     
@@ -401,11 +330,9 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
     elements.append(table)
     elements.append(Spacer(1, 0.5*inch))
     
-    # Gráficos
     elements.append(Paragraph("Análise de Vendas", heading_style))
     elements.append(Spacer(1, 0.1*inch))
     
-    # Gráfico de barras - Vendas por Forma de Pagamento
     try:
         fig, ax = plt.subplots(figsize=(8, 5))
         vendas.plot(kind='bar', x='Forma', y='Valor', ax=ax, color='steelblue')
@@ -413,7 +340,6 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
         ax.set_ylabel('Valor (R$)')
         ax.set_xlabel('')
         plt.tight_layout()
-        
         img_buf = fig_to_buffer(fig)
         img = Image(img_buf, width=doc.width, height=4*inch)
         elements.append(img)
@@ -422,19 +348,15 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
     except Exception as e:
         elements.append(Paragraph(f"Erro ao gerar gráfico de vendas: {e}", normal_style))
     
-    # Gráfico de pizza - Composição dos Custos
     try:
         custos_df = pd.DataFrame({
             'Item': ['Impostos', 'Funcionário', 'Contadora'],
             'Valor': [imposto_simples, custo_funcionario, custo_contadora]
         })
-        
         fig, ax = plt.subplots(figsize=(8, 5))
-        ax.pie(custos_df['Valor'], labels=custos_df['Item'], autopct='%1.1f%%', 
-              startangle=90, shadow=True)
+        ax.pie(custos_df['Valor'], labels=custos_df['Item'], autopct='%1.1f%%', startangle=90, shadow=True)
         ax.set_title('Composição dos Custos')
         plt.tight_layout()
-        
         img_buf = fig_to_buffer(fig)
         img = Image(img_buf, width=doc.width, height=4*inch)
         elements.append(img)
@@ -442,7 +364,6 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
     except Exception as e:
         elements.append(Paragraph(f"Erro ao gerar gráfico de custos: {e}", normal_style))
     
-    # Tabela de vendas por forma de pagamento
     elements.append(Spacer(1, 0.5*inch))
     elements.append(Paragraph("Detalhamento por Forma de Pagamento", subheading_style))
     elements.append(Spacer(1, 0.1*inch))
@@ -462,19 +383,14 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
         ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
     ]))
     elements.append(table)
-    
-    # Rodapé
     elements.append(Spacer(1, inch))
     footer_text = "Este relatório foi gerado automaticamente pelo Sistema de Gestão da Clips Burger."
     elements.append(Paragraph(footer_text, normal_style))
     
-    # Build do PDF com marca d'água
     def add_watermark(canvas, doc):
         create_watermark(canvas, logo_path, width=300, height=300, opacity=0.1)
     
-    # Constrói o PDF
     doc.build(elements, onFirstPage=add_watermark, onLaterPages=add_watermark)
-    
     buffer.seek(0)
     return buffer
 
@@ -505,14 +421,12 @@ def create_altair_chart(data, chart_type, x_col, y_col, color_col=None, title=No
         width=700,
         height=400
     )
-    
     return chart.interactive() if interactive else chart
 
 # --- FUNÇÃO CENTRAL DE ANÁLISE GENÉTICA E EXIBIÇÃO ---
-def processar_analise_genetica(valor_alvo_total, drink_pct, alg_type, max_iter, pop_size, n_gens, tam_sand, tam_beb):
+def processar_analise_genetica(valor_alvo_total, drink_pct, pop_size, n_gens, tam_sand, tam_beb):
     """
-    Função reutilizável para rodar a análise e exibir os resultados (Tabelas + Total Destacado).
-    Usada na Tab 2 e Tab 4.
+    Função reutilizável para rodar a análise e exibir os resultados.
     """
     st.subheader(f"Valor Alvo: {format_currency(valor_alvo_total)}")
     target_sanduiches_inicial = valor_alvo_total * (1 - drink_pct/100)
@@ -520,50 +434,41 @@ def processar_analise_genetica(valor_alvo_total, drink_pct, alg_type, max_iter, 
     combinacao_sanduiches = {}
     combinacao_bebidas = {}
     
-    # 1. PROCESSAMENTO
-    with st.spinner("🤖 A IA está calculando a melhor combinação..."):
-        if alg_type == "Algoritmo Genético":
-            progress_text = "Calculando Sanduíches..."
-            my_bar = st.progress(0, text=progress_text)
+    # 1. PROCESSAMENTO (Apenas Genético)
+    with st.spinner("🤖 O Algoritmo Genético está trabalhando..."):
+        progress_text = "Calculando Sanduíches..."
+        my_bar = st.progress(0, text=progress_text)
 
-            # A. Sanduíches (Tenta chegar nos 80%)
-            combinacao_sanduiches, t_sand = buscar_combinacao_exata(
-                CARDAPIOS["sanduiches"], target_sanduiches_inicial, max_time_seconds=5, 
-                population_size=pop_size, generations=n_gens, combination_size=tam_sand
-            )
-            
-            valor_real_sanduiches = calculate_combination_value(combinacao_sanduiches, CARDAPIOS["sanduiches"])
-            
-            # B. Compensação
-            target_bebidas_corrigido = valor_alvo_total - valor_real_sanduiches
-            my_bar.progress(50, text=f"Sanduíches: {format_currency(valor_real_sanduiches)}. Calculando Bebidas (Compensação)...")
-            
-            # C. Bebidas (Cobre o restante exato)
-            combinacao_bebidas, t_beb = buscar_combinacao_exata(
-                CARDAPIOS["bebidas"], target_bebidas_corrigido, max_time_seconds=5, 
-                population_size=pop_size, generations=n_gens, combination_size=tam_beb
-            )
-            
-            my_bar.progress(100, text="Pronto!")
-            time.sleep(0.3)
-            my_bar.empty()
-            
-            st.caption(f"🤖 O algoritmo realizou {t_sand + t_beb} ciclos completos de evolução com lógica de compensação.")
-            
-        else: # Busca Local (Mockup simples para compatibilidade se selecionado)
-            candidate = create_individual(CARDAPIOS["sanduiches"], tam_sand)
-            candidate = mutate(candidate, CARDAPIOS["sanduiches"], 0.5, tam_sand)
-            combinacao_sanduiches = candidate
-            valor_real_sanduiches = calculate_combination_value(combinacao_sanduiches, CARDAPIOS["sanduiches"])
-            target_bebidas = valor_alvo_total - valor_real_sanduiches
-            combinacao_bebidas = create_individual(CARDAPIOS["bebidas"], tam_beb) 
+        # A. Sanduíches
+        combinacao_sanduiches, t_sand = buscar_combinacao_exata(
+            CARDAPIOS["sanduiches"], target_sanduiches_inicial, max_time_seconds=5, 
+            population_size=pop_size, generations=n_gens, combination_size=tam_sand
+        )
+        
+        valor_real_sanduiches = calculate_combination_value(combinacao_sanduiches, CARDAPIOS["sanduiches"])
+        
+        # B. Compensação
+        target_bebidas_corrigido = valor_alvo_total - valor_real_sanduiches
+        my_bar.progress(50, text=f"Sanduíches: {format_currency(valor_real_sanduiches)}. Calculando Bebidas (Compensação)...")
+        
+        # C. Bebidas
+        combinacao_bebidas, t_beb = buscar_combinacao_exata(
+            CARDAPIOS["bebidas"], target_bebidas_corrigido, max_time_seconds=5, 
+            population_size=pop_size, generations=n_gens, combination_size=tam_beb
+        )
+        
+        my_bar.progress(100, text="Pronto!")
+        time.sleep(0.3)
+        my_bar.empty()
+        
+        st.caption(f"🤖 O algoritmo realizou {t_sand + t_beb} ciclos completos de evolução.")
 
     # 2. CÁLCULOS FINAIS
     valor_real_sanduiches = calculate_combination_value(combinacao_sanduiches, CARDAPIOS["sanduiches"])
     valor_real_bebidas = calculate_combination_value(combinacao_bebidas, CARDAPIOS["bebidas"])
     valor_real_total = valor_real_sanduiches + valor_real_bebidas
     
-    # 3. EXIBIÇÃO (TABELAS HTML CENTRALIZADAS)
+    # 3. EXIBIÇÃO
     def get_centered_table_styles():
         return [
             {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#262730'), ('color', 'white'), ('padding', '8px')]},
@@ -600,11 +505,10 @@ def processar_analise_genetica(valor_alvo_total, drink_pct, alg_type, max_iter, 
             st.metric("Total Bebidas", format_currency(valor_real_bebidas))
         else: st.warning("Sem itens")
 
-    # 4. DESTAQUE TOTAL (Novo Box Visual)
+    # 4. DESTAQUE TOTAL
     diff = valor_alvo_total - valor_real_total
-    # Cores
-    cor_box = "#ecfdf5" if diff == 0 else "#fff7ed" # Verde ou Laranja claro
-    cor_border = "#10b981" if diff == 0 else "#f97316" # Verde ou Laranja forte
+    cor_box = "#ecfdf5" if diff == 0 else "#fff7ed" 
+    cor_border = "#10b981" if diff == 0 else "#f97316"
     cor_text = "#047857" if diff == 0 else "#c2410c"
     
     st.markdown("---")
@@ -622,8 +526,7 @@ def processar_analise_genetica(valor_alvo_total, drink_pct, alg_type, max_iter, 
     
     st.warning("""
     **Atenção:** Esta é apenas uma combinação hipotética que corresponde aproximadamente 
-    ao valor vendido. O número real de produtos pode variar. Use essa informação apenas 
-    como um indicativo para análise de vendas.
+    ao valor vendido. O número real de produtos pode variar.
     """)
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
@@ -664,7 +567,6 @@ st.divider()
 with st.sidebar:
     st.header("⚙️ Configurações")
     
-    # Configurações do algoritmo
     st.subheader("Configurações de Análise")
     drink_percentage = st.slider(
         "Percentual para Bebidas (%) 🍹",
@@ -677,31 +579,15 @@ with st.sidebar:
     tamanho_combinacao_sanduiches = st.slider(
         "Número de tipos de Sanduíches", 1, 10, 5, 1)
     
-    # Seleção do algoritmo
-    algoritmo = st.radio(
-        "Algoritmo para Combinações",
-        ["Busca Local", "Algoritmo Genético"]
-    )
+    st.divider()
+    st.info("🧬 Algoritmo Genético Ativo")
     
-    # INICIALIZAÇÃO SEGURA DAS VARIÁVEIS PARA EVITAR NameError
-    max_iterations = 0
-    population_size = 0
-    generations = 0
-
-    if algoritmo == "Busca Local":
-        max_iterations = st.select_slider(
-            "Qualidade da Otimização ✨",
-            options=[1000, 5000, 10000, 20000, 50000],
-            value=10000
-        )
-    else:  # Algoritmo Genético
-        population_size = st.slider(
-            "Tamanho da População", 20, 200, 50, 10
-        )
-        generations = st.slider(
-            "Número de Gerações", 10, 500, 100, 10
-        )
-        st.info("Algoritmo genético pode gerar combinações mais precisas.")
+    population_size = st.slider(
+        "Tamanho da População", 20, 200, 50, 10
+    )
+    generations = st.slider(
+        "Número de Gerações", 10, 500, 100, 10
+    )
     
     st.info("Lembre-se: As combinações são aproximações heurísticas.")
 
@@ -709,16 +595,13 @@ with st.sidebar:
 tab1, tab2, tab3, tab4 = st.tabs(["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💰 Cadastro de Recebimentos", "💸 Calculadora PIX"])
 
 with tab1:
-    # Seção de upload de arquivo
     st.header("📤 Upload de Dados")
     arquivo = st.file_uploader("Envie o arquivo de transações (.csv ou .xlsx)", 
                              type=["csv", "xlsx"])
     
     if arquivo:
         try:
-            # Processamento do arquivo
             with st.spinner("Processando arquivo..."):
-                # Verificar o tipo de arquivo
                 if arquivo.name.endswith(".csv"):
                     try:
                         df = pd.read_csv(arquivo, sep=';', encoding='utf-8', dtype=str)
@@ -732,13 +615,11 @@ with tab1:
                 else:
                     df = pd.read_excel(arquivo, dtype=str)
                 
-                # Verificar colunas obrigatórias
                 required_cols = ['Tipo', 'Bandeira', 'Valor']
                 if not all(col in df.columns for col in required_cols):
                     st.error(f"Erro: O arquivo precisa conter as colunas: {', '.join(required_cols)}")
                     st.stop()
 
-                # Processamento dos dados
                 df['Tipo'] = df['Tipo'].str.lower().str.strip().fillna('desconhecido')
                 df['Bandeira'] = df['Bandeira'].str.lower().str.strip().fillna('desconhecida')
                 df['Valor'] = pd.to_numeric(
@@ -756,15 +637,12 @@ with tab1:
                 vendas = df.groupby('Forma')['Valor'].sum().reset_index()
                 total_vendas = vendas['Valor'].sum()
                 
-                # Salva os dados no session state
                 st.session_state.uploaded_data = df
                 st.session_state.vendas_data = vendas
                 st.session_state.total_vendas = total_vendas
             
-            # Seção de Visualização de Dados
             st.header("📊 Visualização de Dados")
             
-            # Gráfico de Barras
             st.subheader("Total de Vendas por Forma de Pagamento")
             bar_chart = create_altair_chart(
                 vendas, 'bar', 'Forma', 'Valor', 'Forma',
@@ -775,7 +653,6 @@ with tab1:
             )
             st.altair_chart(bar_chart, use_container_width=True)
             
-            # Seção de Parâmetros Financeiros
             st.header("⚙️ Parâmetros Financeiros")
             col1, col2 = st.columns(2)
             with col1:
@@ -783,10 +660,8 @@ with tab1:
             with col2:
                 custo_contadora = st.number_input("Custo com Contadora (R$)", value=316.0, step=10.0)
             
-            # Seção de Resultados
             st.header("💰 Resultados Financeiros")
             
-            # Métricas Principais
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.metric("Faturamento Bruto", format_currency(total_vendas))
@@ -800,7 +675,6 @@ with tab1:
                 custo_funcionario = salario_minimo + fgts + ferias + decimo_terceiro
                 st.metric("Custo Funcionário CLT", format_currency(custo_funcionario))
             
-            # Cálculo do Total de Custos
             total_custos = imposto_simples + custo_funcionario + custo_contadora
             lucro_estimado = total_vendas - total_custos
             
@@ -810,7 +684,6 @@ with tab1:
             with col2:
                 st.metric("Lucro Estimado", format_currency(lucro_estimado))
             
-            # Seção de Detalhamento
             st.header("🔍 Detalhamento")
             
             tab_detalhes1, tab_detalhes2, tab_detalhes3 = st.tabs([
@@ -831,11 +704,8 @@ with tab1:
                 st.subheader("Fórmulas Utilizadas")
                 st.markdown("""
                 **1. Imposto Simples Nacional** `Faturamento Bruto × 6%`  
-                
                 **2. Custo Funcionário CLT** `Salário + FGTS (8%) + Férias (1 mês + 1/3) + 13º Salário`  
-                
                 **3. Total de Custos** `Imposto + Funcionário + Contadora`  
-                
                 **4. Lucro Estimado** `Faturamento Bruto - Total de Custos`
                 """)
             
@@ -854,10 +724,8 @@ with tab1:
                     width=600,
                     height=500
                 )
-                
                 st.altair_chart(graf_composicao, use_container_width=True)
             
-            # Seção de Relatório PDF
             st.header("📑 Relatório")
             if st.button("Gerar Relatório PDF"):
                 with st.spinner("Gerando relatório..."):
@@ -865,12 +733,9 @@ with tab1:
                         df, vendas, total_vendas, imposto_simples, custo_funcionario, 
                         custo_contadora, total_custos, lucro_estimado, CONFIG["logo_path"]
                     )
-                    
-                    # Criando um link para download
                     b64_pdf = base64.b64encode(pdf_buffer.getvalue()).decode()
                     pdf_display = f'<a href="data:application/pdf;base64,{b64_pdf}" download="relatorio_clips_burger.pdf">📥 Clique aqui para baixar o Relatório PDF</a>'
                     st.markdown(pdf_display, unsafe_allow_html=True)
-                    
                     st.success("Relatório gerado com sucesso!")
             
         except Exception as e:
@@ -886,7 +751,6 @@ with tab2:
         vendas = st.session_state.vendas_data
         total_vendas = st.session_state.total_vendas
         
-        # Seleção da forma de pagamento para análise
         forma_selecionada = st.selectbox(
             "Selecione a forma de pagamento",
             options=vendas['Forma'].tolist(),
@@ -899,8 +763,6 @@ with tab2:
             processar_analise_genetica(
                 valor_selecionado, 
                 drink_percentage, 
-                algoritmo, 
-                max_iterations, 
                 population_size, 
                 generations, 
                 tamanho_combinacao_sanduiches, 
@@ -913,7 +775,6 @@ with tab2:
 with tab3:
     st.header("💰 Cadastro e Análise de Recebimentos")
     
-    # Seção 1: Formulário para adicionar novos dados
     with st.expander("➕ Adicionar Novo Registro", expanded=True):
         with st.form("add_receipt_form"):
             cols = st.columns([1, 1, 1, 1])
@@ -955,45 +816,29 @@ with tab3:
                     except Exception as e:
                         st.error(f"Erro ao salvar: {str(e)}")
 
-    # Seção 2: Visualização dos dados e gráficos
     if not st.session_state.df_receipts.empty:
-        # Filtros de data
         st.subheader("📅 Filtros de Período")
-        
-        # Opções de filtro
-        filtro_tipo = st.radio("Tipo de Filtro:", 
-                             ["Intervalo de Datas", "Mês Específico"], 
-                             horizontal=True)
+        filtro_tipo = st.radio("Tipo de Filtro:", ["Intervalo de Datas", "Mês Específico"], horizontal=True)
         
         if filtro_tipo == "Intervalo de Datas":
             cols = st.columns(2)
             with cols[0]:
-                inicio = st.date_input("Data inicial", 
-                                     value=st.session_state.df_receipts['Data'].min())
+                inicio = st.date_input("Data inicial", value=st.session_state.df_receipts['Data'].min())
             with cols[1]:
-                fim = st.date_input("Data final", 
-                                  value=st.session_state.df_receipts['Data'].max())
+                fim = st.date_input("Data final", value=st.session_state.df_receipts['Data'].max())
         else:
-            # Filtro por mês
             meses_disponiveis = sorted(st.session_state.df_receipts['Data'].dt.to_period('M').unique(), reverse=True)
-            mes_selecionado = st.selectbox("Selecione o mês:", 
-                                         options=meses_disponiveis,
-                                         format_func=lambda x: x.strftime('%B/%Y'))
-            
+            mes_selecionado = st.selectbox("Selecione o mês:", options=meses_disponiveis, format_func=lambda x: x.strftime('%B/%Y'))
             inicio = pd.to_datetime(mes_selecionado.start_time)
             fim = pd.to_datetime(mes_selecionado.end_time)
         
-        # Aplica filtros
         df_filtered = st.session_state.df_receipts[
             (st.session_state.df_receipts['Data'] >= pd.to_datetime(inicio)) & 
             (st.session_state.df_receipts['Data'] <= pd.to_datetime(fim))
         ].copy()
         
         if not df_filtered.empty:
-            # Adiciona coluna de Total
             df_filtered['Total'] = df_filtered['Dinheiro'] + df_filtered['Cartao'] + df_filtered['Pix']
-            
-            # Calcula totais por forma de pagamento
             totais = {
                 'Dinheiro': df_filtered['Dinheiro'].sum(),
                 'Cartão': df_filtered['Cartao'].sum(),
@@ -1001,124 +846,53 @@ with tab3:
             }
             total_periodo = sum(totais.values())
             
-            # Seção 3: Métricas Resumo
             st.subheader("📊 Resumo do Período")
-            
-            # CSS para ajustar o tamanho das métricas
             st.markdown("""
             <style>
-                div[data-testid="stMetric"] {
-                    padding: 5px 10px;
-                }
-                div[data-testid="stMetric"] > div {
-                    gap: 2px;
-                }
-                div[data-testid="stMetric"] label {
-                    font-size: 14px !important;
-                    font-weight: 500 !important;
-                    color: #6b7280 !important;
-                }
-                div[data-testid="stMetric"] > div > div {
-                    font-size: 18px !important;
-                    font-weight: 600 !important;
-                }
+                div[data-testid="stMetric"] {padding: 5px 10px;}
+                div[data-testid="stMetric"] > div {gap: 2px;}
+                div[data-testid="stMetric"] label {font-size: 14px !important; font-weight: 500 !important; color: #6b7280 !important;}
+                div[data-testid="stMetric"] > div > div {font-size: 18px !important; font-weight: 600 !important;}
             </style>
             """, unsafe_allow_html=True)
             
-            # Layout compacto em 2 linhas de 4 colunas
             cols1 = st.columns(4)
             cols2 = st.columns(4)
+            with cols1[0]: st.metric("Dinheiro", format_currency(totais['Dinheiro']))
+            with cols1[1]: st.metric("Cartão", format_currency(totais['Cartão']))
+            with cols1[2]: st.metric("PIX", format_currency(totais['PIX']))
+            with cols1[3]: st.metric("Total Geral", format_currency(total_periodo))
+            with cols2[0]: st.metric("Média Diária", format_currency(df_filtered['Total'].mean()))
+            with cols2[1]: st.metric("Maior Venda", format_currency(df_filtered['Total'].max()))
+            with cols2[2]: st.metric("Dias Registrados", len(df_filtered))
+            with cols2[3]: st.metric("Dias sem Registro", (fim - inicio).days + 1 - len(df_filtered))
             
-            with cols1[0]:
-                st.metric("Dinheiro", format_currency(totais['Dinheiro']), 
-                         help="Total em recebimentos de dinheiro")
-            with cols1[1]:
-                st.metric("Cartão", format_currency(totais['Cartão']),
-                         help="Total em recebimentos por cartão")
-            with cols1[2]:
-                st.metric("PIX", format_currency(totais['PIX']),
-                         help="Total em recebimentos por PIX")
-            with cols1[3]:
-                st.metric("Total Geral", format_currency(total_periodo),
-                         help="Soma de todas as formas de pagamento")
-            
-            with cols2[0]:
-                st.metric("Média Diária", format_currency(df_filtered['Total'].mean()),
-                         help="Média de vendas por dia")
-            with cols2[1]:
-                st.metric("Maior Venda", format_currency(df_filtered['Total'].max()),
-                         help=f"Dia: {df_filtered.loc[df_filtered['Total'].idxmax(), 'Data'].strftime('%d/%m')}")
-            with cols2[2]:
-                st.metric("Dias Registrados", len(df_filtered),
-                         help="Total de dias com vendas registradas")
-            with cols2[3]:
-                st.metric("Dias sem Registro", (fim - inicio).days + 1 - len(df_filtered),
-                         help="Dias do período sem vendas registradas")
-            
-            # Seção 4: Gráficos
             st.subheader("📈 Visualizações Gráficas")
-            
             tab_graficos1, tab_graficos2, tab_graficos3 = st.tabs(["Distribuição", "Comparação", "Acumulado"])
             
             with tab_graficos1:
-                # Gráfico de Pizza
-                df_pie = pd.DataFrame({
-                    'Forma': list(totais.keys()),
-                    'Valor': list(totais.values())
-                })
-                
+                df_pie = pd.DataFrame({'Forma': list(totais.keys()), 'Valor': list(totais.values())})
                 pie_chart = alt.Chart(df_pie).mark_arc().encode(
-                    theta='Valor',
-                    color=alt.Color('Forma', legend=alt.Legend(title="Forma de Pagamento")),
-                    tooltip=['Forma', 'Valor']
-                ).properties(
-                    height=400,
-                    title='Distribuição dos Recebimentos'
-                )
+                    theta='Valor', color=alt.Color('Forma', legend=alt.Legend(title="Forma de Pagamento")), tooltip=['Forma', 'Valor']
+                ).properties(height=400, title='Distribuição dos Recebimentos')
                 st.altair_chart(pie_chart, use_container_width=True)
             
             with tab_graficos2:
-                # Gráfico de Barras
-                df_bar = df_filtered.melt(id_vars=['Data'], 
-                                        value_vars=['Dinheiro', 'Cartao', 'Pix'],
-                                        var_name='Forma', 
-                                        value_name='Valor')
-                
+                df_bar = df_filtered.melt(id_vars=['Data'], value_vars=['Dinheiro', 'Cartao', 'Pix'], var_name='Forma', value_name='Valor')
                 bar_chart = alt.Chart(df_bar).mark_bar().encode(
-                    x='monthdate(Data):O',
-                    y='sum(Valor):Q',
-                    color='Forma',
-                    tooltip=['Forma', 'sum(Valor)']
-                ).properties(
-                    height=400,
-                    title='Vendas por Forma de Pagamento'
-                )
+                    x='monthdate(Data):O', y='sum(Valor):Q', color='Forma', tooltip=['Forma', 'sum(Valor)']
+                ).properties(height=400, title='Vendas por Forma de Pagamento')
                 st.altair_chart(bar_chart, use_container_width=True)
             
             with tab_graficos3:
-                # Gráfico Acumulado
                 df_acumulado = df_filtered.sort_values('Data').copy()
                 df_acumulado['Acumulado'] = df_acumulado['Total'].cumsum()
-                
-                line_chart = alt.Chart(df_acumulado).mark_line(
-                    point=True,
-                    strokeWidth=3,
-                    color='red'
-                ).encode(
-                    x='Data:T',
-                    y='Acumulado:Q',
-                    tooltip=['Data', 'Acumulado']
-                ).properties(
-                    height=400,
-                    title='Receita Total Acumulada'
-                )
-                
+                line_chart = alt.Chart(df_acumulado).mark_line(point=True, strokeWidth=3, color='red').encode(
+                    x='Data:T', y='Acumulado:Q', tooltip=['Data', 'Acumulado']
+                ).properties(height=400, title='Receita Total Acumulada')
                 st.altair_chart(line_chart, use_container_width=True)
             
-            # Seção 5: Tabela de Dados
             st.subheader("📋 Dados Detalhados")
-            
-            # Tabela centralizada na Tab 3 usando HTML também para garantir padrão
             def get_centered_table_styles_tab3():
                 return [
                     {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#f0f2f6'), ('color', 'black'), ('padding', '8px')]},
@@ -1133,7 +907,6 @@ with tab3:
                 'Total': lambda x: format_currency(x),
                 'Data': lambda x: x.strftime('%d/%m/%Y')
             }).set_table_styles(get_centered_table_styles_tab3()).hide(axis='index').to_html()
-            
             st.markdown(html_tabela_dados, unsafe_allow_html=True)
             
         else:
@@ -1141,7 +914,6 @@ with tab3:
     else:
         st.info("Nenhum dado cadastrado ainda. Adicione seu primeiro registro acima.")
 
-# --- NOVA TAB 4: CALCULADORA PIX ---
 with tab4:
     st.header("💸 Calculadora Rápida (PIX/Manual)")
     st.markdown("Use esta aba para analisar um valor específico de PIX recebido, sem precisar subir planilha.")
@@ -1165,12 +937,9 @@ with tab4:
     st.divider()
     
     if analisar_btn and valor_pix_input > 0:
-        # Chama a MESMA função da Tab 2, garantindo o mesmo padrão visual e lógica
         processar_analise_genetica(
             valor_pix_input, 
             drink_percentage, 
-            algoritmo, 
-            max_iterations, 
             population_size, 
             generations, 
             tamanho_combinacao_sanduiches, 
