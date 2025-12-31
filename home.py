@@ -860,14 +860,19 @@ with tab2:
                 df_sanduiches = df_sanduiches.sort_values('Subtotal', ascending=False)
                 
                 st.dataframe(
-                    df_sanduiches.style.format({
-                        'Qnt': '{:g}',  # <--- REMOVE OS ZEROS EXTRAS
-                        'Preço Unitário': 'R$ {:.2f}',
-                        'Subtotal': 'R$ {:.2f}'
-                    }),
-                    hide_index=True,
-                    use_container_width=True
-                )
+                df_sanduiches.style.format({
+                    'Qnt': '{:g}',
+                    'Preço Unitário': 'R$ {:.2f}',
+                    'Subtotal': 'R$ {:.2f}'
+                })
+                .set_properties(**{'text-align': 'center'})
+                .set_table_styles([
+                    {'selector': 'th', 'props': [('text-align', 'center')]},
+                    {'selector': 'td', 'props': [('text-align', 'center')]}
+                ]),
+                hide_index=True,
+                use_container_width=True
+            )
                 
                 st.metric(
                     "Total Sanduíches", 
@@ -889,14 +894,19 @@ with tab2:
                 df_bebidas = df_bebidas.sort_values('Subtotal', ascending=False)
                 
                 st.dataframe(
-                    df_bebidas.style.format({
-                        'Qnt': '{:g}',  # <--- REMOVE OS ZEROS EXTRAS
-                        'Preço Unitário': 'R$ {:.2f}',
-                        'Subtotal': 'R$ {:.2f}'
-                    }),
-                    hide_index=True,
-                    use_container_width=True
-                )
+                df_bebidas.style.format({
+                    'Qnt': '{:g}',
+                    'Preço Unitário': 'R$ {:.2f}',
+                    'Subtotal': 'R$ {:.2f}'
+                })
+                .set_properties(**{'text-align': 'center'})
+                .set_table_styles([
+                    {'selector': 'th', 'props': [('text-align', 'center')]},
+                    {'selector': 'td', 'props': [('text-align', 'center')]}
+                ]),
+                hide_index=True,
+                use_container_width=True
+            )
                 
                 st.metric(
                     "Total Bebidas", 
