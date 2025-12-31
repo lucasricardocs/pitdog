@@ -106,9 +106,7 @@ def save_data(df):
         st.error(f"Erro ao salvar dados: {e}")
 
 def round_to_50_or_00(value):
-    """
-    Agora força estritamente para INTEIRO.
-    """
+    """Agora força estritamente para INTEIRO."""
     return int(round(value))
 
 def calculate_combination_value(combination, item_prices):
@@ -247,7 +245,6 @@ def buscar_combinacao_exata(item_prices, target_value, max_time_seconds=5,
                            population_size=100, generations=200, combination_size=10):
     """
     Função Wrapper: Tenta encontrar uma combinação EXATA.
-    Roda o algoritmo genético repetidamente até conseguir ou o tempo acabar.
     """
     start_time = time.time()
     best_global_individual = {}
@@ -309,32 +306,17 @@ def fig_to_buffer(fig):
 
 def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionario, 
                     custo_contadora, total_custos, lucro_estimado, logo_path):
-    """
-    Cria um relatório em PDF com os dados financeiros.
-    """
+    """Cria um relatório em PDF com os dados financeiros."""
     buffer = BytesIO()
-    
-    # Configuração do documento
-    doc = SimpleDocTemplate(
-        buffer, 
-        pagesize=A4,
-        rightMargin=72, 
-        leftMargin=72,
-        topMargin=72, 
-        bottomMargin=72
-    )
-    
-    # Estilos
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=72)
     styles = getSampleStyleSheet()
     title_style = styles['Title']
     heading_style = styles['Heading1']
     subheading_style = styles['Heading2']
     normal_style = styles['Normal']
     
-    # Lista de elementos do PDF
     elements = []
     
-    # Logo no topo
     try:
         if os.path.exists(logo_path):
             img = Image(logo_path, width=2*inch, height=1.5*inch)
@@ -344,15 +326,11 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
     except Exception as e:
         print(f"Erro ao adicionar logo: {e}")
     
-    # Título
     elements.append(Paragraph("Relatório Financeiro - Clips Burger", title_style))
     elements.append(Spacer(1, 0.5*inch))
-    
-    # Data do relatório
     elements.append(Paragraph(f"Data do relatório: {datetime.now().strftime('%d/%m/%Y')}", normal_style))
     elements.append(Spacer(1, 0.25*inch))
     
-    # Resumo financeiro
     elements.append(Paragraph("Resumo Financeiro", heading_style))
     elements.append(Spacer(1, 0.1*inch))
     
@@ -380,11 +358,9 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
     elements.append(table)
     elements.append(Spacer(1, 0.5*inch))
     
-    # Gráficos
     elements.append(Paragraph("Análise de Vendas", heading_style))
     elements.append(Spacer(1, 0.1*inch))
     
-    # Gráfico de barras - Vendas por Forma de Pagamento
     try:
         fig, ax = plt.subplots(figsize=(8, 5))
         vendas.plot(kind='bar', x='Forma', y='Valor', ax=ax, color='steelblue')
@@ -392,7 +368,6 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
         ax.set_ylabel('Valor (R$)')
         ax.set_xlabel('')
         plt.tight_layout()
-        
         img_buf = fig_to_buffer(fig)
         img = Image(img_buf, width=doc.width, height=4*inch)
         elements.append(img)
@@ -401,19 +376,15 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
     except Exception as e:
         elements.append(Paragraph(f"Erro ao gerar gráfico de vendas: {e}", normal_style))
     
-    # Gráfico de pizza - Composição dos Custos
     try:
         custos_df = pd.DataFrame({
             'Item': ['Impostos', 'Funcionário', 'Contadora'],
             'Valor': [imposto_simples, custo_funcionario, custo_contadora]
         })
-        
         fig, ax = plt.subplots(figsize=(8, 5))
-        ax.pie(custos_df['Valor'], labels=custos_df['Item'], autopct='%1.1f%%', 
-              startangle=90, shadow=True)
+        ax.pie(custos_df['Valor'], labels=custos_df['Item'], autopct='%1.1f%%', startangle=90, shadow=True)
         ax.set_title('Composição dos Custos')
         plt.tight_layout()
-        
         img_buf = fig_to_buffer(fig)
         img = Image(img_buf, width=doc.width, height=4*inch)
         elements.append(img)
@@ -421,7 +392,6 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
     except Exception as e:
         elements.append(Paragraph(f"Erro ao gerar gráfico de custos: {e}", normal_style))
     
-    # Tabela de vendas por forma de pagamento
     elements.append(Spacer(1, 0.5*inch))
     elements.append(Paragraph("Detalhamento por Forma de Pagamento", subheading_style))
     elements.append(Spacer(1, 0.1*inch))
@@ -441,19 +411,14 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
         ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
     ]))
     elements.append(table)
-    
-    # Rodapé
     elements.append(Spacer(1, inch))
     footer_text = "Este relatório foi gerado automaticamente pelo Sistema de Gestão da Clips Burger."
     elements.append(Paragraph(footer_text, normal_style))
     
-    # Build do PDF com marca d'água
     def add_watermark(canvas, doc):
         create_watermark(canvas, logo_path, width=300, height=300, opacity=0.1)
     
-    # Constrói o PDF
     doc.build(elements, onFirstPage=add_watermark, onLaterPages=add_watermark)
-    
     buffer.seek(0)
     return buffer
 
@@ -484,7 +449,6 @@ def create_altair_chart(data, chart_type, x_col, y_col, color_col=None, title=No
         width=700,
         height=400
     )
-    
     return chart.interactive() if interactive else chart
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
@@ -524,8 +488,6 @@ st.divider()
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("⚙️ Configurações")
-    
-    # Configurações do algoritmo
     st.subheader("Configurações de Análise")
     drink_percentage = st.slider(
         "Percentual para Bebidas (%) 🍹",
@@ -533,12 +495,9 @@ with st.sidebar:
     )
     st.caption(f"({100 - drink_percentage}% será alocado para Sanduíches 🍔)")
 
-    tamanho_combinacao_bebidas = st.slider(
-        "Número de tipos de Bebidas", 1, 10, 5, 1)
-    tamanho_combinacao_sanduiches = st.slider(
-        "Número de tipos de Sanduíches", 1, 10, 5, 1)
+    tamanho_combinacao_bebidas = st.slider("Número de tipos de Bebidas", 1, 10, 5, 1)
+    tamanho_combinacao_sanduiches = st.slider("Número de tipos de Sanduíches", 1, 10, 5, 1)
     
-    # Seleção do algoritmo
     algoritmo = st.radio(
         "Algoritmo para Combinações",
         ["Busca Local", "Algoritmo Genético"]
@@ -551,12 +510,8 @@ with st.sidebar:
             value=10000
         )
     else:  # Algoritmo Genético
-        population_size = st.slider(
-            "Tamanho da População", 20, 200, 50, 10
-        )
-        generations = st.slider(
-            "Número de Gerações", 10, 500, 100, 10
-        )
+        population_size = st.slider("Tamanho da População", 20, 200, 50, 10)
+        generations = st.slider("Número de Gerações", 10, 500, 100, 10)
         st.info("Algoritmo genético pode gerar combinações mais precisas.")
     
     st.info("Lembre-se: As combinações são aproximações heurísticas.")
@@ -565,16 +520,12 @@ with st.sidebar:
 tab1, tab2, tab3 = st.tabs(["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💰 Cadastro de Recebimentos"])
 
 with tab1:
-    # Seção de upload de arquivo
     st.header("📤 Upload de Dados")
-    arquivo = st.file_uploader("Envie o arquivo de transações (.csv ou .xlsx)", 
-                             type=["csv", "xlsx"])
+    arquivo = st.file_uploader("Envie o arquivo de transações (.csv ou .xlsx)", type=["csv", "xlsx"])
     
     if arquivo:
         try:
-            # Processamento do arquivo
             with st.spinner("Processando arquivo..."):
-                # Verificar o tipo de arquivo
                 if arquivo.name.endswith(".csv"):
                     try:
                         df = pd.read_csv(arquivo, sep=';', encoding='utf-8', dtype=str)
@@ -588,20 +539,15 @@ with tab1:
                 else:
                     df = pd.read_excel(arquivo, dtype=str)
                 
-                # Verificar colunas obrigatórias
                 required_cols = ['Tipo', 'Bandeira', 'Valor']
                 if not all(col in df.columns for col in required_cols):
                     st.error(f"Erro: O arquivo precisa conter as colunas: {', '.join(required_cols)}")
                     st.stop()
 
-                # Processamento dos dados
                 df['Tipo'] = df['Tipo'].str.lower().str.strip().fillna('desconhecido')
                 df['Bandeira'] = df['Bandeira'].str.lower().str.strip().fillna('desconhecida')
-                df['Valor'] = pd.to_numeric(
-                    df['Valor'].str.replace('.', '').str.replace(',', '.'), 
-                    errors='coerce')
+                df['Valor'] = pd.to_numeric(df['Valor'].str.replace('.', '').str.replace(',', '.'), errors='coerce')
                 df = df.dropna(subset=['Valor'])
-                
                 df['Forma'] = (df['Tipo'] + ' ' + df['Bandeira']).map(FORMAS_PAGAMENTO)
                 df = df.dropna(subset=['Forma'])
                 
@@ -611,27 +557,15 @@ with tab1:
 
                 vendas = df.groupby('Forma')['Valor'].sum().reset_index()
                 total_vendas = vendas['Valor'].sum()
-                
-                # Salva os dados no session state
                 st.session_state.uploaded_data = df
                 st.session_state.vendas_data = vendas
                 st.session_state.total_vendas = total_vendas
             
-            # Seção de Visualização de Dados
             st.header("📊 Visualização de Dados")
-            
-            # Gráfico de Barras
             st.subheader("Total de Vendas por Forma de Pagamento")
-            bar_chart = create_altair_chart(
-                vendas, 'bar', 'Forma', 'Valor', 'Forma',
-                title=''
-            ).properties(
-                width=800,
-                height=500
-            )
+            bar_chart = create_altair_chart(vendas, 'bar', 'Forma', 'Valor', 'Forma', title='').properties(width=800, height=500)
             st.altair_chart(bar_chart, use_container_width=True)
             
-            # Seção de Parâmetros Financeiros
             st.header("⚙️ Parâmetros Financeiros")
             col1, col2 = st.columns(2)
             with col1:
@@ -639,10 +573,7 @@ with tab1:
             with col2:
                 custo_contadora = st.number_input("Custo com Contadora (R$)", value=316.0, step=10.0)
             
-            # Seção de Resultados
             st.header("💰 Resultados Financeiros")
-            
-            # Métricas Principais
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.metric("Faturamento Bruto", format_currency(total_vendas))
@@ -656,24 +587,16 @@ with tab1:
                 custo_funcionario = salario_minimo + fgts + ferias + decimo_terceiro
                 st.metric("Custo Funcionário CLT", format_currency(custo_funcionario))
             
-            # Cálculo do Total de Custos
             total_custos = imposto_simples + custo_funcionario + custo_contadora
             lucro_estimado = total_vendas - total_custos
-            
             col1, col2 = st.columns(2)
             with col1:
                 st.metric("Total de Custos", format_currency(total_custos))
             with col2:
                 st.metric("Lucro Estimado", format_currency(lucro_estimado))
             
-            # Seção de Detalhamento
             st.header("🔍 Detalhamento")
-            
-            tab_detalhes1, tab_detalhes2, tab_detalhes3 = st.tabs([
-                "📝 Composição de Custos", 
-                "📚 Explicação dos Cálculos",
-                "🍰 Gráfico de Composição"
-            ])
+            tab_detalhes1, tab_detalhes2, tab_detalhes3 = st.tabs(["📝 Composição de Custos", "📚 Explicação dos Cálculos", "🍰 Gráfico de Composição"])
             
             with tab_detalhes1:
                 st.subheader("Composição dos Custos")
@@ -682,53 +605,28 @@ with tab1:
                 - **Custo Funcionário CLT**: {format_currency(custo_funcionario)}
                 - **Custo Contadora**: {format_currency(custo_contadora)}
                 """)
-            
             with tab_detalhes2:
                 st.subheader("Fórmulas Utilizadas")
                 st.markdown("""
                 **1. Imposto Simples Nacional** `Faturamento Bruto × 6%`  
-                
                 **2. Custo Funcionário CLT** `Salário + FGTS (8%) + Férias (1 mês + 1/3) + 13º Salário`  
-                
                 **3. Total de Custos** `Imposto + Funcionário + Contadora`  
-                
                 **4. Lucro Estimado** `Faturamento Bruto - Total de Custos`
                 """)
-            
             with tab_detalhes3:
                 st.subheader("Composição dos Custos")
-                custos_df = pd.DataFrame({
-                    'Item': ['Impostos', 'Funcionário', 'Contadora'],
-                    'Valor': [imposto_simples, custo_funcionario, custo_contadora]
-                })
-                
-                graf_composicao = alt.Chart(custos_df).mark_arc().encode(
-                    theta='Valor',
-                    color='Item',
-                    tooltip=['Item', alt.Tooltip('Valor', format='$.2f')]
-                ).properties(
-                    width=600,
-                    height=500
-                )
-                
+                custos_df = pd.DataFrame({'Item': ['Impostos', 'Funcionário', 'Contadora'], 'Valor': [imposto_simples, custo_funcionario, custo_contadora]})
+                graf_composicao = alt.Chart(custos_df).mark_arc().encode(theta='Valor', color='Item', tooltip=['Item', alt.Tooltip('Valor', format='$.2f')]).properties(width=600, height=500)
                 st.altair_chart(graf_composicao, use_container_width=True)
             
-            # Seção de Relatório PDF
             st.header("📑 Relatório")
             if st.button("Gerar Relatório PDF"):
                 with st.spinner("Gerando relatório..."):
-                    pdf_buffer = create_pdf_report(
-                        df, vendas, total_vendas, imposto_simples, custo_funcionario, 
-                        custo_contadora, total_custos, lucro_estimado, CONFIG["logo_path"]
-                    )
-                    
-                    # Criando um link para download
+                    pdf_buffer = create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionario, custo_contadora, total_custos, lucro_estimado, CONFIG["logo_path"])
                     b64_pdf = base64.b64encode(pdf_buffer.getvalue()).decode()
                     pdf_display = f'<a href="data:application/pdf;base64,{b64_pdf}" download="relatorio_clips_burger.pdf">📥 Clique aqui para baixar o Relatório PDF</a>'
                     st.markdown(pdf_display, unsafe_allow_html=True)
-                    
                     st.success("Relatório gerado com sucesso!")
-            
         except Exception as e:
             st.error(f"Ocorreu um erro ao processar o arquivo: {str(e)}")
             st.exception(e)
@@ -742,7 +640,6 @@ with tab2:
         vendas = st.session_state.vendas_data
         total_vendas = st.session_state.total_vendas
         
-        # Seleção da forma de pagamento para análise
         forma_selecionada = st.selectbox(
             "Selecione a forma de pagamento",
             options=vendas['Forma'].tolist(),
@@ -752,83 +649,83 @@ with tab2:
         valor_selecionado = vendas.loc[vendas['Forma'] == forma_selecionada, 'Valor'].iloc[0]
         st.subheader(f"Valor total: {format_currency(valor_selecionado)}")
         
-        # Distribuição entre sanduíches e bebidas
-        valor_sanduiches = valor_selecionado * (1 - drink_percentage/100)
-        valor_bebidas = valor_selecionado * (drink_percentage/100)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.info(f"Valor para Sanduíches: {format_currency(valor_sanduiches)} ({100-drink_percentage}%)")
-        with col2:
-            st.info(f"Valor para Bebidas: {format_currency(valor_bebidas)} ({drink_percentage}%)")
+        target_sanduiches_inicial = valor_selecionado * (1 - drink_percentage/100)
         
         # Encontrar combinações
         with st.spinner("Calculando possíveis combinações..."):
             if algoritmo == "Algoritmo Genético":
-                # Barra de progresso para dar feedback visual
                 progress_text = "Processando milhares de combinações para achar o valor exato..."
                 my_bar = st.progress(0, text=progress_text)
 
-                # --- PROCESSAMENTO DOS SANDUÍCHES ---
+                # 1. TENTA SANDUÍCHES PRIMEIRO (Meta: ~80%)
                 combinacao_sanduiches, tentativas_sand = buscar_combinacao_exata(
                     CARDAPIOS["sanduiches"], 
-                    valor_sanduiches,
+                    target_sanduiches_inicial, # Tenta chegar nos 80%
                     max_time_seconds=5, 
                     population_size=80,
                     generations=150,
                     combination_size=tamanho_combinacao_sanduiches
                 )
-                my_bar.progress(50, text="Sanduíches calculados. Processando bebidas...")
                 
-                # --- PROCESSAMENTO DAS BEBIDAS ---
+                # 2. CALCULA O REAL CONSEGUIDO
+                valor_real_sanduiches = calculate_combination_value(combinacao_sanduiches, CARDAPIOS["sanduiches"])
+                
+                # 3. DEFINE A META DAS BEBIDAS COM O QUE SOBROU (COMPENSAÇÃO)
+                target_bebidas_corrigido = valor_selecionado - valor_real_sanduiches
+                
+                my_bar.progress(50, text=f"Sanduíches: {format_currency(valor_real_sanduiches)}. Calculando bebidas para fechar em {format_currency(valor_selecionado)}...")
+                
+                # 4. TENTA BEBIDAS COM A META EXATA DO RESTANTE
                 combinacao_bebidas, tentativas_beb = buscar_combinacao_exata(
                     CARDAPIOS["bebidas"], 
-                    valor_bebidas,
-                    max_time_seconds=5,
+                    target_bebidas_corrigido, # Meta ajustada
+                    max_time_seconds=5, 
                     population_size=80,
                     generations=150,
                     combination_size=tamanho_combinacao_bebidas
                 )
+                
+                valor_real_bebidas = calculate_combination_value(combinacao_bebidas, CARDAPIOS["bebidas"])
+                valor_real_total = valor_real_sanduiches + valor_real_bebidas
+
                 my_bar.progress(100, text="Finalizado!")
                 time.sleep(0.5)
                 my_bar.empty()
-                
-                st.caption(f"🤖 O algoritmo realizou {tentativas_sand + tentativas_beb} ciclos completos de evolução para tentar chegar no valor exato.")
+                st.caption(f"🤖 O algoritmo realizou {tentativas_sand + tentativas_beb} ciclos de evolução com lógica de compensação de sobras.")
 
             else:  # Busca Local
+                # (Mantém a lógica antiga simples para busca local, ou pode ser removida)
                 best_sanduiches = {}
                 best_diff_sanduiches = float('inf')
-                
                 for _ in range(max_iterations):
                     candidate = create_individual(CARDAPIOS["sanduiches"], tamanho_combinacao_sanduiches)
                     candidate = mutate(candidate, CARDAPIOS["sanduiches"], mutation_rate=0.3, max_items=tamanho_combinacao_sanduiches)
-                    diff = evaluate_fitness(candidate, CARDAPIOS["sanduiches"], valor_sanduiches)
+                    diff = evaluate_fitness(candidate, CARDAPIOS["sanduiches"], target_sanduiches_inicial)
                     if diff < best_diff_sanduiches:
                         best_sanduiches = candidate
                         best_diff_sanduiches = diff
-                combinacao_sanduiches = {k: round(v) for k, v in best_sanduiches.items() if round(v) > 0}
+                combinacao_sanduiches = {k: round_to_50_or_00(v) for k, v in best_sanduiches.items() if v > 0}
+                valor_real_sanduiches = calculate_combination_value(combinacao_sanduiches, CARDAPIOS["sanduiches"])
+                
+                target_bebidas_corrigido = valor_selecionado - valor_real_sanduiches
                 
                 best_bebidas = {}
                 best_diff_bebidas = float('inf')
                 for _ in range(max_iterations):
                     candidate = create_individual(CARDAPIOS["bebidas"], tamanho_combinacao_bebidas)
                     candidate = mutate(candidate, CARDAPIOS["bebidas"], mutation_rate=0.3)
-                    diff = evaluate_fitness(candidate, CARDAPIOS["bebidas"], valor_bebidas)
+                    diff = evaluate_fitness(candidate, CARDAPIOS["bebidas"], target_bebidas_corrigido)
                     if diff < best_diff_bebidas:
                         best_bebidas = candidate
                         best_diff_bebidas = diff
-                combinacao_bebidas = {k: round(v) for k, v in best_bebidas.items() if round(v) > 0}
+                combinacao_bebidas = {k: round_to_50_or_00(v) for k, v in best_bebidas.items() if v > 0}
+                valor_real_bebidas = calculate_combination_value(combinacao_bebidas, CARDAPIOS["bebidas"])
+                valor_real_total = valor_real_sanduiches + valor_real_bebidas
         
-        # Calcular valores reais
-        valor_real_sanduiches = calculate_combination_value(combinacao_sanduiches, CARDAPIOS["sanduiches"])
-        valor_real_bebidas = calculate_combination_value(combinacao_bebidas, CARDAPIOS["bebidas"])
-        valor_real_total = valor_real_sanduiches + valor_real_bebidas
-        
-        # Exibir combinações
+        # Exibir combinações (TABELAS HTML CENTRALIZADAS)
         st.subheader("Combinação Sugerida")
         col1, col2 = st.columns(2)
         
-        # Função auxiliar para gerar estilo HTML forçado
         def get_centered_table_styles():
             return [
                 {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#262730'), ('color', 'white'), ('padding', '8px')]},
@@ -847,7 +744,6 @@ with tab2:
                 })
                 df_sanduiches = df_sanduiches.sort_values('Subtotal', ascending=False)
                 
-                # Renderiza como HTML para garantir alinhamento
                 html_sanduiches = df_sanduiches.style.format({
                     'Qnt': '{:.0f}',
                     'Preço Unitário': 'R$ {:.2f}',
@@ -855,15 +751,10 @@ with tab2:
                 }).set_table_styles(get_centered_table_styles()).hide(axis='index').to_html()
                 
                 st.markdown(html_sanduiches, unsafe_allow_html=True)
-                
-                st.write("") # Espaçamento
-                st.metric(
-                    "Total Sanduíches", 
-                    format_currency(valor_real_sanduiches),
-                    delta=format_currency(valor_real_sanduiches - valor_sanduiches)
-                )
+                st.write("")
+                st.metric("Total Sanduíches", format_currency(valor_real_sanduiches))
             else:
-                st.info("Não foi possível encontrar uma combinação para sanduíches.")
+                st.info("Nenhuma combinação encontrada para sanduíches.")
         
         with col2:
             st.markdown("### 🍹 Bebidas")
@@ -876,7 +767,6 @@ with tab2:
                 })
                 df_bebidas = df_bebidas.sort_values('Subtotal', ascending=False)
                 
-                # Renderiza como HTML para garantir alinhamento
                 html_bebidas = df_bebidas.style.format({
                     'Qnt': '{:.0f}',
                     'Preço Unitário': 'R$ {:.2f}',
@@ -884,17 +774,11 @@ with tab2:
                 }).set_table_styles(get_centered_table_styles()).hide(axis='index').to_html()
                 
                 st.markdown(html_bebidas, unsafe_allow_html=True)
-                
-                st.write("") # Espaçamento
-                st.metric(
-                    "Total Bebidas", 
-                    format_currency(valor_real_bebidas),
-                    delta=format_currency(valor_real_bebidas - valor_bebidas)
-                )
+                st.write("")
+                st.metric("Total Bebidas", format_currency(valor_real_bebidas))
             else:
-                st.info("Não foi possível encontrar uma combinação para bebidas.")
+                st.info("Nenhuma combinação encontrada para bebidas.")
         
-        # Total geral
         st.markdown("---")
         st.markdown("### 💰 Total")
         st.metric(
@@ -903,26 +787,25 @@ with tab2:
             delta=format_currency(valor_real_total - valor_selecionado)
         )
         
-        # Disclaimer
+        if valor_real_total == valor_selecionado:
+            st.success("✅ Valor exato encontrado!")
+        else:
+            st.warning(f"⚠️ Diferença de {format_currency(valor_selecionado - valor_real_total)}")
+            
         st.warning("""
         **Atenção:** Esta é apenas uma combinação hipotética que corresponde aproximadamente 
-        ao valor vendido. O número real de produtos pode variar. Use essa informação apenas 
-        como um indicativo para análise de vendas.
+        ao valor vendido. O número real de produtos pode variar.
         """)
-        
     else:
         st.info("Faça o upload de dados na aba 'Resumo das Vendas' para visualizar possíveis combinações.")
 
 with tab3:
     st.header("💰 Cadastro e Análise de Recebimentos")
-    
-    # Seção 1: Formulário para adicionar novos dados
     with st.expander("➕ Adicionar Novo Registro", expanded=True):
         with st.form("add_receipt_form"):
             cols = st.columns([1, 1, 1, 1])
             with cols[0]:
                 data = st.date_input("Data*", value=datetime.now())
-            
             st.write("**Valores por Forma de Pagamento**")
             cols = st.columns(3)
             with cols[0]:
@@ -931,223 +814,97 @@ with tab3:
                 cartao = st.number_input("Cartão (R$)*", min_value=0.0, step=10.0)
             with cols[2]:
                 pix = st.number_input("PIX (R$)*", min_value=0.0, step=10.0)
-            
             total_dia = dinheiro + cartao + pix
             st.metric("Total do Dia", format_currency(total_dia))
-            
             submitted = st.form_submit_button("✅ Salvar Registro")
-            
             if submitted:
                 if total_dia <= 0:
                     st.error("O total do dia deve ser maior que zero!")
                 else:
                     try:
-                        new_record = pd.DataFrame({
-                            'Data': [data],
-                            'Dinheiro': [dinheiro],
-                            'Cartao': [cartao],
-                            'Pix': [pix]
-                        })
-                        st.session_state.df_receipts = pd.concat(
-                            [st.session_state.df_receipts, new_record], 
-                            ignore_index=True
-                        )
+                        new_record = pd.DataFrame({'Data': [data], 'Dinheiro': [dinheiro], 'Cartao': [cartao], 'Pix': [pix]})
+                        st.session_state.df_receipts = pd.concat([st.session_state.df_receipts, new_record], ignore_index=True)
                         save_data(st.session_state.df_receipts)
                         st.success("Registro salvo com sucesso!")
                         st.rerun()
                     except Exception as e:
                         st.error(f"Erro ao salvar: {str(e)}")
 
-    # Seção 2: Visualização dos dados e gráficos
     if not st.session_state.df_receipts.empty:
-        # Filtros de data
         st.subheader("📅 Filtros de Período")
-        
-        # Opções de filtro
-        filtro_tipo = st.radio("Tipo de Filtro:", 
-                             ["Intervalo de Datas", "Mês Específico"], 
-                             horizontal=True)
-        
+        filtro_tipo = st.radio("Tipo de Filtro:", ["Intervalo de Datas", "Mês Específico"], horizontal=True)
         if filtro_tipo == "Intervalo de Datas":
             cols = st.columns(2)
             with cols[0]:
-                inicio = st.date_input("Data inicial", 
-                                     value=st.session_state.df_receipts['Data'].min())
+                inicio = st.date_input("Data inicial", value=st.session_state.df_receipts['Data'].min())
             with cols[1]:
-                fim = st.date_input("Data final", 
-                                  value=st.session_state.df_receipts['Data'].max())
+                fim = st.date_input("Data final", value=st.session_state.df_receipts['Data'].max())
         else:
-            # Filtro por mês
             meses_disponiveis = sorted(st.session_state.df_receipts['Data'].dt.to_period('M').unique(), reverse=True)
-            mes_selecionado = st.selectbox("Selecione o mês:", 
-                                         options=meses_disponiveis,
-                                         format_func=lambda x: x.strftime('%B/%Y'))
-            
+            mes_selecionado = st.selectbox("Selecione o mês:", options=meses_disponiveis, format_func=lambda x: x.strftime('%B/%Y'))
             inicio = pd.to_datetime(mes_selecionado.start_time)
             fim = pd.to_datetime(mes_selecionado.end_time)
         
-        # Aplica filtros
-        df_filtered = st.session_state.df_receipts[
-            (st.session_state.df_receipts['Data'] >= pd.to_datetime(inicio)) & 
-            (st.session_state.df_receipts['Data'] <= pd.to_datetime(fim))
-        ].copy()
+        df_filtered = st.session_state.df_receipts[(st.session_state.df_receipts['Data'] >= pd.to_datetime(inicio)) & (st.session_state.df_receipts['Data'] <= pd.to_datetime(fim))].copy()
         
         if not df_filtered.empty:
-            # Adiciona coluna de Total
             df_filtered['Total'] = df_filtered['Dinheiro'] + df_filtered['Cartao'] + df_filtered['Pix']
-            
-            # Calcula totais por forma de pagamento
-            totais = {
-                'Dinheiro': df_filtered['Dinheiro'].sum(),
-                'Cartão': df_filtered['Cartao'].sum(),
-                'PIX': df_filtered['Pix'].sum()
-            }
+            totais = {'Dinheiro': df_filtered['Dinheiro'].sum(), 'Cartão': df_filtered['Cartao'].sum(), 'PIX': df_filtered['Pix'].sum()}
             total_periodo = sum(totais.values())
             
-            # Seção 3: Métricas Resumo
             st.subheader("📊 Resumo do Período")
-            
-            # CSS para ajustar o tamanho das métricas
-            st.markdown("""
-            <style>
-                div[data-testid="stMetric"] {
-                    padding: 5px 10px;
-                }
-                div[data-testid="stMetric"] > div {
-                    gap: 2px;
-                }
-                div[data-testid="stMetric"] label {
-                    font-size: 14px !important;
-                    font-weight: 500 !important;
-                    color: #6b7280 !important;
-                }
-                div[data-testid="stMetric"] > div > div {
-                    font-size: 18px !important;
-                    font-weight: 600 !important;
-                }
-            </style>
-            """, unsafe_allow_html=True)
-            
-            # Layout compacto em 2 linhas de 4 colunas
+            st.markdown("""<style>div[data-testid="stMetric"] {padding: 5px 10px;} div[data-testid="stMetric"] > div {gap: 2px;} div[data-testid="stMetric"] label {font-size: 14px !important; font-weight: 500 !important; color: #6b7280 !important;} div[data-testid="stMetric"] > div > div {font-size: 18px !important; font-weight: 600 !important;}</style>""", unsafe_allow_html=True)
             cols1 = st.columns(4)
             cols2 = st.columns(4)
+            with cols1[0]: st.metric("Dinheiro", format_currency(totais['Dinheiro']))
+            with cols1[1]: st.metric("Cartão", format_currency(totais['Cartão']))
+            with cols1[2]: st.metric("PIX", format_currency(totais['PIX']))
+            with cols1[3]: st.metric("Total Geral", format_currency(total_periodo))
+            with cols2[0]: st.metric("Média Diária", format_currency(df_filtered['Total'].mean()))
+            with cols2[1]: st.metric("Maior Venda", format_currency(df_filtered['Total'].max()))
+            with cols2[2]: st.metric("Dias Registrados", len(df_filtered))
+            with cols2[3]: st.metric("Dias sem Registro", (fim - inicio).days + 1 - len(df_filtered))
             
-            with cols1[0]:
-                st.metric("Dinheiro", format_currency(totais['Dinheiro']), 
-                         help="Total em recebimentos de dinheiro")
-            with cols1[1]:
-                st.metric("Cartão", format_currency(totais['Cartão']),
-                         help="Total em recebimentos por cartão")
-            with cols1[2]:
-                st.metric("PIX", format_currency(totais['PIX']),
-                         help="Total em recebimentos por PIX")
-            with cols1[3]:
-                st.metric("Total Geral", format_currency(total_periodo),
-                         help="Soma de todas as formas de pagamento")
-            
-            with cols2[0]:
-                st.metric("Média Diária", format_currency(df_filtered['Total'].mean()),
-                         help="Média de vendas por dia")
-            with cols2[1]:
-                st.metric("Maior Venda", format_currency(df_filtered['Total'].max()),
-                         help=f"Dia: {df_filtered.loc[df_filtered['Total'].idxmax(), 'Data'].strftime('%d/%m')}")
-            with cols2[2]:
-                st.metric("Dias Registrados", len(df_filtered),
-                         help="Total de dias com vendas registradas")
-            with cols2[3]:
-                st.metric("Dias sem Registro", (fim - inicio).days + 1 - len(df_filtered),
-                         help="Dias do período sem vendas registradas")
-            
-            # Seção 4: Gráficos
             st.subheader("📈 Visualizações Gráficas")
-            
             tab_graficos1, tab_graficos2, tab_graficos3 = st.tabs(["Distribuição", "Comparação", "Acumulado"])
-            
             with tab_graficos1:
-                # Gráfico de Pizza
-                df_pie = pd.DataFrame({
-                    'Forma': list(totais.keys()),
-                    'Valor': list(totais.values())
-                })
-                
-                pie_chart = alt.Chart(df_pie).mark_arc().encode(
-                    theta='Valor',
-                    color=alt.Color('Forma', legend=alt.Legend(title="Forma de Pagamento")),
-                    tooltip=['Forma', 'Valor']
-                ).properties(
-                    height=400,
-                    title='Distribuição dos Recebimentos'
-                )
+                df_pie = pd.DataFrame({'Forma': list(totais.keys()), 'Valor': list(totais.values())})
+                pie_chart = alt.Chart(df_pie).mark_arc().encode(theta='Valor', color=alt.Color('Forma', legend=alt.Legend(title="Forma de Pagamento")), tooltip=['Forma', 'Valor']).properties(height=400, title='Distribuição dos Recebimentos')
                 st.altair_chart(pie_chart, use_container_width=True)
-            
             with tab_graficos2:
-                # Gráfico de Barras
-                df_bar = df_filtered.melt(id_vars=['Data'], 
-                                        value_vars=['Dinheiro', 'Cartao', 'Pix'],
-                                        var_name='Forma', 
-                                        value_name='Valor')
-                
-                bar_chart = alt.Chart(df_bar).mark_bar().encode(
-                    x='monthdate(Data):O',
-                    y='sum(Valor):Q',
-                    color='Forma',
-                    tooltip=['Forma', 'sum(Valor)']
-                ).properties(
-                    height=400,
-                    title='Vendas por Forma de Pagamento'
-                )
+                df_bar = df_filtered.melt(id_vars=['Data'], value_vars=['Dinheiro', 'Cartao', 'Pix'], var_name='Forma', value_name='Valor')
+                bar_chart = alt.Chart(df_bar).mark_bar().encode(x='monthdate(Data):O', y='sum(Valor):Q', color='Forma', tooltip=['Forma', 'sum(Valor)']).properties(height=400, title='Vendas por Forma de Pagamento')
                 st.altair_chart(bar_chart, use_container_width=True)
-            
             with tab_graficos3:
-                # Gráfico Acumulado
                 df_acumulado = df_filtered.sort_values('Data').copy()
                 df_acumulado['Acumulado'] = df_acumulado['Total'].cumsum()
-                
-                line_chart = alt.Chart(df_acumulado).mark_line(
-                    point=True,
-                    strokeWidth=3,
-                    color='red'
-                ).encode(
-                    x='Data:T',
-                    y='Acumulado:Q',
-                    tooltip=['Data', 'Acumulado']
-                ).properties(
-                    height=400,
-                    title='Receita Total Acumulada'
-                )
-                
+                line_chart = alt.Chart(df_acumulado).mark_line(point=True, strokeWidth=3, color='red').encode(x='Data:T', y='Acumulado:Q', tooltip=['Data', 'Acumulado']).properties(height=400, title='Receita Total Acumulada')
                 st.altair_chart(line_chart, use_container_width=True)
             
-            # Seção 5: Tabela de Dados
             st.subheader("📋 Dados Detalhados")
-            st.dataframe(
-                df_filtered.sort_values('Data', ascending=False).style.format({
-                    'Dinheiro': lambda x: format_currency(x),
-                    'Cartao': lambda x: format_currency(x),
-                    'Pix': lambda x: format_currency(x),
-                    'Total': lambda x: format_currency(x)
-                })
-                .set_properties(**{'text-align': 'center'})
-                .set_table_styles([
-                    {'selector': 'th', 'props': [('text-align', 'center')]},
-                    {'selector': 'td', 'props': [('text-align', 'center')]}
-                ]),
-                use_container_width=True,
-                height=400
-            )
+            
+            # Tabela centralizada na Tab 3 usando HTML também para garantir padrão
+            def get_centered_table_styles_tab3():
+                return [
+                    {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#f0f2f6'), ('color', 'black'), ('padding', '8px')]},
+                    {'selector': 'td', 'props': [('text-align', 'center'), ('padding', '8px')]},
+                    {'selector': 'table', 'props': [('width', '100%')]}
+                ]
+            
+            html_tabela_dados = df_filtered.sort_values('Data', ascending=False).style.format({
+                'Dinheiro': lambda x: format_currency(x),
+                'Cartao': lambda x: format_currency(x),
+                'Pix': lambda x: format_currency(x),
+                'Total': lambda x: format_currency(x),
+                'Data': lambda x: x.strftime('%d/%m/%Y')
+            }).set_table_styles(get_centered_table_styles_tab3()).hide(axis='index').to_html()
+            
+            st.markdown(html_tabela_dados, unsafe_allow_html=True)
             
         else:
             st.warning("Nenhum registro encontrado no período selecionado")
     else:
         st.info("Nenhum dado cadastrado ainda. Adicione seu primeiro registro acima.")
 
-# Adicionar rodapé
 st.divider()
-st.markdown(
-    """
-    <div style='text-align: center; color: gray; font-size: small;'>
-        © 2025 Clips Burger - Sistema de Gestão | Desenvolvido com ❤️ e Streamlit
-    </div>
-    """, 
-    unsafe_allow_html=True
-)
+st.markdown("""<div style='text-align: center; color: gray; font-size: small;'>© 2025 Clips Burger - Sistema de Gestão | Desenvolvido com ❤️ e Streamlit</div>""", unsafe_allow_html=True)
