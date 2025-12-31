@@ -464,9 +464,17 @@ st.set_page_config(
 # --- CSS GLOBAL ---
 st.markdown("""
 <style>
-    /* 1. Fundo da página em Azul Acinzentado Claro */
+    /* 1. FUNDO DINÂMICO (Gradiente sutil que se move) */
     .stApp {
-        background-color: #e8ecf1;
+        background: linear-gradient(-45deg, #e8ecf1, #dce2e9, #ffffff, #dce2e9);
+        background-size: 400% 400%;
+        animation: gradientBG 15s ease infinite;
+    }
+
+    @keyframes gradientBG {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
     }
 
     /* 2. Centralização de tabelas */
@@ -484,17 +492,16 @@ st.markdown("""
         background-color: white;
     }
 
-    /* 4. MENU ESTILIZADO (SEM BOLINHA, LINHA VERMELHA HOVER, MESMA LINHA) */
+    /* 4. MENU ESTILIZADO */
     div[role="radiogroup"] {
         display: flex;
         flex-direction: row;
-        justify-content: center; /* Centraliza as tabs */
+        justify-content: center;
         width: 100%;
         background-color: transparent;
-        gap: 15px; /* Espaço entre as tabs */
+        gap: 15px;
     }
     
-    /* O container de cada item do radio */
     div[role="radiogroup"] label {
         background-color: transparent !important;
         border: none !important;
@@ -503,24 +510,21 @@ st.markdown("""
         box-shadow: none !important;
         cursor: pointer;
         transition: all 0.3s ease;
-        border-right: 2px solid #bbb !important; /* Barra vertical entre itens */
+        border-right: 2px solid #bbb !important;
         border-radius: 0 !important;
     }
 
-    /* Remove a barra do último item */
     div[role="radiogroup"] label:last-child {
         border-right: none !important;
     }
 
-    /* Esconder o "botãozinho" (círculo do radio) */
     div[role="radiogroup"] label > div:first-child {
         display: none !important;
     }
 
-    /* Estilo do Texto da Tab (Fonte 16px para não quebrar) */
     div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {
         font-size: 16px !important; 
-        white-space: nowrap !important; /* Impede quebra de linha */
+        white-space: nowrap !important;
         font-weight: 500;
         margin: 0;
         padding-bottom: 2px;
@@ -528,23 +532,21 @@ st.markdown("""
         border-bottom: 2px solid transparent; 
     }
 
-    /* Efeito Hover: Linha Vermelha embaixo do texto */
     div[role="radiogroup"] label:hover div[data-testid="stMarkdownContainer"] p {
         color: #d93025 !important;
         border-bottom: 2px solid #d93025 !important;
     }
 
-    /* Item Selecionado */
     div[role="radiogroup"] label[data-checked="true"] div[data-testid="stMarkdownContainer"] p {
         color: #d93025 !important;
         border-bottom: 2px solid #d93025 !important;
         font-weight: bold;
     }
 
-    /* 5. FAÍSCAS */
+    /* 5. FAÍSCAS (Aumentadas e ajustadas) */
     .logo-container {
         position: relative;
-        width: 400px; /* Aumentado para 400px */
+        width: 400px;
         height: 400px;
         margin: 0 auto 20px auto;
         display: flex;
@@ -553,26 +555,26 @@ st.markdown("""
     }
 
     .logo-animada {
-        width: 400px; /* Aumentado para 400px */
+        width: 400px;
         height: auto;
         position: relative;
-        z-index: 20; /* Fica na FRENTE das faíscas */
+        z-index: 20; 
     }
 
     .sparkle {
         position: absolute;
-        width: 8px; /* Maiores (8px) */
+        width: 8px; /* Maiores */
         height: 8px;
-        background-color: #FF4500; /* Laranja avermelhado */
+        background-color: #FF4500;
         border-radius: 50%;
-        bottom: 10px; /* Nascem na base */
-        z-index: 1; /* Fica ATRÁS da logo */
+        bottom: 10px;
+        z-index: 1; /* ATRÁS DA LOGO */
         opacity: 0;
         box-shadow: 0 0 5px #FFD700, 0 0 10px #FF8C00;
         pointer-events: none;
     }
 
-    /* Animação: Sobe MUITO ALTO (translateY -550px) para cobrir a logo de 400px */
+    /* Animação: Sobe MUITO ALTO (-550px) para aparecer atrás da logo */
     @keyframes steady-rise-high {
         0% {
             opacity: 0;
@@ -582,15 +584,14 @@ st.markdown("""
              opacity: 0.8; 
         }
         80% {
-            opacity: 0.6; /* Mantém visível por bastante tempo */
+            opacity: 0.6; 
         }
         100% {
             opacity: 0; 
-            transform: translateY(-550px) scale(0.1); /* Sobe bem acima da logo */
+            transform: translateY(-550px) scale(0.1); 
         }
     }
 
-    /* Configuração individual (8 faíscas) */
     .s1 { bottom: 20px; left: 45%; animation: steady-rise-high 5s linear infinite; animation-delay: 0s; }
     .s2 { bottom: 10px; left: 55%; animation: steady-rise-high 6s linear infinite; animation-delay: 1.5s; }
     .s3 { bottom: 25px; left: 50%; animation: steady-rise-high 5.5s linear infinite; animation-delay: 3.0s; }
@@ -648,12 +649,7 @@ try:
 except Exception as e:
     st.error(f"Erro na logo: {e}")
 
-st.markdown("""
-Bem-vindo(a)! Esta ferramenta ajuda a visualizar suas vendas por forma de pagamento
-e tenta encontrar combinações *hipotéticas* de produtos que poderiam corresponder a esses totais.
-""")
-
-# SUBSTITUIÇÃO DE DIVISORES POR HTML CUSTOMIZADO (TRANSPARENTE E PRÓXIMO)
+# Divisor transparente e fino
 st.markdown('<div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 10px; margin-bottom: 5px;"></div>', unsafe_allow_html=True)
 
 # --- SIDEBAR ---
@@ -684,7 +680,7 @@ with st.sidebar:
     
     st.info("Lembre-se: As combinações são aproximações heurísticas.")
 
-# --- MENU DE NAVEGAÇÃO ESTILIZADO (SEM "RECEBIMENTOS") ---
+# --- MENU DE NAVEGAÇÃO ---
 menu_opcoes = ["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💸 Calculadora PIX"]
 escolha_menu = st.radio("Navegação", menu_opcoes, horizontal=True, label_visibility="collapsed", key="nav_menu")
 
