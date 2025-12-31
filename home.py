@@ -656,7 +656,7 @@ e tenta encontrar combinações *hipotéticas* de produtos que poderiam correspo
 """)
 
 # LINHA HORIZONTAL 1 (DIVISOR SUPERIOR) - SIMÉTRICO
-st.markdown('<div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 20px; margin-bottom: 20px;"></div>', unsafe_allow_html=True)
+#st.markdown('<div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 20px; margin-bottom: 20px;"></div>', unsafe_allow_html=True)
 
 # --- SIDEBAR ---
 with st.sidebar:
