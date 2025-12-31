@@ -77,6 +77,14 @@ def format_currency(value):
         return "R$ -"
     return f"R$ {float(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
+def get_global_centered_styles():
+    """Retorna estilos CSS para centralizar tabelas Pandas/HTML."""
+    return [
+        {'selector': 'th', 'props': [('text-align', 'center'), ('vertical-align', 'middle'), ('background-color', '#262730'), ('color', 'white'), ('padding', '8px')]},
+        {'selector': 'td', 'props': [('text-align', 'center'), ('vertical-align', 'middle'), ('padding', '8px')]},
+        {'selector': 'table', 'props': [('width', '100%'), ('margin-left', 'auto'), ('margin-right', 'auto')]}
+    ]
+
 def init_data_file():
     """Inicializa o arquivo de dados se não existir."""
     if not os.path.exists(CONFIG["excel_file"]):
@@ -317,6 +325,7 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
     ]
     
     table = Table(data, colWidths=[doc.width/2.5, doc.width/2.5])
+    # ESTILO DO PDF CENTRALIZADO
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (1, 0), colors.grey),
         ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
@@ -325,7 +334,8 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
         ('BOTTOMPADDING', (0, 0), (1, 0), 12),
         ('BACKGROUND', (0, -1), (1, -1), colors.lightgrey),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+        # Centraliza tudo (antes estava RIGHT para valores)
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
     ]))
     elements.append(table)
     elements.append(Spacer(1, 0.5*inch))
@@ -373,6 +383,7 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
         data.append([row['Forma'], format_currency(row['Valor'])])
     
     table = Table(data, colWidths=[doc.width/2, doc.width/4])
+    # ESTILO DO PDF CENTRALIZADO
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -380,7 +391,8 @@ def create_pdf_report(df, vendas, total_vendas, imposto_simples, custo_funcionar
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+        # Centraliza tudo (antes estava RIGHT para valores)
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
     ]))
     elements.append(table)
     elements.append(Spacer(1, inch))
@@ -468,14 +480,7 @@ def processar_analise_genetica(valor_alvo_total, drink_pct, pop_size, n_gens, ta
     valor_real_bebidas = calculate_combination_value(combinacao_bebidas, CARDAPIOS["bebidas"])
     valor_real_total = valor_real_sanduiches + valor_real_bebidas
     
-    # 3. EXIBIÇÃO
-    def get_centered_table_styles():
-        return [
-            {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#262730'), ('color', 'white'), ('padding', '8px')]},
-            {'selector': 'td', 'props': [('text-align', 'center'), ('padding', '8px')]},
-            {'selector': 'table', 'props': [('width', '100%'), ('margin-left', 'auto'), ('margin-right', 'auto')]}
-        ]
-
+    # 3. EXIBIÇÃO COM TABELAS CENTRALIZADAS
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("### 🍔 Sanduíches")
@@ -485,7 +490,7 @@ def processar_analise_genetica(valor_alvo_total, drink_pct, pop_size, n_gens, ta
                                  'Subtotal': [CARDAPIOS["sanduiches"][k]*v for k,v in combinacao_sanduiches.items()]})
             df_s = df_s.sort_values('Subtotal', ascending=False)
             html_s = df_s.style.format({'Qnt':'{:.0f}', 'Preço Unitário':'R$ {:.2f}', 'Subtotal':'R$ {:.2f}'})\
-                .set_table_styles(get_centered_table_styles()).hide(axis='index').to_html()
+                .set_table_styles(get_global_centered_styles()).hide(axis='index').to_html()
             st.markdown(html_s, unsafe_allow_html=True)
             st.write("")
             st.metric("Total Sanduíches", format_currency(valor_real_sanduiches))
@@ -499,7 +504,7 @@ def processar_analise_genetica(valor_alvo_total, drink_pct, pop_size, n_gens, ta
                                  'Subtotal': [CARDAPIOS["bebidas"][k]*v for k,v in combinacao_bebidas.items()]})
             df_b = df_b.sort_values('Subtotal', ascending=False)
             html_b = df_b.style.format({'Qnt':'{:.0f}', 'Preço Unitário':'R$ {:.2f}', 'Subtotal':'R$ {:.2f}'})\
-                .set_table_styles(get_centered_table_styles()).hide(axis='index').to_html()
+                .set_table_styles(get_global_centered_styles()).hide(axis='index').to_html()
             st.markdown(html_b, unsafe_allow_html=True)
             st.write("")
             st.metric("Total Bebidas", format_currency(valor_real_bebidas))
@@ -536,6 +541,20 @@ st.set_page_config(
     initial_sidebar_state=CONFIG["sidebar_state"]
 )
 
+# CSS GLOBAL PARA FORÇAR CENTRALIZAÇÃO DE TABELAS
+st.markdown("""
+<style>
+    th, td {
+        text-align: center !important;
+        vertical-align: middle !important;
+    }
+    div[data-testid="stTable"] table {
+        margin-left: auto;
+        margin-right: auto;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # --- INICIALIZAÇÃO ---
 init_data_file()
 if 'df_receipts' not in st.session_state:
@@ -546,47 +565,105 @@ if 'vendas_data' not in st.session_state:
     st.session_state.vendas_data = None
 
 # --- INTERFACE PRINCIPAL ---
-# Função para converter imagem em Base64
+
+# Função para converter imagem em Base64 (Necessário para HTML)
 def get_img_as_base64(file_path):
     with open(file_path, "rb") as f:
         data = f.read()
     return base64.b64encode(data).decode()
 
-col_title1, col_title2 = st.columns([0.30, 0.70])
-with col_title1:
-    try:
-        # Verifica se o arquivo existe e renderiza com HTML/CSS
-        if os.path.exists(CONFIG["logo_path"]):
-            img_base64 = get_img_as_base64(CONFIG["logo_path"])
-            st.markdown(
-                f"""
-                <style>
-                @keyframes float {{
-                    0% {{ transform: translateY(0px); }}
-                    50% {{ transform: translateY(-10px); }}
-                    100% {{ transform: translateY(0px); }}
-                }}
-                .logo-animada {{
-                    width: 150px;
-                    animation: float 3s ease-in-out infinite;
-                    display: block;
-                    margin-left: auto;
-                    margin-right: auto;
-                }}
-                </style>
-                <img src="data:image/png;base64,{img_base64}" class="logo-animada">
-                """,
-                unsafe_allow_html=True
-            )
-        else:
-            st.warning("Logo não encontrada")
-    except Exception as e:
-        st.error(f"Erro na logo: {e}")
+# --- CSS PARA LOGO MAIOR, FLUTUAÇÃO E FAÍSCAS ---
+st.markdown("""
+<style>
+    /* Container principal para centralizar e organizar */
+    .logo-container {
+        position: relative;
+        width: 300px; /* Largura aumentada do container */
+        height: 300px;
+        margin: 0 auto 20px auto; /* Centraliza horizontalmente e dá margem inferior */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
 
-with col_title2:
-    st.title("Sistema de Gestão")
-    st.markdown("<p style='font-weight:bold; font-size:30px; margin-top:-15px'>Clip's Burger</p>", 
-               unsafe_allow_html=True)
+    /* A imagem da logo em si */
+    .logo-animada {
+        width: 300px; /* Tamanho aumentado da logo */
+        height: auto;
+        animation: float 3s ease-in-out infinite;
+        position: relative;
+        z-index: 2; /* Garante que a logo fique na frente das faíscas */
+    }
+
+    /* Animação de flutuação */
+    @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-15px); }
+        100% { transform: translateY(0px); }
+    }
+
+    /* --- Efeito de Faíscas --- */
+    .sparkle {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        background-color: #FFD700; /* Cor Dourada */
+        border-radius: 50%;
+        top: 50%;
+        left: 50%;
+        z-index: 1; /* Atrás da logo */
+        opacity: 0;
+        box-shadow: 0 0 8px #FFD700, 0 0 15px orange; /* Brilho */
+        pointer-events: none;
+    }
+
+    /* Definição dos movimentos das faíscas para 4 direções */
+    @keyframes sparkle-move-1 {
+        0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
+        100% { transform: translate(-150px, -120px) scale(0); opacity: 0; }
+    }
+    @keyframes sparkle-move-2 {
+        0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
+        100% { transform: translate(150px, -100px) scale(0); opacity: 0; }
+    }
+    @keyframes sparkle-move-3 {
+        0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
+        100% { transform: translate(-120px, 150px) scale(0); opacity: 0; }
+    }
+    @keyframes sparkle-move-4 {
+        0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
+        100% { transform: translate(130px, 130px) scale(0); opacity: 0; }
+    }
+
+    /* Aplicando as animações com atrasos diferentes */
+    .s1 { animation: sparkle-move-1 1.8s ease-out infinite; }
+    .s2 { animation: sparkle-move-2 1.8s ease-out 0.5s infinite; }
+    .s3 { animation: sparkle-move-3 1.8s ease-out 1.0s infinite; }
+    .s4 { animation: sparkle-move-4 1.8s ease-out 1.5s infinite; }
+</style>
+""", unsafe_allow_html=True)
+
+try:
+    # Verifica se o arquivo existe e renderiza com HTML/CSS
+    if os.path.exists(CONFIG["logo_path"]):
+        img_base64 = get_img_as_base64(CONFIG["logo_path"])
+        # Estrutura HTML com container, faíscas e a imagem
+        st.markdown(
+            f"""
+            <div class="logo-container">
+                <div class="sparkle s1"></div>
+                <div class="sparkle s2"></div>
+                <div class="sparkle s3"></div>
+                <div class="sparkle s4"></div>
+                <img src="data:image/png;base64,{img_base64}" class="logo-animada">
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        st.warning("Logo não encontrada. Verifique o arquivo logo.png.")
+except Exception as e:
+    st.error(f"Erro na logo: {e}")
 
 st.markdown("""
 Bem-vindo(a)! Esta ferramenta ajuda a visualizar suas vendas por forma de pagamento
@@ -925,13 +1002,14 @@ with tab3:
             
             st.subheader("📋 Dados Detalhados")
             
+            # USO DA FUNÇÃO GLOBAL CENTRALIZADA
             html_tabela_dados = df_filtered.sort_values('Data', ascending=False).style.format({
                 'Dinheiro': lambda x: format_currency(x),
                 'Cartao': lambda x: format_currency(x),
                 'Pix': lambda x: format_currency(x),
                 'Total': lambda x: format_currency(x),
                 'Data': lambda x: x.strftime('%d/%m/%Y')
-            }).set_table_styles(get_centered_table_styles()).hide(axis='index').to_html()
+            }).set_table_styles(get_global_centered_styles()).hide(axis='index').to_html()
             st.markdown(html_tabela_dados, unsafe_allow_html=True)
             
         else:
