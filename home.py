@@ -773,7 +773,7 @@ with tab2:
                 combinacao_sanduiches, tentativas_sand = buscar_combinacao_exata(
                     CARDAPIOS["sanduiches"], 
                     valor_sanduiches,
-                    max_time_seconds=5, # Tenta por 5 segundos
+                    max_time_seconds=5, 
                     population_size=80,
                     generations=150,
                     combination_size=tamanho_combinacao_sanduiches
@@ -784,7 +784,7 @@ with tab2:
                 combinacao_bebidas, tentativas_beb = buscar_combinacao_exata(
                     CARDAPIOS["bebidas"], 
                     valor_bebidas,
-                    max_time_seconds=5, # Tenta por 5 segundos
+                    max_time_seconds=5,
                     population_size=80,
                     generations=150,
                     combination_size=tamanho_combinacao_bebidas
@@ -793,7 +793,6 @@ with tab2:
                 time.sleep(0.5)
                 my_bar.empty()
                 
-                # Mostra quantas tentativas foram feitas
                 st.caption(f"🤖 O algoritmo realizou {tentativas_sand + tentativas_beb} ciclos completos de evolução para tentar chegar no valor exato.")
 
             else:  # Busca Local
@@ -803,27 +802,21 @@ with tab2:
                 for _ in range(max_iterations):
                     candidate = create_individual(CARDAPIOS["sanduiches"], tamanho_combinacao_sanduiches)
                     candidate = mutate(candidate, CARDAPIOS["sanduiches"], mutation_rate=0.3, max_items=tamanho_combinacao_sanduiches)
-                    
                     diff = evaluate_fitness(candidate, CARDAPIOS["sanduiches"], valor_sanduiches)
                     if diff < best_diff_sanduiches:
                         best_sanduiches = candidate
                         best_diff_sanduiches = diff
-                
                 combinacao_sanduiches = {k: round(v) for k, v in best_sanduiches.items() if round(v) > 0}
                 
-                # Implementação da busca local para bebidas
                 best_bebidas = {}
                 best_diff_bebidas = float('inf')
-                
                 for _ in range(max_iterations):
                     candidate = create_individual(CARDAPIOS["bebidas"], tamanho_combinacao_bebidas)
                     candidate = mutate(candidate, CARDAPIOS["bebidas"], mutation_rate=0.3)
-                    
                     diff = evaluate_fitness(candidate, CARDAPIOS["bebidas"], valor_bebidas)
                     if diff < best_diff_bebidas:
                         best_bebidas = candidate
                         best_diff_bebidas = diff
-                
                 combinacao_bebidas = {k: round(v) for k, v in best_bebidas.items() if round(v) > 0}
         
         # Calcular valores reais
@@ -835,6 +828,14 @@ with tab2:
         st.subheader("Combinação Sugerida")
         col1, col2 = st.columns(2)
         
+        # Função auxiliar para gerar estilo HTML forçado
+        def get_centered_table_styles():
+            return [
+                {'selector': 'th', 'props': [('text-align', 'center'), ('background-color', '#262730'), ('color', 'white'), ('padding', '8px')]},
+                {'selector': 'td', 'props': [('text-align', 'center'), ('padding', '8px')]},
+                {'selector': 'table', 'props': [('width', '100%'), ('margin-left', 'auto'), ('margin-right', 'auto')]}
+            ]
+
         with col1:
             st.markdown("### 🍔 Sanduíches")
             if combinacao_sanduiches:
@@ -846,21 +847,16 @@ with tab2:
                 })
                 df_sanduiches = df_sanduiches.sort_values('Subtotal', ascending=False)
                 
-                st.dataframe(
-                    df_sanduiches.style.format({
-                        'Qnt': '{:.0f}',       # <--- FORÇA INTEIRO VISUAL
-                        'Preço Unitário': 'R$ {:.2f}',
-                        'Subtotal': 'R$ {:.2f}'
-                    })
-                    .set_properties(**{'text-align': 'center'})
-                    .set_table_styles([
-                        {'selector': 'th', 'props': [('text-align', 'center')]},
-                        {'selector': 'td', 'props': [('text-align', 'center')]}
-                    ]),
-                    hide_index=True,
-                    use_container_width=True
-                )
+                # Renderiza como HTML para garantir alinhamento
+                html_sanduiches = df_sanduiches.style.format({
+                    'Qnt': '{:.0f}',
+                    'Preço Unitário': 'R$ {:.2f}',
+                    'Subtotal': 'R$ {:.2f}'
+                }).set_table_styles(get_centered_table_styles()).hide(axis='index').to_html()
                 
+                st.markdown(html_sanduiches, unsafe_allow_html=True)
+                
+                st.write("") # Espaçamento
                 st.metric(
                     "Total Sanduíches", 
                     format_currency(valor_real_sanduiches),
@@ -880,21 +876,16 @@ with tab2:
                 })
                 df_bebidas = df_bebidas.sort_values('Subtotal', ascending=False)
                 
-                st.dataframe(
-                    df_bebidas.style.format({
-                        'Qnt': '{:.0f}',       # <--- FORÇA INTEIRO VISUAL
-                        'Preço Unitário': 'R$ {:.2f}',
-                        'Subtotal': 'R$ {:.2f}'
-                    })
-                    .set_properties(**{'text-align': 'center'})
-                    .set_table_styles([
-                        {'selector': 'th', 'props': [('text-align', 'center')]},
-                        {'selector': 'td', 'props': [('text-align', 'center')]}
-                    ]),
-                    hide_index=True,
-                    use_container_width=True
-                )
+                # Renderiza como HTML para garantir alinhamento
+                html_bebidas = df_bebidas.style.format({
+                    'Qnt': '{:.0f}',
+                    'Preço Unitário': 'R$ {:.2f}',
+                    'Subtotal': 'R$ {:.2f}'
+                }).set_table_styles(get_centered_table_styles()).hide(axis='index').to_html()
                 
+                st.markdown(html_bebidas, unsafe_allow_html=True)
+                
+                st.write("") # Espaçamento
                 st.metric(
                     "Total Bebidas", 
                     format_currency(valor_real_bebidas),
@@ -904,6 +895,7 @@ with tab2:
                 st.info("Não foi possível encontrar uma combinação para bebidas.")
         
         # Total geral
+        st.markdown("---")
         st.markdown("### 💰 Total")
         st.metric(
             "Valor Total da Combinação", 
