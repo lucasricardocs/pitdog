@@ -464,7 +464,7 @@ st.set_page_config(
 # --- CSS GLOBAL ---
 st.markdown("""
 <style>
-    /* 1. FUNDO DINÂMICO (Gradiente sutil que se move) */
+    /* 1. FUNDO DINÂMICO */
     .stApp {
         background: linear-gradient(-45deg, #e8ecf1, #dce2e9, #ffffff, #dce2e9);
         background-size: 400% 400%;
@@ -543,7 +543,7 @@ st.markdown("""
         font-weight: bold;
     }
 
-    /* 5. FAÍSCAS (Aumentadas e ajustadas) */
+    /* 5. FAÍSCAS (Espalhadas no eixo X e Subindo mais alto) */
     .logo-container {
         position: relative;
         width: 400px;
@@ -563,7 +563,7 @@ st.markdown("""
 
     .sparkle {
         position: absolute;
-        width: 8px; /* Maiores */
+        width: 8px; 
         height: 8px;
         background-color: #FF4500;
         border-radius: 50%;
@@ -574,7 +574,7 @@ st.markdown("""
         pointer-events: none;
     }
 
-    /* Animação: Sobe MUITO ALTO (-550px) para aparecer atrás da logo */
+    /* Animação: Sobe BEM ALTO (-550px) para aparecer atrás da logo de 400px */
     @keyframes steady-rise-high {
         0% {
             opacity: 0;
@@ -592,14 +592,15 @@ st.markdown("""
         }
     }
 
-    .s1 { bottom: 20px; left: 45%; animation: steady-rise-high 5s linear infinite; animation-delay: 0s; }
-    .s2 { bottom: 10px; left: 55%; animation: steady-rise-high 6s linear infinite; animation-delay: 1.5s; }
-    .s3 { bottom: 25px; left: 50%; animation: steady-rise-high 5.5s linear infinite; animation-delay: 3.0s; }
-    .s4 { bottom: 15px; left: 40%; animation: steady-rise-high 4.5s linear infinite; animation-delay: 0.5s; }
-    .s5 { bottom: 5px;  left: 60%; animation: steady-rise-high 5.2s linear infinite; animation-delay: 2.2s; }
-    .s6 { bottom: 12px; left: 48%; animation: steady-rise-high 4.8s linear infinite; animation-delay: 1.2s; }
-    .s7 { bottom: 18px; left: 52%; animation: steady-rise-high 5.8s linear infinite; animation-delay: 2.8s; }
-    .s8 { bottom: 8px;  left: 42%; animation: steady-rise-high 5.0s linear infinite; animation-delay: 0.8s; }
+    /* DISTRIBUIÇÃO DAS FAÍSCAS (EIXO X - left de 5% a 95%) */
+    .s1 { bottom: 20px; left: 10%; animation: steady-rise-high 5s linear infinite; animation-delay: 0s; }
+    .s2 { bottom: 10px; left: 20%; animation: steady-rise-high 6s linear infinite; animation-delay: 1.5s; }
+    .s3 { bottom: 25px; left: 35%; animation: steady-rise-high 5.5s linear infinite; animation-delay: 3.0s; }
+    .s4 { bottom: 15px; left: 50%; animation: steady-rise-high 4.5s linear infinite; animation-delay: 0.5s; }
+    .s5 { bottom: 5px;  left: 65%; animation: steady-rise-high 5.2s linear infinite; animation-delay: 2.2s; }
+    .s6 { bottom: 12px; left: 80%; animation: steady-rise-high 4.8s linear infinite; animation-delay: 1.2s; }
+    .s7 { bottom: 18px; left: 90%; animation: steady-rise-high 5.8s linear infinite; animation-delay: 2.8s; }
+    .s8 { bottom: 8px;  left: 30%; animation: steady-rise-high 5.0s linear infinite; animation-delay: 0.8s; }
 
 </style>
 """, unsafe_allow_html=True)
@@ -649,8 +650,13 @@ try:
 except Exception as e:
     st.error(f"Erro na logo: {e}")
 
-# Divisor transparente e fino
-st.markdown('<div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 10px; margin-bottom: 5px;"></div>', unsafe_allow_html=True)
+st.markdown("""
+Bem-vindo(a)! Esta ferramenta ajuda a visualizar suas vendas por forma de pagamento
+e tenta encontrar combinações *hipotéticas* de produtos que poderiam corresponder a esses totais.
+""")
+
+# LINHA HORIZONTAL 1 (DIVISOR SUPERIOR) - SIMÉTRICO
+st.markdown('<div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 20px; margin-bottom: 20px;"></div>', unsafe_allow_html=True)
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -680,11 +686,12 @@ with st.sidebar:
     
     st.info("Lembre-se: As combinações são aproximações heurísticas.")
 
-# --- MENU DE NAVEGAÇÃO ---
+# --- MENU DE NAVEGAÇÃO ESTILIZADO (SEM "RECEBIMENTOS") ---
 menu_opcoes = ["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💸 Calculadora PIX"]
 escolha_menu = st.radio("Navegação", menu_opcoes, horizontal=True, label_visibility="collapsed", key="nav_menu")
 
-st.markdown('<div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 5px; margin-bottom: 20px;"></div>', unsafe_allow_html=True)
+# LINHA HORIZONTAL 2 (DIVISOR INFERIOR) - SIMÉTRICO
+st.markdown('<div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 20px; margin-bottom: 20px;"></div>', unsafe_allow_html=True)
 
 # --- CONTEÚDO DAS ABAS ---
 
