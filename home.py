@@ -1,4 +1,3 @@
-# #Adicionando as importações necessárias para PDF e algoritmo genético
 import streamlit as st
 import pandas as pd
 import altair as alt
@@ -6,6 +5,7 @@ from datetime import datetime
 import random
 import os
 import numpy as np
+import time  # Importação necessária para o controle de tempo do loop
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -113,17 +113,14 @@ def calculate_combination_value(combination, item_prices):
     """Calcula o valor total de uma combinação."""
     return sum(item_prices.get(name, 0) * quantity for name, quantity in combination.items())
 
-# --- FUNÇÕES PARA ALGORITMO GENÉTICO ---
+# --- FUNÇÕES PARA ALGORITMO GENÉTICO (ATUALIZADAS) ---
 def create_individual(item_prices, combination_size):
     """Cria um indivíduo (combinação) aleatório para o algoritmo genético."""
     if not item_prices:
         return {}
     
     items = list(item_prices.keys())
-    # Garante que não tentaremos selecionar mais itens do que existem
     size = min(combination_size, len(items))
-    
-    # Seleciona exatamente 'size' itens (sem repetição)
     selected_items = random.sample(items, size)
     
     return {
@@ -132,42 +129,45 @@ def create_individual(item_prices, combination_size):
     }
 
 def evaluate_fitness(individual, item_prices, target_value):
-    """Avalia a adequação de um indivíduo ao valor alvo."""
+    """
+    Avalia a adequação de um indivíduo ao valor alvo.
+    MODIFICADO: Penalidade extrema se ultrapassar o valor alvo.
+    """
     total = calculate_combination_value(individual, item_prices)
-    # Penalidade maior se exceder o valor alvo
+    
+    # Se passar do valor alvo: Penalidade MASSIVA.
+    # Isso força o algoritmo a preferir valores abaixo do alvo.
     if total > target_value:
-        return 1000 + abs(total - target_value)
-    return abs(target_value - total)
+        return 1_000_000 + (total - target_value)
+        
+    # Se for menor ou igual, quanto menor a diferença, melhor.
+    return target_value - total
 
 def crossover(parent1, parent2):
     """Realiza o cruzamento entre dois pais para criar um filho."""
-    # Cria um conjunto com todas as chaves dos dois pais
     all_keys = set(list(parent1.keys()) + list(parent2.keys()))
     child = {}
     
     for key in all_keys:
         if key in parent1 and key in parent2:
-            # Se a chave existe em ambos os pais, escolhe um valor ou a média
             if random.random() < 0.5:
                 child[key] = parent1[key]
             else:
                 child[key] = parent2[key]
         elif key in parent1:
-            # Se existe apenas no primeiro pai, 50% de chance de incluir
             if random.random() < 0.5:
                 child[key] = parent1[key]
         elif key in parent2:
-            # Se existe apenas no segundo pai, 50% de chance de incluir
             if random.random() < 0.5:
                 child[key] = parent2[key]
     
     return child
 
 def mutate(individual, item_prices, mutation_rate=0.2, max_items=5):
-    """Aplica mutação a um indivíduo, respeitando o número máximo de itens."""
+    """Aplica mutação a um indivíduo."""
     new_individual = individual.copy()
     
-    # Possivelmente adicionar um novo item (só se ainda não atingiu o máximo)
+    # Adicionar item
     if (random.random() < mutation_rate and 
         len(new_individual) < max_items and 
         len(new_individual) < len(item_prices)):
@@ -177,12 +177,12 @@ def mutate(individual, item_prices, mutation_rate=0.2, max_items=5):
             new_item = random.choice(possible_new_items)
             new_individual[new_item] = round_to_50_or_00(random.uniform(1, 100))
     
-    # Possivelmente remover um item existente (só se tiver mais de 1 item)
+    # Remover item
     if random.random() < mutation_rate and len(new_individual) > 1:
         item_to_remove = random.choice(list(new_individual.keys()))
         del new_individual[item_to_remove]
     
-    # Modificar quantidades existentes
+    # Modificar quantidades
     for key in list(new_individual.keys()):
         if random.random() < mutation_rate:
             change = random.choice([-1.0, -0.5, 0.5, 1.0])
@@ -194,41 +194,35 @@ def mutate(individual, item_prices, mutation_rate=0.2, max_items=5):
 def genetic_algorithm(item_prices, target_value, population_size=50, generations=100, 
                     combination_size=5, elite_size=5, tournament_size=3):
     """
-    Implementa um algoritmo genético para encontrar combinações de produtos
-    que se aproximem de um valor alvo.
+    Algoritmo genético com PODA DE SEGURANÇA.
+    Garante que o resultado final nunca seja maior que o target_value.
     """
     if not item_prices or target_value <= 0:
         return {}
     
-    # Inicializa a população
     population = [create_individual(item_prices, combination_size) for _ in range(population_size)]
     
     best_individual = {}
     best_fitness = float('inf')
     
     for generation in range(generations):
-        # Avalia a população
         fitness_scores = [(individual, evaluate_fitness(individual, item_prices, target_value)) 
                          for individual in population]
         
-        # Ordena por fitness (menor é melhor)
         fitness_scores.sort(key=lambda x: x[1])
         
-        # Atualiza o melhor indivíduo se encontrarmos um melhor
+        # Atualiza o melhor global
         if fitness_scores[0][1] < best_fitness:
             best_individual = fitness_scores[0][0].copy()
             best_fitness = fitness_scores[0][1]
         
-        # Se encontramos uma combinação perfeita ou muito próxima, terminamos
-        if best_fitness < 0.01:
+        # Se encontrou exato (fitness 0), para
+        if best_fitness == 0:
             break
         
-        # Seleciona a elite para a próxima geração
         next_generation = [ind[0].copy() for ind in fitness_scores[:elite_size]]
         
-        # Completa a próxima geração com novos indivíduos
         while len(next_generation) < population_size:
-            # Seleção de torneio
             tournament = random.sample(fitness_scores, tournament_size)
             tournament.sort(key=lambda x: x[1])
             parent1 = tournament[0][0]
@@ -237,19 +231,69 @@ def genetic_algorithm(item_prices, target_value, population_size=50, generations
             tournament.sort(key=lambda x: x[1])
             parent2 = tournament[0][0]
             
-            # Cruzamento
             child = crossover(parent1, parent2)
-            
-            # Mutação (passando o combination_size como max_items)
             child = mutate(child, item_prices, max_items=combination_size)
             
             next_generation.append(child)
         
-        # Atualiza a população
         population = next_generation
     
-    # Retorna combinação com valores arredondados
-    return {k: round(v) for k, v in best_individual.items() if round(v) > 0}
+    # --- PODA DE SEGURANÇA ---
+    # Garante matematicamente que Total <= Alvo
+    final_combination = {k: round_to_50_or_00(v) for k, v in best_individual.items() if round_to_50_or_00(v) > 0}
+    final_total = calculate_combination_value(final_combination, item_prices)
+
+    # Enquanto passar do valor, reduz itens
+    while final_total > target_value and len(final_combination) > 0:
+        item_to_reduce = random.choice(list(final_combination.keys()))
+        
+        if final_combination[item_to_reduce] <= 0.5:
+            del final_combination[item_to_reduce]
+        else:
+            final_combination[item_to_reduce] -= 0.5
+            
+        final_total = calculate_combination_value(final_combination, item_prices)
+
+    return final_combination
+
+def buscar_combinacao_exata(item_prices, target_value, max_time_seconds=5, 
+                           population_size=100, generations=200, combination_size=10):
+    """
+    Função Wrapper: Tenta encontrar uma combinação EXATA.
+    Roda o algoritmo genético repetidamente até conseguir ou o tempo acabar.
+    """
+    start_time = time.time()
+    best_global_individual = {}
+    best_global_diff = float('inf')
+    attempts = 0
+
+    # Loop de insistência (roda enquanto tiver tempo)
+    while (time.time() - start_time) < max_time_seconds:
+        attempts += 1
+        
+        # Roda uma iteração completa do algoritmo genético
+        current_result = genetic_algorithm(
+            item_prices, 
+            target_value, 
+            population_size=population_size, 
+            generations=generations, 
+            combination_size=combination_size
+        )
+        
+        # Calcula o resultado dessa tentativa
+        current_total = calculate_combination_value(current_result, item_prices)
+        diff = target_value - current_total # Diferença sempre >= 0 devido à poda
+
+        # Se encontrou o valor EXATO, retorna imediatamente
+        if diff == 0:
+            return current_result, attempts
+        
+        # Se não foi exato, mas foi o melhor até agora, guarda
+        if diff < best_global_diff:
+            best_global_diff = diff
+            best_global_individual = current_result
+            
+    return best_global_individual, attempts
 
 # --- FUNÇÕES PARA GERAR PDF ---
 def create_watermark(canvas, logo_path, width=400, height=400, opacity=0.1):
@@ -259,12 +303,12 @@ def create_watermark(canvas, logo_path, width=400, height=400, opacity=0.1):
             canvas.saveState()
             canvas.setFillColorRGB(255, 255, 255, alpha=opacity)
             canvas.drawImage(logo_path, 
-                         (A4[0] - width) / 2, 
-                         (A4[1] - height) / 2, 
-                         width=width, 
-                         height=height,
-                         mask='auto',
-                         preserveAspectRatio=True)
+                             (A4[0] - width) / 2, 
+                             (A4[1] - height) / 2, 
+                             width=width, 
+                             height=height,
+                             mask='auto',
+                             preserveAspectRatio=True)
             canvas.restoreState()
     except Exception as e:
         print(f"Erro ao adicionar marca d'água: {e}")
@@ -655,17 +699,13 @@ with tab1:
             with tab_detalhes2:
                 st.subheader("Fórmulas Utilizadas")
                 st.markdown("""
-                **1. Imposto Simples Nacional**  
-                `Faturamento Bruto × 6%`  
+                **1. Imposto Simples Nacional** `Faturamento Bruto × 6%`  
                 
-                **2. Custo Funcionário CLT**  
-                `Salário + FGTS (8%) + Férias (1 mês + 1/3) + 13º Salário`  
+                **2. Custo Funcionário CLT** `Salário + FGTS (8%) + Férias (1 mês + 1/3) + 13º Salário`  
                 
-                **3. Total de Custos**  
-                `Imposto + Funcionário + Contadora`  
+                **3. Total de Custos** `Imposto + Funcionário + Contadora`  
                 
-                **4. Lucro Estimado**  
-                `Faturamento Bruto - Total de Custos`
+                **4. Lucro Estimado** `Faturamento Bruto - Total de Custos`
                 """)
             
             with tab_detalhes3:
@@ -738,21 +778,37 @@ with tab2:
         # Encontrar combinações
         with st.spinner("Calculando possíveis combinações..."):
             if algoritmo == "Algoritmo Genético":
-                combinacao_sanduiches = genetic_algorithm(
+                # Barra de progresso para dar feedback visual
+                progress_text = "Processando milhares de combinações para achar o valor exato..."
+                my_bar = st.progress(0, text=progress_text)
+
+                # --- PROCESSAMENTO DOS SANDUÍCHES ---
+                combinacao_sanduiches, tentativas_sand = buscar_combinacao_exata(
                     CARDAPIOS["sanduiches"], 
                     valor_sanduiches,
-                    population_size=population_size,
-                    generations=generations,
+                    max_time_seconds=5, # Tenta por 5 segundos
+                    population_size=80,
+                    generations=150,
                     combination_size=tamanho_combinacao_sanduiches
                 )
+                my_bar.progress(50, text="Sanduíches calculados. Processando bebidas...")
                 
-                combinacao_bebidas = genetic_algorithm(
+                # --- PROCESSAMENTO DAS BEBIDAS ---
+                combinacao_bebidas, tentativas_beb = buscar_combinacao_exata(
                     CARDAPIOS["bebidas"], 
                     valor_bebidas,
-                    population_size=population_size,
-                    generations=generations,
+                    max_time_seconds=5, # Tenta por 5 segundos
+                    population_size=80,
+                    generations=150,
                     combination_size=tamanho_combinacao_bebidas
                 )
+                my_bar.progress(100, text="Finalizado!")
+                time.sleep(0.5)
+                my_bar.empty()
+                
+                # Mostra quantas tentativas foram feitas
+                st.caption(f"🤖 O algoritmo realizou {tentativas_sand + tentativas_beb} ciclos completos de evolução para tentar chegar no valor exato.")
+
             else:  # Busca Local
                 best_sanduiches = {}
                 best_diff_sanduiches = float('inf')
@@ -760,21 +816,6 @@ with tab2:
                 for _ in range(max_iterations):
                     candidate = create_individual(CARDAPIOS["sanduiches"], tamanho_combinacao_sanduiches)
                     candidate = mutate(candidate, CARDAPIOS["sanduiches"], mutation_rate=0.3, max_items=tamanho_combinacao_sanduiches)
-                    
-                    diff = evaluate_fitness(candidate, CARDAPIOS["sanduiches"], valor_sanduiches)
-                    if diff < best_diff_sanduiches:
-                        best_sanduiches = candidate
-                        best_diff_sanduiches = diff
-                
-                combinacao_sanduiches = {k: round(v) for k, v in best_sanduiches.items() if round(v) > 0}
-                
-                # Implementação da busca local para sanduíches
-                best_sanduiches = {}
-                best_diff_sanduiches = float('inf')
-                
-                for _ in range(max_iterations):
-                    candidate = create_individual(CARDAPIOS["sanduiches"], tamanho_combinacao_sanduiches)
-                    candidate = mutate(candidate, CARDAPIOS["sanduiches"], mutation_rate=0.3)
                     
                     diff = evaluate_fitness(candidate, CARDAPIOS["sanduiches"], valor_sanduiches)
                     if diff < best_diff_sanduiches:
@@ -922,7 +963,7 @@ with tab3:
                         )
                         save_data(st.session_state.df_receipts)
                         st.success("Registro salvo com sucesso!")
-                        st.experimental_rerun()
+                        st.rerun()
                     except Exception as e:
                         st.error(f"Erro ao salvar: {str(e)}")
 
