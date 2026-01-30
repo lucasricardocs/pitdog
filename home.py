@@ -77,10 +77,10 @@ def format_currency(value):
     return f"R$ {float(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def get_global_centered_styles():
-    # Estilos atualizados para Dark Mode
+    # Estilos atualizados para combinar com o fundo cinza da Sidebar
     return [
-        {'selector': 'th', 'props': [('text-align', 'center'), ('vertical-align', 'middle'), ('background-color', '#0e1117'), ('color', '#ffffff'), ('padding', '8px'), ('border', '1px solid #444')]},
-        {'selector': 'td', 'props': [('text-align', 'center'), ('vertical-align', 'middle'), ('padding', '8px'), ('color', '#e0e0e0'), ('background-color', '#262730')]},
+        {'selector': 'th', 'props': [('text-align', 'center'), ('vertical-align', 'middle'), ('background-color', '#181a20'), ('color', '#ffffff'), ('padding', '8px'), ('border', '1px solid #444')]},
+        {'selector': 'td', 'props': [('text-align', 'center'), ('vertical-align', 'middle'), ('padding', '8px'), ('color', '#e0e0e0'), ('background-color', '#2b2d36')]},
         {'selector': 'table', 'props': [('width', '100%'), ('margin-left', 'auto'), ('margin-right', 'auto')]}
     ]
 
@@ -440,9 +440,9 @@ def renderizar_resultados(dados):
     diff = dados['alvo'] - dados['val_total']
     
     # Cores Adaptadas para DARK MODE
-    cor_box = "#064e3b" if diff == 0 else "#431407" # Verde escuro ou Marrom avermelhado
-    cor_border = "#10b981" if diff == 0 else "#f97316" # Bordas brilhantes
-    cor_text = "#a7f3d0" if diff == 0 else "#fdba74" # Texto claro
+    cor_box = "#064e3b" if diff == 0 else "#431407" 
+    cor_border = "#10b981" if diff == 0 else "#f97316"
+    cor_text = "#a7f3d0" if diff == 0 else "#fdba74" 
     
     st.markdown("---")
     st.markdown(f"""
@@ -464,15 +464,15 @@ st.set_page_config(
     initial_sidebar_state=CONFIG["sidebar_state"]
 )
 
-# --- CSS GLOBAL (DARK MODE) ---
+# --- CSS GLOBAL (SIDEBAR MATCH MODE) ---
 st.markdown("""
 <style>
-    /* 1. FUNDO DINÂMICO DARK */
+    /* 1. FUNDO - Cor da Sidebar do Streamlit (#262730) */
     .stApp {
-        background: linear-gradient(-45deg, #0e1117, #161b22, #000000, #161b22);
+        background: linear-gradient(180deg, #262730, #2b2d36, #262730); /* Gradiente muito sutil */
         background-size: 400% 400%;
         animation: gradientBG 15s ease infinite;
-        color: #f0f2f6; /* Texto claro padrão */
+        color: #f0f2f6; /* Texto claro */
     }
 
     @keyframes gradientBG {
@@ -492,11 +492,12 @@ st.markdown("""
         margin-right: auto;
     }
     
-    /* 3. Inputs (Dark Theme) */
+    /* 3. Inputs (Darker Theme para contraste) */
+    /* Como o fundo agora é cinza (#262730), os inputs precisam ser mais escuros (#1a1c24) para aparecerem */
     .stTextInput input, .stNumberInput input, .stSelectbox, .stDateInput, div[data-baseweb="select"] > div {
-        background-color: #262730 !important;
+        background-color: #1a1c24 !important; 
         color: white !important;
-        border-color: #4c4c4c !important;
+        border: 1px solid #444 !important;
     }
     .stSelectbox div[data-baseweb="select"] span {
         color: white !important;
@@ -520,7 +521,7 @@ st.markdown("""
         box-shadow: none !important;
         cursor: pointer;
         transition: all 0.3s ease;
-        border-right: 2px solid #555 !important; /* Borda divisória mais escura */
+        border-right: 2px solid #555 !important;
         border-radius: 0 !important;
     }
 
@@ -538,7 +539,7 @@ st.markdown("""
         font-weight: 500;
         margin: 0;
         padding-bottom: 2px;
-        color: #b0b0b0; /* Texto do menu inativo (cinza claro) */
+        color: #b0b0b0; 
         border-bottom: 2px solid transparent; 
     }
 
@@ -553,7 +554,7 @@ st.markdown("""
         font-weight: bold;
     }
 
-    /* 5. FAÍSCAS (Espalhadas no eixo X e Subindo mais alto) */
+    /* 5. FAÍSCAS */
     .logo-container {
         position: relative;
         width: 400px;
@@ -578,27 +579,17 @@ st.markdown("""
         background-color: #FF4500;
         border-radius: 50%;
         bottom: 10px;
-        z-index: 1; /* ATRÁS DA LOGO */
+        z-index: 1; 
         opacity: 0;
         box-shadow: 0 0 5px #FFD700, 0 0 10px #FF8C00;
         pointer-events: none;
     }
 
     @keyframes steady-rise-high {
-        0% {
-            opacity: 0;
-            transform: translateY(0) scale(0.5);
-        }
-        10% {
-             opacity: 0.8; 
-        }
-        80% {
-            opacity: 0.6; 
-        }
-        100% {
-            opacity: 0; 
-            transform: translateY(-550px) scale(0.1); 
-        }
+        0% { opacity: 0; transform: translateY(0) scale(0.5); }
+        10% { opacity: 0.8; }
+        80% { opacity: 0.6; }
+        100% { opacity: 0; transform: translateY(-550px) scale(0.1); }
     }
 
     .s1 { bottom: 20px; left: 10%; animation: steady-rise-high 5s linear infinite; animation-delay: 0s; }
@@ -654,7 +645,6 @@ try:
             unsafe_allow_html=True
         )
     else:
-        # st.warning("Logo não encontrada.") # Ocultado para limpar visual
         pass
 except Exception as e:
     st.error(f"Erro na logo: {e}")
