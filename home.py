@@ -77,9 +77,10 @@ def format_currency(value):
     return f"R$ {float(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def get_global_centered_styles():
+    # Estilos atualizados para Dark Mode
     return [
-        {'selector': 'th', 'props': [('text-align', 'center'), ('vertical-align', 'middle'), ('background-color', '#262730'), ('color', 'white'), ('padding', '8px')]},
-        {'selector': 'td', 'props': [('text-align', 'center'), ('vertical-align', 'middle'), ('padding', '8px')]},
+        {'selector': 'th', 'props': [('text-align', 'center'), ('vertical-align', 'middle'), ('background-color', '#0e1117'), ('color', '#ffffff'), ('padding', '8px'), ('border', '1px solid #444')]},
+        {'selector': 'td', 'props': [('text-align', 'center'), ('vertical-align', 'middle'), ('padding', '8px'), ('color', '#e0e0e0'), ('background-color', '#262730')]},
         {'selector': 'table', 'props': [('width', '100%'), ('margin-left', 'auto'), ('margin-right', 'auto')]}
     ]
 
@@ -437,9 +438,11 @@ def renderizar_resultados(dados):
         else: st.warning("Sem itens")
 
     diff = dados['alvo'] - dados['val_total']
-    cor_box = "#ecfdf5" if diff == 0 else "#fff7ed" 
-    cor_border = "#10b981" if diff == 0 else "#f97316"
-    cor_text = "#047857" if diff == 0 else "#c2410c"
+    
+    # Cores Adaptadas para DARK MODE
+    cor_box = "#064e3b" if diff == 0 else "#431407" # Verde escuro ou Marrom avermelhado
+    cor_border = "#10b981" if diff == 0 else "#f97316" # Bordas brilhantes
+    cor_text = "#a7f3d0" if diff == 0 else "#fdba74" # Texto claro
     
     st.markdown("---")
     st.markdown(f"""
@@ -448,8 +451,8 @@ def renderizar_resultados(dados):
         <p style="font-size: 45px; font-weight: 800; margin: 10px 0; color: {cor_text};">
             {format_currency(dados['val_total'])}
         </p>
-        <p style="font-size: 16px; margin: 0; color: #555;">
-            Meta: <b>{format_currency(dados['alvo'])}</b> | Diferença: <b style="color: {'red' if diff != 0 else 'green'}">{format_currency(diff)}</b>
+        <p style="font-size: 16px; margin: 0; color: #e5e7eb;">
+            Meta: <b>{format_currency(dados['alvo'])}</b> | Diferença: <b style="color: {'#fca5a5' if diff != 0 else '#86efac'}">{format_currency(diff)}</b>
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -461,14 +464,15 @@ st.set_page_config(
     initial_sidebar_state=CONFIG["sidebar_state"]
 )
 
-# --- CSS GLOBAL ---
+# --- CSS GLOBAL (DARK MODE) ---
 st.markdown("""
 <style>
-    /* 1. FUNDO DINÂMICO */
+    /* 1. FUNDO DINÂMICO DARK */
     .stApp {
-        background: linear-gradient(-45deg, #e8ecf1, #dce2e9, #ffffff, #dce2e9);
+        background: linear-gradient(-45deg, #0e1117, #161b22, #000000, #161b22);
         background-size: 400% 400%;
         animation: gradientBG 15s ease infinite;
+        color: #f0f2f6; /* Texto claro padrão */
     }
 
     @keyframes gradientBG {
@@ -477,19 +481,25 @@ st.markdown("""
         100% { background-position: 0% 50%; }
     }
 
-    /* 2. Centralização de tabelas */
+    /* 2. Centralização de tabelas e cores de texto */
     th, td {
         text-align: center !important;
         vertical-align: middle !important;
+        color: #e0e0e0 !important; /* Texto da tabela claro */
     }
     div[data-testid="stTable"] table {
         margin-left: auto;
         margin-right: auto;
     }
     
-    /* 3. Inputs */
-    .stTextInput input, .stNumberInput input, .stSelectbox, .stDateInput {
-        background-color: white;
+    /* 3. Inputs (Dark Theme) */
+    .stTextInput input, .stNumberInput input, .stSelectbox, .stDateInput, div[data-baseweb="select"] > div {
+        background-color: #262730 !important;
+        color: white !important;
+        border-color: #4c4c4c !important;
+    }
+    .stSelectbox div[data-baseweb="select"] span {
+        color: white !important;
     }
 
     /* 4. MENU ESTILIZADO */
@@ -510,7 +520,7 @@ st.markdown("""
         box-shadow: none !important;
         cursor: pointer;
         transition: all 0.3s ease;
-        border-right: 2px solid #bbb !important;
+        border-right: 2px solid #555 !important; /* Borda divisória mais escura */
         border-radius: 0 !important;
     }
 
@@ -528,18 +538,18 @@ st.markdown("""
         font-weight: 500;
         margin: 0;
         padding-bottom: 2px;
-        color: #333;
+        color: #b0b0b0; /* Texto do menu inativo (cinza claro) */
         border-bottom: 2px solid transparent; 
     }
 
     div[role="radiogroup"] label:hover div[data-testid="stMarkdownContainer"] p {
-        color: #d93025 !important;
-        border-bottom: 2px solid #d93025 !important;
+        color: #ff4b4b !important;
+        border-bottom: 2px solid #ff4b4b !important;
     }
 
     div[role="radiogroup"] label[data-checked="true"] div[data-testid="stMarkdownContainer"] p {
-        color: #d93025 !important;
-        border-bottom: 2px solid #d93025 !important;
+        color: #ff4b4b !important;
+        border-bottom: 2px solid #ff4b4b !important;
         font-weight: bold;
     }
 
@@ -574,7 +584,6 @@ st.markdown("""
         pointer-events: none;
     }
 
-    /* Animação: Sobe BEM ALTO (-550px) para aparecer atrás da logo de 400px */
     @keyframes steady-rise-high {
         0% {
             opacity: 0;
@@ -592,7 +601,6 @@ st.markdown("""
         }
     }
 
-    /* DISTRIBUIÇÃO DAS FAÍSCAS (EIXO X - left de 5% a 95%) */
     .s1 { bottom: 20px; left: 10%; animation: steady-rise-high 5s linear infinite; animation-delay: 0s; }
     .s2 { bottom: 10px; left: 20%; animation: steady-rise-high 6s linear infinite; animation-delay: 1.5s; }
     .s3 { bottom: 25px; left: 35%; animation: steady-rise-high 5.5s linear infinite; animation-delay: 3.0s; }
@@ -646,7 +654,8 @@ try:
             unsafe_allow_html=True
         )
     else:
-        st.warning("Logo não encontrada. Verifique o arquivo logo.png.")
+        # st.warning("Logo não encontrada.") # Ocultado para limpar visual
+        pass
 except Exception as e:
     st.error(f"Erro na logo: {e}")
 
@@ -654,9 +663,6 @@ st.markdown("""
 Bem-vindo(a)! Esta ferramenta ajuda a visualizar suas vendas por forma de pagamento
 e tenta encontrar combinações *hipotéticas* de produtos que poderiam corresponder a esses totais.
 """)
-
-# LINHA HORIZONTAL 1 (DIVISOR SUPERIOR) - SIMÉTRICO
-#st.markdown('<div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 20px; margin-bottom: 20px;"></div>', unsafe_allow_html=True)
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -689,9 +695,6 @@ with st.sidebar:
 # --- MENU DE NAVEGAÇÃO ESTILIZADO (SEM "RECEBIMENTOS") ---
 menu_opcoes = ["📈 Resumo das Vendas", "🧩 Detalhes das Combinações", "💸 Calculadora PIX"]
 escolha_menu = st.radio("Navegação", menu_opcoes, horizontal=True, label_visibility="collapsed", key="nav_menu")
-
-# LINHA HORIZONTAL 2 (DIVISOR INFERIOR) - SIMÉTRICO
-#st.markdown('<div style="border-top: 1px solid rgba(0,0,0,0.1); margin-top: 20px; margin-bottom: 20px;"></div>', unsafe_allow_html=True)
 
 # --- CONTEÚDO DAS ABAS ---
 
