@@ -77,10 +77,10 @@ def format_currency(value):
     return f"R$ {float(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def get_global_centered_styles():
-    # Estilos atualizados para combinar com o fundo cinza da Sidebar
+    # Estilos atualizados para combinar com o fundo azul escuro
     return [
-        {'selector': 'th', 'props': [('text-align', 'center'), ('vertical-align', 'middle'), ('background-color', '#181a20'), ('color', '#ffffff'), ('padding', '8px'), ('border', '1px solid #444')]},
-        {'selector': 'td', 'props': [('text-align', 'center'), ('vertical-align', 'middle'), ('padding', '8px'), ('color', '#e0e0e0'), ('background-color', '#2b2d36')]},
+        {'selector': 'th', 'props': [('text-align', 'center'), ('vertical-align', 'middle'), ('background-color', '#000033'), ('color', '#ffffff'), ('padding', '8px'), ('border', '1px solid #444')]},
+        {'selector': 'td', 'props': [('text-align', 'center'), ('vertical-align', 'middle'), ('padding', '8px'), ('color', '#e0e0e0'), ('background-color', '#1a1a4a')]},
         {'selector': 'table', 'props': [('width', '100%'), ('margin-left', 'auto'), ('margin-right', 'auto')]}
     ]
 
@@ -439,8 +439,8 @@ def renderizar_resultados(dados):
 
     diff = dados['alvo'] - dados['val_total']
     
-    # Cores Adaptadas para DARK MODE
-    cor_box = "#064e3b" if diff == 0 else "#431407" 
+    # Cores Adaptadas para o Fundo Azul Escuro
+    cor_box = "#000033" if diff == 0 else "#330000" 
     cor_border = "#10b981" if diff == 0 else "#f97316"
     cor_text = "#a7f3d0" if diff == 0 else "#fdba74" 
     
@@ -464,21 +464,15 @@ st.set_page_config(
     initial_sidebar_state=CONFIG["sidebar_state"]
 )
 
-# --- CSS GLOBAL (SIDEBAR MATCH MODE) ---
+# --- CSS GLOBAL (ESTILO DA IMAGEM) ---
 st.markdown("""
 <style>
-    /* 1. FUNDO - Cor da Sidebar do Streamlit (#262730) */
+    /* 1. FUNDO - Gradiente Azul Escuro Baseado na Imagem */
     .stApp {
-        background: linear-gradient(180deg, #262730, #2b2d36, #262730); /* Gradiente muito sutil */
-        background-size: 400% 400%;
-        animation: gradientBG 15s ease infinite;
+        background: linear-gradient(to bottom, #1e005e 0%, #000033 50%, #000000 100%);
+        background-size: cover;
+        background-attachment: fixed;
         color: #f0f2f6; /* Texto claro */
-    }
-
-    @keyframes gradientBG {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
     }
 
     /* 2. Centralização de tabelas e cores de texto */
@@ -492,8 +486,7 @@ st.markdown("""
         margin-right: auto;
     }
     
-    /* 3. Inputs (Darker Theme para contraste) */
-    /* Como o fundo agora é cinza (#262730), os inputs precisam ser mais escuros (#1a1c24) para aparecerem */
+    /* 3. Inputs (Darker Theme para contraste com o azul) */
     .stTextInput input, .stNumberInput input, .stSelectbox, .stDateInput, div[data-baseweb="select"] > div {
         background-color: #1a1c24 !important; 
         color: white !important;
